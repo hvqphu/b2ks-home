@@ -757,58 +757,14 @@
         </div>
     </div>
 
-    <!-- 4G. MULTIPLAYER ARCADE ZONE MODAL (1-2-3-4 PLAYER BETTING MINIGAMES) -->
+    <!-- 4G. MULTIPLAYER ONLINE ARCADE ZONE MODAL (REALTIME MULTI-DEVICE + SPECTATOR MODE) -->
     <div class="modal-overlay" id="arcade-modal">
-        <div class="modal-content pixel-box" style="max-width:680px;">
+        <div class="modal-content pixel-box" style="max-width:720px;">
             <div class="modal-header">
-                <h2>🕹️ Khu Vui Chơi Đối Kháng B2KS (1–4 Người)</h2>
+                <h2 style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">🕹️ Khu Vui Chơi Online B2KS <span id="arcade-online-badge" class="tag" style="background:#27AE60; color:#FFF; font-size:11px;">🟢 ONLINE</span></h2>
                 <button class="btn btn-primary btn-sm" onclick="closeArcadeModal()">Đóng</button>
             </div>
-            <div id="arcade-lobby-view">
-                <div style="background:#FEF9E7; border:2px solid #F39C12; border-radius:10px; padding:10px 12px; margin-bottom:12px; font-size:13px; display:flex; align-items:center; gap:10px;">
-                    <span style="font-size:26px;">👾</span>
-                    <div><b>Quản Trò Arcade:</b> "Chào mừng đến sảnh game đối kháng! Mỗi người chơi tham gia cược <b>1⭐</b>, người thắng nhận trọn bộ số điểm của cả bàn!"</div>
-                </div>
-
-                <div class="form-group">
-                    <label>1. Chọn thành viên tham gia trận đấu (Từ 2 đến 4 người - Mỗi người cược 1⭐):</label>
-                    <div id="arcade-player-selector" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:8px;"></div>
-                </div>
-
-                <div style="background:#EBF5FB; border:2px solid #2980B9; border-radius:8px; padding:8px 12px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
-                    <span style="font-size:13px; font-weight:700; color:#1B4F72;">👥 Số người chơi: <span id="arcade-selected-count">2</span> người</span>
-                    <span class="points-pill" style="font-size:13px;">🏆 Tổng quỹ thưởng: <span id="arcade-pot-preview">2</span>⭐</span>
-                </div>
-
-                <div class="form-group">
-                    <label>2. Chọn trò chơi đối kháng:</label>
-                    <div class="grid-2">
-                        <div class="card-item" style="background:#FDEDEC;">
-                            <div>
-                                <b>❌⭕ Cờ Caro / Tic-Tac-Toe</b>
-                                <div style="font-size:12px; color:#555; margin-top:3px;">Dành cho <b>2 người</b>. Đấu trí xếp 3 ô thẳng hàng để ẵm trọn quỹ cược!</div>
-                            </div>
-                            <button class="btn btn-primary btn-sm" onclick="startArcadeMatch('tictactoe')">▶️ Chơi XO (2 Người)</button>
-                        </div>
-                        <div class="card-item" style="background:#E8F8F5;">
-                            <div>
-                                <b>⚡ Đố Vui Giành Chuông</b>
-                                <div style="font-size:12px; color:#555; margin-top:3px;">Dành cho <b>2–4 người</b>. Bấm nút của mình thật nhanh để giành quyền trả lời!</div>
-                            </div>
-                            <button class="btn btn-sm" style="background:#16A085;" onclick="startArcadeMatch('quiz')">▶️ Chơi Đố Vui (2–4 Người)</button>
-                        </div>
-                        <div class="card-item" style="background:#F5EEF8;">
-                            <div>
-                                <b>🚀 Đấu Súng Không Gian (1-Nút)</b>
-                                <div style="font-size:12px; color:#555; margin-top:3px;">Dành cho <b>2–4 người</b>. Tàu tự xoay nòng, bấm 1 nút để lao tới & bắn hạ đối thủ!</div>
-                            </div>
-                            <button class="btn btn-purple btn-sm" onclick="startArcadeMatch('shooter')">▶️ Bắn Súng (2–4 Người)</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="arcade-game-view" style="display:none;"></div>
+            <div id="arcade-dynamic-container"></div>
         </div>
     </div>
 
@@ -1626,6 +1582,40 @@
             }).catch(() => {});
         }
 
+        function pushArcadeRoomToFirebase(roomObj) {
+            arcadeRoomState = roomObj;
+            localStorage.setItem('b2ks_arcade_online_room', JSON.stringify(roomObj));
+            if (!deviceConfig.firebaseUrl) return;
+            fetch(deviceConfig.firebaseUrl + '/b2ks_family_rpg_v16/arcade_room.json', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(roomObj)
+            }).catch(() => {});
+        }
+
+        function pullArcadeRoomFromFirebase() {
+            if (!deviceConfig.firebaseUrl) {
+                try {
+                    const localRaw = localStorage.getItem('b2ks_arcade_online_room');
+                    if (localRaw) {
+                        const parsed = JSON.parse(localRaw);
+                        if (parsed && (parsed.updatedAt || 0) > (arcadeRoomState?.updatedAt || 0)) {
+                            onRemoteArcadeRoomUpdate(parsed);
+                        }
+                    }
+                } catch (e) {}
+                return;
+            }
+            fetch(deviceConfig.firebaseUrl + '/b2ks_family_rpg_v16/arcade_room.json')
+                .then(r => r.json())
+                .then(remoteRoom => {
+                    if (!remoteRoom) return;
+                    if ((remoteRoom.updatedAt || 0) > (arcadeRoomState?.updatedAt || 0)) {
+                        onRemoteArcadeRoomUpdate(remoteRoom);
+                    }
+                }).catch(() => {});
+        }
+
         function pullFromFirebase() {
             if (!deviceConfig.firebaseUrl) return;
             const curId = deviceConfig.currentMemberId;
@@ -1672,6 +1662,17 @@
                 }).catch(() => {});
         }
         setInterval(pullFromFirebase, 2500);
+        setInterval(pullArcadeRoomFromFirebase, 800);
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'b2ks_arcade_online_room' && e.newValue) {
+                try {
+                    const parsed = JSON.parse(e.newValue);
+                    if (parsed && (parsed.updatedAt || 0) > (arcadeRoomState?.updatedAt || 0)) {
+                        onRemoteArcadeRoomUpdate(parsed);
+                    }
+                } catch (err) {}
+            }
+        });
 
         setInterval(() => {
             if (!deviceConfig.firebaseUrl) return;
@@ -2052,6 +2053,9 @@
             AudioEngine.playClick();
             document.getElementById(id).style.display = 'none';
             if (id === 'custom-modal') wardrobeOpenedRoomId = null;
+            if (id === 'arcade-modal') {
+                stopArcadeLoop();
+            }
         }
 
         function renderHouseModal() {
@@ -3811,8 +3815,8 @@
             const k = e.key.toLowerCase();
             keys[k] = true;
 
-            // Handle active Arcade Multiplayer controls when Arcade modal is open
-            if (document.getElementById('arcade-modal').style.display === 'flex' && activeArcadeMatch) {
+            // Handle active Online Arcade Multiplayer controls when Arcade modal is open
+            if (document.getElementById('arcade-modal').style.display === 'flex' && arcadeRoomState && arcadeRoomState.status === 'playing') {
                 handleArcadeKeyPress(k);
                 return;
             }
@@ -4708,10 +4712,31 @@
             // 6. KHU VUI CHƠI ĐỐI KHÁNG B2KS (Trung tâm bản đồ - Dưới Đại lộ Bắc)
             drawShopBuilding(885, 725, {
                 wallColor: '#FEF9E7', awningColor: '#F39C12', signColor: '#C0392B',
-                title: '🕹️ KHU VUI CHƠI B2KS (1⭐)', icons: '❌⭕  ⚡  🚀  🏆',
+                title: '🕹️ KHU VUI CHƠI ONLINE (1⭐)', icons: '❌⭕  ⚡  🚀  🏆',
                 npcName: 'Quản Trò Bin', npcHairStyle: 'spiky', npcHairColor: '#2C3E50',
                 npcShirtColor: '#E74C3C', npcShirtPattern: 'star', npcPantsColor: '#2980B9', npcPantsStyle: 'shorts', npcOutfit: '🎮'
             }, lighting);
+            if (typeof arcadeRoomState !== 'undefined' && (arcadeRoomState.status === 'lobby' || arcadeRoomState.status === 'playing')) {
+                const isLive = arcadeRoomState.status === 'playing';
+                const cat = ARCADE_GAME_CATALOG[arcadeRoomState.gameType];
+                const bannerText = isLive
+                    ? `🔴 ĐANG ĐẤU: ${cat ? cat.shortTitle : 'Game'} (${arcadeRoomState.playerIds.length}P) - Bấm để XEM!`
+                    : `🟡 PHÒNG CHỜ: ${cat ? cat.shortTitle : 'Game'} (${arcadeRoomState.playerIds.length}P) - Lại gần để THAM GIA!`;
+                ctx.save();
+                ctx.font = 'bold 12px Fredoka, sans-serif';
+                const bw = ctx.measureText(bannerText).width + 24;
+                ctx.fillStyle = isLive ? '#C0392B' : '#D35400';
+                ctx.strokeStyle = '#FFF';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.roundRect(885 - bw / 2, 578, bw, 26, 13);
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = '#FFF';
+                ctx.textAlign = 'center';
+                ctx.fillText(bannerText, 885, 595);
+                ctx.restore();
+            }
 
             // 7. Trung Tâm Tiếng Anh B2KS
             drawShopBuilding(340, 865, {
@@ -5161,75 +5186,71 @@
         }
 
         /* =========================================================================
-           10B. MULTIPLAYER ARCADE ZONE (1-2-3-4 PLAYER BETTING MINIGAMES)
+           10B. ONLINE MULTIPLAYER ARCADE ZONE (PROXIMITY LOBBY + READY CHECK + SPECTATOR)
            ========================================================================= */
+        const ARCADE_CENTER = { x: 885, y: 790, radius: 135 };
         const ARCADE_PLAYER_THEMES = [
-            { color: '#E74C3C', keyLabel: 'Phím Q', keyCode: 'q' },
-            { color: '#2980B9', keyLabel: 'Phím P', keyCode: 'p' },
-            { color: '#27AE60', keyLabel: 'Phím Z', keyCode: 'z' },
-            { color: '#F39C12', keyLabel: 'Phím M', keyCode: 'm' }
+            { color: '#E74C3C', keyLabel: 'Space / Phím Q', keyCode: 'q' },
+            { color: '#2980B9', keyLabel: 'Space / Phím P', keyCode: 'p' },
+            { color: '#27AE60', keyLabel: 'Space / Phím Z', keyCode: 'z' },
+            { color: '#F39C12', keyLabel: 'Space / Phím M', keyCode: 'm' }
         ];
 
-        let arcadeSelectedPlayerIds = [];
-        let activeArcadeMatch = null;
+        const ARCADE_GAME_CATALOG = {
+            tictactoe: {
+                id: 'tictactoe',
+                title: '❌⭕ Cờ Caro / Tic-Tac-Toe',
+                shortTitle: 'Cờ Caro XO',
+                minPlayers: 2,
+                maxPlayers: 2,
+                bg: '#FDEDEC',
+                desc: 'Đấu trí 1v1 (đúng 2 người). Mỗi người chơi trên thiết bị riêng theo lượt để xếp 3 ô thẳng hàng!'
+            },
+            quiz: {
+                id: 'quiz',
+                title: '⚡ Đố Vui Giành Chuông Online',
+                shortTitle: 'Đố Vui Giành Chuông',
+                minPlayers: 2,
+                maxPlayers: 4,
+                bg: '#E8F8F5',
+                desc: 'Dành cho 2–4 người. Bấm nút chuông trên máy mình thật nhanh để giành quyền trả lời!'
+            },
+            shooter: {
+                id: 'shooter',
+                title: '🚀 Đấu Súng Không Gian Online',
+                shortTitle: 'Đấu Trường Vũ Trụ',
+                minPlayers: 2,
+                maxPlayers: 4,
+                bg: '#F5EEF8',
+                desc: 'Dành cho 2–4 người. Mỗi người điều khiển tàu của mình trên máy riêng (1 nút xoay & bắn)!'
+            }
+        };
+
+        let arcadeRoomState = {
+            status: 'idle', // 'idle' | 'lobby' | 'playing' | 'finished'
+            gameType: 'tictactoe',
+            hostId: null,
+            playerIds: [],
+            readyMap: {},
+            pot: 0,
+            matchData: null,
+            winnerId: null,
+            isDraw: false,
+            updatedAt: 0
+        };
         let arcadeAnimFrameId = null;
+        let lastArcadeRenderSig = '';
+        let arcadeLastSyncedShootAt = 0;
 
-        function renderArcadeLobby() {
-            stopArcadeLoop();
-            activeArcadeMatch = null;
-            document.getElementById('arcade-lobby-view').style.display = 'block';
-            document.getElementById('arcade-game-view').style.display = 'none';
-
-            // Preselect current user + 1 other member by default
-            if (arcadeSelectedPlayerIds.length < 2) {
-                const cur = getCurrentUser();
-                const other = state.members.find(m => m.id !== cur.id) || state.members[0];
-                arcadeSelectedPlayerIds = cur.id === other.id ? [cur.id] : [cur.id, other.id];
-            }
-            arcadeSelectedPlayerIds = arcadeSelectedPlayerIds.filter(id => state.members.some(m => m.id === id));
-
-            const selectorEl = document.getElementById('arcade-player-selector');
-            selectorEl.innerHTML = '';
-            state.members.forEach(m => {
-                const isSelected = arcadeSelectedPlayerIds.includes(m.id);
-                const pIdx = arcadeSelectedPlayerIds.indexOf(m.id);
-                const badge = isSelected ? `<span class="tag" style="background:${ARCADE_PLAYER_THEMES[pIdx].color}; color:#FFF;">P${pIdx + 1}</span>` : '';
-                selectorEl.innerHTML += `
-                    <div onclick="toggleArcadePlayer('${m.id}')" style="cursor:pointer; border:2.5px solid ${isSelected ? '#27AE60' : '#BDC3C7'}; background:${isSelected ? '#EAFAF1' : '#FFF'}; border-radius:10px; padding:8px; display:flex; align-items:center; justify-content:space-between; gap:6px;">
-                        <div style="display:flex; align-items:center; gap:6px;">
-                            <span style="font-size:20px;">${m.outfit || getRoleEmoji(m.role)}</span>
-                            <div>
-                                <div style="font-weight:700; font-size:13px;">${m.name}</div>
-                                <div style="font-size:11px; color:#555;">Có: <b>${m.points}⭐</b></div>
-                            </div>
-                        </div>
-                        ${badge}
-                    </div>
-                `;
-            });
-
-            document.getElementById('arcade-selected-count').innerText = arcadeSelectedPlayerIds.length;
-            document.getElementById('arcade-pot-preview').innerText = arcadeSelectedPlayerIds.length;
+        function getMembersInArcadeZone() {
+            return state.members.filter(m =>
+                m.scene === 'neighborhood' &&
+                Math.hypot(m.x - ARCADE_CENTER.x, m.y - ARCADE_CENTER.y) <= ARCADE_CENTER.radius
+            );
         }
 
-        function toggleArcadePlayer(memberId) {
-            AudioEngine.playClick();
-            const idx = arcadeSelectedPlayerIds.indexOf(memberId);
-            if (idx !== -1) {
-                arcadeSelectedPlayerIds.splice(idx, 1);
-            } else {
-                if (arcadeSelectedPlayerIds.length >= 4) {
-                    return showToast('⚠️ Tối đa 4 người chơi cùng lúc!');
-                }
-                arcadeSelectedPlayerIds.push(memberId);
-            }
-            renderArcadeLobby();
-        }
-
-        function closeArcadeModal() {
-            stopArcadeLoop();
-            activeArcadeMatch = null;
-            closeModal('arcade-modal');
+        function isMemberInArcadeZone(memberId) {
+            return getMembersInArcadeZone().some(m => m.id === memberId);
         }
 
         function stopArcadeLoop() {
@@ -5239,19 +5260,189 @@
             }
         }
 
-        function startArcadeMatch(gameType) {
-            const count = arcadeSelectedPlayerIds.length;
-            if (count < 2) {
-                AudioEngine.playError();
-                return showToast('⚠️ Hãy chọn ít nhất 2 thành viên để thi đấu!');
-            }
-            if (gameType === 'tictactoe' && count !== 2) {
-                AudioEngine.playError();
-                return showToast('⚠️ Cờ Caro XO chỉ dành cho đúng 2 người chơi!');
+        function closeArcadeModal() {
+            stopArcadeLoop();
+            closeModal('arcade-modal');
+        }
+
+        function onRemoteArcadeRoomUpdate(remoteRoom) {
+            const prevStatus = arcadeRoomState?.status;
+            arcadeRoomState = remoteRoom;
+
+            // Sync remote shooter ship inputs if playing shooter
+            if (remoteRoom.status === 'playing' && remoteRoom.gameType === 'shooter' && remoteRoom.matchData && remoteRoom.matchData.ships) {
+                // Keep local canvas smooth while applying remote fire events
             }
 
-            const players = arcadeSelectedPlayerIds.map(id => state.members.find(m => m.id === id)).filter(Boolean);
-            for (const p of players) {
+            if (document.getElementById('arcade-modal').style.display === 'flex') {
+                if (remoteRoom.status === 'playing' && remoteRoom.gameType === 'shooter') {
+                    if (prevStatus !== 'playing' || !document.getElementById('arcade-shooter-canvas')) {
+                        lastArcadeRenderSig = '';
+                        renderArcadeLobby();
+                    }
+                } else {
+                    renderArcadeLobby();
+                }
+            }
+        }
+
+        function createArcadeLobby(gameType) {
+            const me = getCurrentUser();
+            if (!isMemberInArcadeZone(me.id)) {
+                AudioEngine.playError();
+                return showToast('🚶 Bạn cần di chuyển nhân vật đến Khu Vui Chơi B2KS trước!');
+            }
+            if (me.points < 1) {
+                AudioEngine.playError();
+                return showToast('❌ Bạn cần ít nhất 1⭐ để mở bàn chơi!');
+            }
+            const cat = ARCADE_GAME_CATALOG[gameType];
+            if (!cat) return;
+
+            AudioEngine.playSuccess();
+            const newRoom = {
+                status: 'lobby',
+                gameType: gameType,
+                hostId: me.id,
+                playerIds: [me.id],
+                readyMap: { [me.id]: true },
+                pot: 0,
+                matchData: null,
+                winnerId: null,
+                isDraw: false,
+                updatedAt: Date.now()
+            };
+            pushArcadeRoomToFirebase(newRoom);
+            lastArcadeRenderSig = '';
+            renderArcadeLobby();
+        }
+
+        function joinArcadeLobby() {
+            const me = getCurrentUser();
+            const r = arcadeRoomState;
+            if (!r || r.status !== 'lobby') return;
+            if (!isMemberInArcadeZone(me.id)) {
+                AudioEngine.playError();
+                return showToast('🚶 Bạn phải di chuyển nhân vật đến Khu Vui Chơi B2KS mới tham gia được!');
+            }
+            if (me.points < 1) {
+                AudioEngine.playError();
+                return showToast('❌ Bạn không đủ 1⭐ để tham gia đặt cược!');
+            }
+            const cat = ARCADE_GAME_CATALOG[r.gameType];
+            if (r.playerIds.includes(me.id)) return;
+            if (r.playerIds.length >= cat.maxPlayers) {
+                AudioEngine.playError();
+                return showToast(`⚠️ Bàn đã đủ tối đa ${cat.maxPlayers} người chơi!`);
+            }
+
+            AudioEngine.playCoin();
+            const updated = {
+                ...r,
+                playerIds: [...r.playerIds, me.id],
+                readyMap: { ...(r.readyMap || {}), [me.id]: false },
+                updatedAt: Date.now()
+            };
+            pushArcadeRoomToFirebase(updated);
+            lastArcadeRenderSig = '';
+            renderArcadeLobby();
+        }
+
+        function toggleArcadeReady() {
+            const me = getCurrentUser();
+            const r = arcadeRoomState;
+            if (!r || r.status !== 'lobby' || !r.playerIds.includes(me.id)) return;
+            if (!isMemberInArcadeZone(me.id)) {
+                AudioEngine.playError();
+                return showToast('🚶 Bạn đã rời khỏi Khu Vui Chơi! Hãy quay lại khu vực để sẵn sàng.');
+            }
+            AudioEngine.playClick();
+            const nextReady = !(r.readyMap && r.readyMap[me.id]);
+            const updated = {
+                ...r,
+                readyMap: { ...(r.readyMap || {}), [me.id]: nextReady },
+                updatedAt: Date.now()
+            };
+            pushArcadeRoomToFirebase(updated);
+            lastArcadeRenderSig = '';
+            renderArcadeLobby();
+        }
+
+        function leaveArcadeLobby() {
+            const me = getCurrentUser();
+            const r = arcadeRoomState;
+            if (!r || r.status !== 'lobby') return;
+            AudioEngine.playClick();
+            const nextPlayers = r.playerIds.filter(id => id !== me.id);
+            const nextReady = { ...(r.readyMap || {}) };
+            delete nextReady[me.id];
+
+            if (nextPlayers.length === 0) {
+                pushArcadeRoomToFirebase({
+                    status: 'idle',
+                    gameType: 'tictactoe',
+                    hostId: null,
+                    playerIds: [],
+                    readyMap: {},
+                    pot: 0,
+                    matchData: null,
+                    winnerId: null,
+                    isDraw: false,
+                    updatedAt: Date.now()
+                });
+            } else {
+                pushArcadeRoomToFirebase({
+                    ...r,
+                    hostId: nextPlayers.includes(r.hostId) ? r.hostId : nextPlayers[0],
+                    playerIds: nextPlayers,
+                    readyMap: nextReady,
+                    updatedAt: Date.now()
+                });
+            }
+            lastArcadeRenderSig = '';
+            renderArcadeLobby();
+        }
+
+        function resetArcadeToIdle() {
+            stopArcadeLoop();
+            AudioEngine.playClick();
+            pushArcadeRoomToFirebase({
+                status: 'idle',
+                gameType: 'tictactoe',
+                hostId: null,
+                playerIds: [],
+                readyMap: {},
+                pot: 0,
+                matchData: null,
+                winnerId: null,
+                isDraw: false,
+                updatedAt: Date.now()
+            });
+            lastArcadeRenderSig = '';
+            renderArcadeLobby();
+        }
+
+        function startOnlineArcadeMatch() {
+            const me = getCurrentUser();
+            const r = arcadeRoomState;
+            if (!r || r.status !== 'lobby') return;
+            const cat = ARCADE_GAME_CATALOG[r.gameType];
+
+            // Verify all players are still physically inside Arcade Zone
+            const validPlayers = r.playerIds
+                .map(id => state.members.find(m => m.id === id))
+                .filter(m => m && isMemberInArcadeZone(m.id));
+
+            if (validPlayers.length < cat.minPlayers || validPlayers.length > cat.maxPlayers) {
+                AudioEngine.playError();
+                return showToast(`⚠️ Cần từ ${cat.minPlayers} đến ${cat.maxPlayers} người đang đứng tại Khu Vui Chơi!`);
+            }
+            const allReady = validPlayers.every(p => r.readyMap && r.readyMap[p.id]);
+            if (!allReady) {
+                AudioEngine.playError();
+                return showToast('⚠️ Tất cả người chơi phải bấm "✅ Sẵn Sàng" trước khi bắt đầu!');
+            }
+            for (const p of validPlayers) {
                 if (p.points < 1) {
                     AudioEngine.playError();
                     return showToast(`❌ ${p.name} không đủ 1⭐ để đặt cược!`);
@@ -5259,279 +5450,572 @@
             }
 
             // Deduct 1 star ante from each participating player
-            players.forEach(p => { p.points -= 1; });
-            const pot = players.length;
+            validPlayers.forEach(p => { p.points -= 1; });
+            const pot = validPlayers.length;
             AudioEngine.playCoin();
             updateHUD();
             saveGame();
 
-            document.getElementById('arcade-lobby-view').style.display = 'none';
-            document.getElementById('arcade-game-view').style.display = 'block';
-
-            if (gameType === 'tictactoe') {
-                initTicTacToeMatch(players, pot);
-            } else if (gameType === 'quiz') {
-                initBuzzerQuizMatch(players, pot);
-            } else if (gameType === 'shooter') {
-                initSpaceShooterMatch(players, pot);
+            let matchData = null;
+            if (r.gameType === 'tictactoe') {
+                matchData = {
+                    board: Array(9).fill(null),
+                    turnIdx: 0
+                };
+            } else if (r.gameType === 'quiz') {
+                const pool = [...GRADE6_ENGLISH_BANK].sort(() => Math.random() - 0.5).slice(0, 5);
+                matchData = {
+                    scores: validPlayers.map(() => 0),
+                    questions: pool,
+                    qIdx: 0,
+                    buzzedPlayerIdx: null
+                };
+            } else if (r.gameType === 'shooter') {
+                const W = 560, H = 340;
+                const spawns = [
+                    { x: 90, y: 80, angle: 0.7 },
+                    { x: W - 90, y: H - 80, angle: -2.4 },
+                    { x: W - 90, y: 80, angle: 2.4 },
+                    { x: 90, y: H - 80, angle: -0.7 }
+                ];
+                matchData = {
+                    W, H,
+                    ships: validPlayers.map((p, i) => ({
+                        memberId: p.id,
+                        name: p.name,
+                        color: ARCADE_PLAYER_THEMES[i].color,
+                        x: spawns[i].x,
+                        y: spawns[i].y,
+                        vx: 0,
+                        vy: 0,
+                        angle: spawns[i].angle,
+                        rotDir: i % 2 === 0 ? 1 : -1,
+                        hp: 3,
+                        cooldown: 0,
+                        lastFireNonce: 0
+                    })),
+                    bullets: []
+                };
             }
+
+            const playingRoom = {
+                ...r,
+                status: 'playing',
+                playerIds: validPlayers.map(p => p.id),
+                pot: pot,
+                matchData: matchData,
+                winnerId: null,
+                isDraw: false,
+                updatedAt: Date.now()
+            };
+            pushArcadeRoomToFirebase(playingRoom);
+            lastArcadeRenderSig = '';
+            renderArcadeLobby();
         }
 
-        function finishArcadeMatch(winnerMember, pot, gameTitle, isDraw = false, allPlayers = []) {
+        function finishOnlineArcadeMatch(winnerId, isDraw = false) {
             stopArcadeLoop();
-            activeArcadeMatch = null;
+            const r = arcadeRoomState;
+            if (!r || r.status !== 'playing') return;
+
+            const cat = ARCADE_GAME_CATALOG[r.gameType];
+            const participants = r.playerIds.map(id => state.members.find(m => m.id === id)).filter(Boolean);
+            let winnerMember = null;
 
             if (isDraw) {
-                allPlayers.forEach(p => {
+                participants.forEach(p => {
                     p.points = isParent(p) ? Math.min(MAX_PARENT_POINTS, p.points + 1) : p.points + 1;
                 });
                 AudioEngine.playClick();
-            } else if (winnerMember) {
-                winnerMember.points = isParent(winnerMember)
-                    ? Math.min(MAX_PARENT_POINTS, winnerMember.points + pot)
-                    : winnerMember.points + pot;
-                AudioEngine.playSuccess();
-                triggerSpeechBubble(winnerMember, `Won +${pot}⭐ in ${gameTitle}! 🏆`, true);
+            } else if (winnerId) {
+                winnerMember = state.members.find(m => m.id === winnerId);
+                if (winnerMember) {
+                    winnerMember.points = isParent(winnerMember)
+                        ? Math.min(MAX_PARENT_POINTS, winnerMember.points + r.pot)
+                        : winnerMember.points + r.pot;
+                    AudioEngine.playSuccess();
+                    triggerSpeechBubble(winnerMember, `Won +${r.pot}⭐ in ${cat.shortTitle}! 🏆`, true);
+                }
             }
             updateHUD();
             saveGame();
 
-            const view = document.getElementById('arcade-game-view');
-            view.innerHTML = `
-                <div style="text-align:center; background:#FEF9E7; border:3px solid #F39C12; border-radius:14px; padding:20px;">
-                    <div style="font-size:48px;">${isDraw ? '🤝' : '🏆'}</div>
-                    <h2 style="margin:6px 0; color:#2C3E50;">${isDraw ? 'Hòa Nhau! Hoàn Lại 1⭐ Cược' : `Chúc Mừng ${winnerMember.name} Chiến Thắng!`}</h2>
-                    <p style="font-size:15px; color:#D35400; font-weight:700;">
-                        ${isDraw ? 'Mỗi người chơi được hoàn lại 1⭐!' : `${winnerMember.name} ẵm trọn quỹ thưởng +${pot}⭐!`}
-                    </p>
-                    <div style="display:flex; gap:10px; justify-content:center; margin-top:14px;">
-                        <button class="btn btn-primary" onclick="renderArcadeLobby()">🔄 Chơi Ván Mới</button>
-                        <button class="btn" style="background:#34495E;" onclick="closeArcadeModal()">🚪 Rời Khu Vui Chơi</button>
-                    </div>
-                </div>
-            `;
-        }
-
-        // --- MINIGAME 1: TIC-TAC-TOE (2 PLAYERS) ---
-        function initTicTacToeMatch(players, pot) {
-            activeArcadeMatch = {
-                type: 'tictactoe',
-                players,
-                pot,
-                board: Array(9).fill(null),
-                turnIdx: 0
+            const finishedRoom = {
+                ...r,
+                status: 'finished',
+                winnerId: winnerId || null,
+                isDraw: isDraw,
+                updatedAt: Date.now()
             };
-            renderTicTacToeBoard();
+            pushArcadeRoomToFirebase(finishedRoom);
+            lastArcadeRenderSig = '';
+            renderArcadeLobby();
         }
 
-        function renderTicTacToeBoard() {
-            const m = activeArcadeMatch;
-            if (!m) return;
-            const curP = m.players[m.turnIdx];
-            const mark = m.turnIdx === 0 ? '❌' : '⭕';
-            const view = document.getElementById('arcade-game-view');
+        function renderArcadeLobby() {
+            const container = document.getElementById('arcade-dynamic-container');
+            if (!container) return;
 
-            view.innerHTML = `
+            const me = getCurrentUser();
+            const inZoneMembers = getMembersInArcadeZone();
+            const meInZone = inZoneMembers.some(m => m.id === me.id);
+            const r = arcadeRoomState || { status: 'idle' };
+
+            const badge = document.getElementById('arcade-online-badge');
+            if (badge) {
+                badge.textContent = deviceConfig.firebaseUrl ? '🟢 ONLINE 4 MÁY' : '🟡 ĐỒNG BỘ CỤC BỘ';
+                badge.style.background = deviceConfig.firebaseUrl ? '#27AE60' : '#F39C12';
+            }
+
+            // Build presence strip showing who is currently at Khu Vui Chơi
+            const presenceHtml = `
+                <div style="background:#F4F6F7; border:2px solid #BDC3C7; border-radius:10px; padding:8px 12px; margin-bottom:12px;">
+                    <div style="font-size:12px; font-weight:700; color:#2C3E50; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+                        <span>📍 Thành viên đang có mặt tại Khu Vui Chơi (${inZoneMembers.length}/${state.members.length}):</span>
+                        <span style="font-size:11px; color:${meInZone ? '#27AE60' : '#E74C3C'};">
+                            ${meInZone ? `✅ Bạn (${me.name}) đang ở sảnh` : `⚠️ Bạn (${me.name}) đang ở xa`}
+                        </span>
+                    </div>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                        ${state.members.map(m => {
+                            const here = inZoneMembers.some(z => z.id === m.id);
+                            return `
+                                <span style="display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:999px; font-size:12px; font-weight:700; border:1.5px solid ${here ? '#27AE60' : '#BDC3C7'}; background:${here ? '#EAFAF1' : '#ECF0F1'}; color:${here ? '#1E8449' : '#7F8C8D'};">
+                                    ${m.outfit || getRoleEmoji(m.role)} ${m.name} (${m.points}⭐) ${here ? '🟢' : '⚪'}
+                                </span>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+
+            // 1. IDLE STATE: No active room -> Choose a game to open an online room
+            if (r.status === 'idle') {
+                stopArcadeLoop();
+                container.innerHTML = `
+                    ${presenceHtml}
+                    <div style="background:#FEF9E7; border:2px solid #F39C12; border-radius:10px; padding:10px 12px; margin-bottom:12px; font-size:13px; display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:26px;">👾</span>
+                        <div>
+                            <b>Quản Trò Bin:</b> "Mỗi thành viên dùng thiết bị riêng di chuyển vào Khu Vui Chơi để tạo phòng hoặc tham gia thi đấu online! Người không thi đấu có thể vào xem trực tiếp (Spectator)."
+                        </div>
+                    </div>
+                    ${!meInZone ? `
+                        <div style="background:#FDEDEC; border:2px solid #E74C3C; border-radius:10px; padding:10px; margin-bottom:12px; text-align:center; font-size:13px; color:#C0392B; font-weight:700;">
+                            🚶 Nhân vật <b>${me.name}</b> chưa đứng tại Khu Vui Chơi! Hãy đóng bảng này và di chuyển lại gần Khu Vui Chơi B2KS để tạo phòng.
+                        </div>
+                    ` : ''}
+                    <div class="form-group">
+                        <label>🎮 Mở phòng chơi Online mới (Cược 1⭐/người):</label>
+                        <div class="grid-2">
+                            ${Object.values(ARCADE_GAME_CATALOG).map(cat => `
+                                <div class="card-item" style="background:${cat.bg};">
+                                    <div>
+                                        <b>${cat.title}</b>
+                                        <div style="font-size:12px; color:#555; margin-top:3px;">${cat.desc}</div>
+                                    </div>
+                                    <button class="btn btn-primary btn-sm" ${!meInZone ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="createArcadeLobby('${cat.id}')">
+                                        ➕ Tạo Phòng (${cat.minPlayers === cat.maxPlayers ? cat.minPlayers : cat.minPlayers + '–' + cat.maxPlayers} Người)
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            // 2. LOBBY STATE: Waiting for players at Arcade Zone to join & confirm Ready
+            if (r.status === 'lobby') {
+                stopArcadeLoop();
+                const cat = ARCADE_GAME_CATALOG[r.gameType] || ARCADE_GAME_CATALOG.tictactoe;
+                const isJoined = r.playerIds.includes(me.id);
+                const myReady = !!(r.readyMap && r.readyMap[me.id]);
+                const isHost = r.hostId === me.id;
+
+                const validPlayerObjs = r.playerIds
+                    .map(id => state.members.find(m => m.id === id))
+                    .filter(Boolean);
+                const allPlayersInZone = validPlayerObjs.every(p => isMemberInArcadeZone(p.id));
+                const allReady = validPlayerObjs.length >= cat.minPlayers &&
+                                 validPlayerObjs.length <= cat.maxPlayers &&
+                                 allPlayersInZone &&
+                                 validPlayerObjs.every(p => r.readyMap && r.readyMap[p.id]);
+
+                container.innerHTML = `
+                    ${presenceHtml}
+                    <div style="background:#EBF5FB; border:2.5px solid #2980B9; border-radius:12px; padding:12px; margin-bottom:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+                            <div>
+                                <span class="tag" style="background:#2980B9; color:#FFF;">PHÒNG CHỜ ONLINE</span>
+                                <b style="font-size:15px; margin-left:6px; color:#1B4F72;">${cat.title}</b>
+                            </div>
+                            <span class="points-pill">🏆 Quỹ cược dự kiến: ${validPlayerObjs.length}⭐</span>
+                        </div>
+                        <div style="font-size:12.5px; color:#2C3E50; margin-bottom:10px;">
+                            Cần <b>${cat.minPlayers === cat.maxPlayers ? `đúng ${cat.minPlayers}` : `${cat.minPlayers}–${cat.maxPlayers}`} người</b> đứng tại Khu Vui Chơi và cùng bấm <b>Xác nhận Sẵn Sàng</b> để bắt đầu!
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:8px; margin-bottom:12px;">
+                            ${validPlayerObjs.map((p, idx) => {
+                                const ready = !!(r.readyMap && r.readyMap[p.id]);
+                                const stillHere = isMemberInArcadeZone(p.id);
+                                const roleMark = r.gameType === 'tictactoe' ? (idx === 0 ? ' (❌)' : ' (⭕)') : ` (P${idx + 1})`;
+                                return `
+                                    <div style="background:#FFF; border:2.5px solid ${ready && stillHere ? '#27AE60' : '#F39C12'}; border-radius:10px; padding:8px; display:flex; align-items:center; justify-content:space-between;">
+                                        <div>
+                                            <div style="font-weight:700; font-size:13px;">${p.outfit || getRoleEmoji(p.role)} ${p.name}${roleMark}</div>
+                                            <div style="font-size:11px; color:${stillHere ? '#555' : '#E74C3C'};">
+                                                ${stillHere ? `Cược: 1⭐ (Có ${p.points}⭐)` : '⚠️ Đã rời khu vực!'}
+                                            </div>
+                                        </div>
+                                        <span class="tag" style="background:${ready ? '#27AE60' : '#F39C12'}; color:#FFF;">
+                                            ${ready ? '✅ Sẵn sàng' : '⏳ Chờ...'}
+                                        </span>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
+                            ${!isJoined ? (
+                                validPlayerObjs.length < cat.maxPlayers ? `
+                                    <button class="btn btn-accent" ${!meInZone ? 'disabled style="opacity:0.5;"' : ''} onclick="joinArcadeLobby()">
+                                        🙋 Tham Gia Trận Đấu (Cược 1⭐)
+                                    </button>
+                                ` : `
+                                    <span class="tag" style="background:#8E44AD; color:#FFF; padding:8px 12px;">👀 Bàn đã đủ người — Bạn đang ở chế độ Khán Giả</span>
+                                `
+                            ) : `
+                                <button class="btn ${myReady ? 'btn-accent' : 'btn-primary'}" onclick="toggleArcadeReady()">
+                                    ${myReady ? '✅ Đã Sẵn Sàng (Bấm để hủy)' : '✋ Xác Nhận Sẵn Sàng'}
+                                </button>
+                                <button class="btn" style="background:#7F8C8D;" onclick="leaveArcadeLobby()">🚪 Rời Bàn</button>
+                            `}
+
+                            ${(isHost || isJoined) ? `
+                                <button class="btn btn-primary" ${!allReady ? 'disabled style="opacity:0.45; cursor:not-allowed;"' : ''} onclick="startOnlineArcadeMatch()">
+                                    🚀 Bắt Đầu Trận Đấu (${validPlayerObjs.length}/${cat.minPlayers})
+                                </button>
+                            ` : ''}
+                        </div>
+                        ${!allReady ? `
+                            <div style="text-align:center; font-size:12px; color:#D35400; margin-top:8px; font-weight:600;">
+                                ${validPlayerObjs.length < cat.minPlayers
+                                    ? `⏳ Đang chờ thêm ${cat.minPlayers - validPlayerObjs.length} thành viên di chuyển tới Khu Vui Chơi và bấm Tham gia...`
+                                    : (!allPlayersInZone ? '⚠️ Có thành viên đã đi ra khỏi Khu Vui Chơi!' : '⏳ Đang chờ tất cả thành viên bấm "✅ Xác Nhận Sẵn Sàng"...')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+                return;
+            }
+
+            // 3. PLAYING STATE: Live match for participants + Spectator live view for others!
+            if (r.status === 'playing') {
+                const cat = ARCADE_GAME_CATALOG[r.gameType];
+                const myPlayerIdx = r.playerIds.indexOf(me.id);
+                const isSpectator = myPlayerIdx === -1;
+
+                const spectatorBanner = isSpectator ? `
+                    <div style="background:#F5EEF8; border:2px solid #8E44AD; border-radius:10px; padding:8px 12px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                        <span style="font-size:13px; font-weight:700; color:#6C3483;">👀 Chế Độ Khán Giả (Spectator): Bạn đang xem trực tiếp trận đấu!</span>
+                        <span class="tag" style="background:#8E44AD; color:#FFF;">LIVE 🔴</span>
+                    </div>
+                ` : '';
+
+                if (r.gameType === 'tictactoe') {
+                    stopArcadeLoop();
+                    renderOnlineTicTacToe(container, r, me, myPlayerIdx, isSpectator, spectatorBanner);
+                } else if (r.gameType === 'quiz') {
+                    stopArcadeLoop();
+                    renderOnlineBuzzerQuiz(container, r, me, myPlayerIdx, isSpectator, spectatorBanner);
+                } else if (r.gameType === 'shooter') {
+                    renderOnlineSpaceShooter(container, r, me, myPlayerIdx, isSpectator, spectatorBanner);
+                }
+                return;
+            }
+
+            // 4. FINISHED STATE: Show result to both players and spectators
+            if (r.status === 'finished') {
+                stopArcadeLoop();
+                const cat = ARCADE_GAME_CATALOG[r.gameType] || ARCADE_GAME_CATALOG.tictactoe;
+                const winnerMember = r.winnerId ? state.members.find(m => m.id === r.winnerId) : null;
+                container.innerHTML = `
+                    <div style="text-align:center; background:#FEF9E7; border:3px solid #F39C12; border-radius:14px; padding:20px;">
+                        <div style="font-size:48px;">${r.isDraw ? '🤝' : '🏆'}</div>
+                        <h2 style="margin:6px 0; color:#2C3E50;">
+                            ${r.isDraw ? 'Hòa Nhau! Hoàn Lại 1⭐ Cược' : `Chúc Mừng ${winnerMember ? winnerMember.name : 'Người Thắng'} Chiến Thắng!`}
+                        </h2>
+                        <p style="font-size:14px; color:#7F8C8D; margin:4px 0;">Bộ môn: <b>${cat.title}</b></p>
+                        <p style="font-size:15px; color:#D35400; font-weight:700;">
+                            ${r.isDraw ? 'Mỗi người chơi được hoàn lại 1⭐!' : `${winnerMember ? winnerMember.name : 'Người thắng'} ẵm trọn quỹ thưởng +${r.pot}⭐!`}
+                        </p>
+                        <div style="display:flex; gap:10px; justify-content:center; margin-top:14px; flex-wrap:wrap;">
+                            <button class="btn btn-primary" onclick="resetArcadeToIdle()">🔄 Về Sảnh Khu Vui Chơi</button>
+                            <button class="btn" style="background:#34495E;" onclick="closeArcadeModal()">🚪 Đóng</button>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // --- ONLINE MINIGAME 1: TIC-TAC-TOE (2 PLAYERS ON OWN DEVICES + SPECTATORS) ---
+        function renderOnlineTicTacToe(container, r, me, myPlayerIdx, isSpectator, spectatorBanner) {
+            const md = r.matchData;
+            const p0 = state.members.find(m => m.id === r.playerIds[0]) || { name: 'P1' };
+            const p1 = state.members.find(m => m.id === r.playerIds[1]) || { name: 'P2' };
+            const curTurnMember = md.turnIdx === 0 ? p0 : p1;
+            const curMark = md.turnIdx === 0 ? '❌' : '⭕';
+            const isMyTurn = !isSpectator && myPlayerIdx === md.turnIdx;
+
+            container.innerHTML = `
+                ${spectatorBanner}
                 <div style="text-align:center;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; background:#EBF5FB; padding:8px 12px; border-radius:10px; border:2px solid #2C3E50; margin-bottom:12px;">
-                        <span>❌ <b>${m.players[0].name}</b> vs ⭕ <b>${m.players[1].name}</b></span>
-                        <span class="points-pill">🏆 Quỹ thưởng: ${m.pot}⭐</span>
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:#EBF5FB; padding:8px 12px; border-radius:10px; border:2px solid #2C3E50; margin-bottom:10px; flex-wrap:wrap; gap:6px;">
+                        <span>❌ <b>${p0.name}</b> ${myPlayerIdx === 0 ? '(Bạn)' : ''} vs ⭕ <b>${p1.name}</b> ${myPlayerIdx === 1 ? '(Bạn)' : ''}</span>
+                        <span class="points-pill">🏆 Quỹ thưởng: ${r.pot}⭐</span>
                     </div>
-                    <div style="font-size:15px; font-weight:700; margin-bottom:10px; color:${ARCADE_PLAYER_THEMES[m.turnIdx].color};">
-                        Lượt của ${curP.name} (${mark})
+                    <div style="font-size:15px; font-weight:700; margin-bottom:10px; padding:6px 12px; border-radius:8px; display:inline-block; background:${isMyTurn ? '#EAFAF1' : '#FEF9E7'}; border:2px solid ${ARCADE_PLAYER_THEMES[md.turnIdx].color}; color:${ARCADE_PLAYER_THEMES[md.turnIdx].color};">
+                        ${isMyTurn
+                            ? `👉 Tới lượt CỦA BẠN (${curMark})! Hãy bấm chọn 1 ô trống:`
+                            : `⏳ Đang chờ lượt của ${curTurnMember.name} (${curMark})...`}
                     </div>
-                    <div style="display:grid; grid-template-columns:repeat(3, 86px); gap:8px; justify-content:center; margin:0 auto 14px auto;">
-                        ${m.board.map((cell, i) => `
-                            <button type="button" onclick="playTicTacToeCell(${i})"
-                                style="width:86px; height:86px; font-size:36px; border:3px solid #2C3E50; border-radius:12px; background:#FFF; cursor:pointer; box-shadow:0 3px 0 #2C3E50;">
-                                ${cell || ''}
-                            </button>
-                        `).join('')}
+                    <div style="display:grid; grid-template-columns:repeat(3, 88px); gap:8px; justify-content:center; margin:0 auto 14px auto;">
+                        ${md.board.map((cell, i) => {
+                            const canClick = isMyTurn && !cell;
+                            return `
+                                <button type="button" onclick="playOnlineTicTacToeCell(${i})"
+                                    ${!canClick ? 'disabled' : ''}
+                                    style="width:88px; height:88px; font-size:38px; border:3px solid #2C3E50; border-radius:12px; background:${cell ? '#F8F9F9' : (canClick ? '#FFF' : '#F2F4F4')}; cursor:${canClick ? 'pointer' : 'default'}; box-shadow:0 3px 0 #2C3E50;">
+                                    ${cell || ''}
+                                </button>
+                            `;
+                        }).join('')}
+                    </div>
+                    <div style="display:flex; justify-content:center; gap:8px;">
+                        ${!isSpectator ? `<button class="btn btn-sm" style="background:#95A5A6;" onclick="forfeitOnlineMatch()">🏳️ Nhận Thua / Hủy Trận</button>` : ''}
                     </div>
                 </div>
             `;
         }
 
-        function playTicTacToeCell(idx) {
-            const m = activeArcadeMatch;
-            if (!m || m.type !== 'tictactoe' || m.board[idx]) return;
+        function playOnlineTicTacToeCell(idx) {
+            const me = getCurrentUser();
+            const r = arcadeRoomState;
+            if (!r || r.status !== 'playing' || r.gameType !== 'tictactoe') return;
+            const myPlayerIdx = r.playerIds.indexOf(me.id);
+            const md = r.matchData;
+            if (myPlayerIdx === -1 || myPlayerIdx !== md.turnIdx || md.board[idx]) return;
+
             AudioEngine.playClick();
-            m.board[idx] = m.turnIdx === 0 ? '❌' : '⭕';
+            const nextBoard = [...md.board];
+            nextBoard[idx] = md.turnIdx === 0 ? '❌' : '⭕';
 
             const wins = [
                 [0,1,2],[3,4,5],[6,7,8],
                 [0,3,6],[1,4,7],[2,5,8],
                 [0,4,8],[2,4,6]
             ];
-            const hasWon = wins.some(([a,b,c]) => m.board[a] && m.board[a] === m.board[b] && m.board[a] === m.board[c]);
+            const hasWon = wins.some(([a,b,c]) => nextBoard[a] && nextBoard[a] === nextBoard[b] && nextBoard[a] === nextBoard[c]);
             if (hasWon) {
-                return finishArcadeMatch(m.players[m.turnIdx], m.pot, 'Cờ Caro XO');
+                r.matchData = { ...md, board: nextBoard };
+                return finishOnlineArcadeMatch(r.playerIds[md.turnIdx], false);
             }
-            if (m.board.every(Boolean)) {
-                return finishArcadeMatch(null, m.pot, 'Cờ Caro XO', true, m.players);
+            if (nextBoard.every(Boolean)) {
+                r.matchData = { ...md, board: nextBoard };
+                return finishOnlineArcadeMatch(null, true);
             }
-            m.turnIdx = 1 - m.turnIdx;
-            renderTicTacToeBoard();
-        }
 
-        // --- MINIGAME 2: MULTIPLAYER BUZZER QUIZ (2-4 PLAYERS) ---
-        function initBuzzerQuizMatch(players, pot) {
-            const pool = [...GRADE6_ENGLISH_BANK].sort(() => Math.random() - 0.5).slice(0, 5);
-            activeArcadeMatch = {
-                type: 'quiz',
-                players,
-                pot,
-                scores: players.map(() => 0),
-                questions: pool,
-                qIdx: 0,
-                buzzedPlayerIdx: null
+            const updated = {
+                ...r,
+                matchData: {
+                    board: nextBoard,
+                    turnIdx: 1 - md.turnIdx
+                },
+                updatedAt: Date.now()
             };
-            renderBuzzerQuizRound();
+            pushArcadeRoomToFirebase(updated);
+            renderArcadeLobby();
         }
 
-        function renderBuzzerQuizRound() {
-            const m = activeArcadeMatch;
-            if (!m) return;
-            if (m.qIdx >= m.questions.length) {
-                const maxScore = Math.max(...m.scores);
-                const topIndices = m.scores.map((s, i) => s === maxScore ? i : -1).filter(i => i !== -1);
+        function forfeitOnlineMatch() {
+            const me = getCurrentUser();
+            const r = arcadeRoomState;
+            if (!r || r.status !== 'playing') return;
+            const myIdx = r.playerIds.indexOf(me.id);
+            if (myIdx === -1) return;
+            const otherWinnerId = r.playerIds.find(id => id !== me.id) || null;
+            finishOnlineArcadeMatch(otherWinnerId, !otherWinnerId);
+        }
+
+        // --- ONLINE MINIGAME 2: MULTIPLAYER BUZZER QUIZ (2-4 PLAYERS + SPECTATORS) ---
+        function renderOnlineBuzzerQuiz(container, r, me, myPlayerIdx, isSpectator, spectatorBanner) {
+            const md = r.matchData;
+            const players = r.playerIds.map(id => state.members.find(m => m.id === id) || { id, name: id });
+
+            if (md.qIdx >= md.questions.length) {
+                const maxScore = Math.max(...md.scores);
+                const topIndices = md.scores.map((s, i) => s === maxScore ? i : -1).filter(i => i !== -1);
                 if (topIndices.length > 1) {
-                    return finishArcadeMatch(null, m.pot, 'Đố Vui Giành Chuông', true, m.players);
+                    return finishOnlineArcadeMatch(null, true);
                 }
-                return finishArcadeMatch(m.players[topIndices[0]], m.pot, 'Đố Vui Giành Chuông');
+                return finishOnlineArcadeMatch(r.playerIds[topIndices[0]], false);
             }
 
-            const qObj = m.questions[m.qIdx];
+            const qObj = md.questions[md.qIdx];
             const letters = ['A', 'B', 'C', 'D'];
-            const view = document.getElementById('arcade-game-view');
 
-            const scoreBarHtml = m.players.map((p, i) => `
+            const scoreBarHtml = players.map((p, i) => `
                 <div style="background:${ARCADE_PLAYER_THEMES[i].color}; color:#FFF; padding:4px 10px; border-radius:8px; font-size:12px; font-weight:700;">
-                    ${p.name}: ${m.scores[i]}đ
+                    ${p.name}: ${md.scores[i]}đ
                 </div>
             `).join('');
 
-            const buzzerButtonsHtml = m.buzzedPlayerIdx === null
-                ? `<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; margin-top:12px;">
-                    ${m.players.map((p, i) => `
-                        <button type="button" class="btn" style="background:${ARCADE_PLAYER_THEMES[i].color}; padding:12px; font-size:14px;" onclick="buzzPlayerIn(${i})">
-                            🔔 ${p.name} (${ARCADE_PLAYER_THEMES[i].keyLabel})
-                        </button>
-                    `).join('')}
-                   </div>`
-                : `<div style="margin-top:10px; padding:10px; background:#FEF9E7; border:2px solid #F39C12; border-radius:10px;">
-                    <div style="font-weight:700; color:#D35400; margin-bottom:8px;">⚡ <b>${m.players[m.buzzedPlayerIdx].name}</b> giành quyền trả lời! Hãy chọn đáp án:</div>
-                    <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:8px;">
-                        ${qObj.opts.map((opt, idx) => `
-                            <button type="button" class="btn btn-accent" style="white-space:normal; text-align:left;" onclick="answerBuzzerQuestion(${idx})">
-                                <b>${letters[idx]}.</b>&nbsp;${opt}
+            let actionAreaHtml = '';
+            if (md.buzzedPlayerIdx === null) {
+                if (!isSpectator) {
+                    actionAreaHtml = `
+                        <div style="margin-top:12px; text-align:center;">
+                            <button type="button" class="btn" style="background:${ARCADE_PLAYER_THEMES[myPlayerIdx].color}; padding:14px 24px; font-size:16px; width:100%;" onclick="buzzOnlinePlayerIn()">
+                                🔔 BẤM CHUÔNG GIÀNH QUYỀN TRẢ LỜI! (${me.name})
                             </button>
-                        `).join('')}
-                    </div>
-                   </div>`;
+                        </div>
+                    `;
+                } else {
+                    actionAreaHtml = `<div style="margin-top:10px; text-align:center; font-size:13px; color:#7F8C8D; font-weight:700;">⏳ Đang chờ người chơi bấm chuông...</div>`;
+                }
+            } else {
+                const buzzedPlayer = players[md.buzzedPlayerIdx];
+                const isMyBuzz = !isSpectator && md.buzzedPlayerIdx === myPlayerIdx;
+                if (isMyBuzz) {
+                    actionAreaHtml = `
+                        <div style="margin-top:10px; padding:10px; background:#FEF9E7; border:2px solid #F39C12; border-radius:10px;">
+                            <div style="font-weight:700; color:#D35400; margin-bottom:8px;">⚡ Bạn đã giành quyền trả lời! Hãy chọn đáp án:</div>
+                            <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:8px;">
+                                ${qObj.opts.map((opt, idx) => `
+                                    <button type="button" class="btn btn-accent" style="white-space:normal; text-align:left;" onclick="answerOnlineBuzzerQuestion(${idx})">
+                                        <b>${letters[idx]}.</b>&nbsp;${opt}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    actionAreaHtml = `
+                        <div style="margin-top:10px; padding:10px; background:#FEF9E7; border:2px solid #F39C12; border-radius:10px; text-align:center; font-weight:700; color:#D35400;">
+                            ⚡ <b>${buzzedPlayer.name}</b> đã bấm chuông nhanh nhất và đang chọn đáp án...
+                        </div>
+                    `;
+                }
+            }
 
-            view.innerHTML = `
+            container.innerHTML = `
+                ${spectatorBanner}
                 <div>
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:10px;">
                         <div style="display:flex; gap:6px; flex-wrap:wrap;">${scoreBarHtml}</div>
-                        <span class="points-pill">🏆 Quỹ thưởng: ${m.pot}⭐</span>
+                        <span class="points-pill">🏆 Quỹ thưởng: ${r.pot}⭐</span>
                     </div>
                     <div style="background:#FFF; border:2.5px solid #2C3E50; border-radius:12px; padding:12px;">
-                        <div class="tag" style="margin-bottom:6px;">Câu ${m.qIdx + 1} / ${m.questions.length}</div>
+                        <div class="tag" style="margin-bottom:6px;">Câu ${md.qIdx + 1} / ${md.questions.length}</div>
                         <div style="font-size:15px; font-weight:700; color:#2C3E50;">${qObj.q}</div>
-                        ${m.buzzedPlayerIdx === null ? `<div style="margin-top:8px; font-size:13px; color:#555;">${qObj.opts.map((o, i) => `<div><b>${letters[i]}.</b> ${o}</div>`).join('')}</div>` : ''}
-                        ${buzzerButtonsHtml}
+                        <div style="margin-top:8px; font-size:13px; color:#555;">${qObj.opts.map((o, i) => `<div><b>${letters[i]}.</b> ${o}</div>`).join('')}</div>
+                        ${actionAreaHtml}
                     </div>
                 </div>
             `;
         }
 
-        function buzzPlayerIn(playerIdx) {
-            const m = activeArcadeMatch;
-            if (!m || m.type !== 'quiz' || m.buzzedPlayerIdx !== null) return;
+        function buzzOnlinePlayerIn() {
+            const me = getCurrentUser();
+            const r = arcadeRoomState;
+            if (!r || r.status !== 'playing' || r.gameType !== 'quiz') return;
+            const myPlayerIdx = r.playerIds.indexOf(me.id);
+            if (myPlayerIdx === -1 || r.matchData.buzzedPlayerIdx !== null) return;
+
             AudioEngine.playTone(880, 'square', 0.12, 0.08);
-            m.buzzedPlayerIdx = playerIdx;
-            renderBuzzerQuizRound();
-        }
-
-        function answerBuzzerQuestion(optIdx) {
-            const m = activeArcadeMatch;
-            if (!m || m.type !== 'quiz' || m.buzzedPlayerIdx === null) return;
-            const qObj = m.questions[m.qIdx];
-            const pIdx = m.buzzedPlayerIdx;
-            if (optIdx === qObj.ans) {
-                m.scores[pIdx] += 1;
-                AudioEngine.playCoin();
-                showToast(`✅ ${m.players[pIdx].name} trả lời đúng (+1 điểm)!`);
-            } else {
-                m.scores[pIdx] = Math.max(0, m.scores[pIdx] - 1);
-                AudioEngine.playError();
-                showToast(`❌ ${m.players[pIdx].name} trả lời sai (-1 điểm)!`);
-            }
-            m.qIdx += 1;
-            m.buzzedPlayerIdx = null;
-            renderBuzzerQuizRound();
-        }
-
-        // --- MINIGAME 3: 1-BUTTON SPACE ARENA SHOOTER (2-4 PLAYERS) ---
-        function initSpaceShooterMatch(players, pot) {
-            const W = 560, H = 340;
-            const spawns = [
-                { x: 90, y: 80, angle: 0.7 },
-                { x: W - 90, y: H - 80, angle: -2.4 },
-                { x: W - 90, y: 80, angle: 2.4 },
-                { x: 90, y: H - 80, angle: -0.7 }
-            ];
-
-            const ships = players.map((p, i) => ({
-                member: p,
-                theme: ARCADE_PLAYER_THEMES[i],
-                x: spawns[i].x,
-                y: spawns[i].y,
-                vx: 0,
-                vy: 0,
-                angle: spawns[i].angle,
-                rotDir: i % 2 === 0 ? 1 : -1,
-                hp: 3,
-                cooldown: 0
-            }));
-
-            activeArcadeMatch = {
-                type: 'shooter',
-                players,
-                pot,
-                W,
-                H,
-                ships,
-                bullets: []
+            const updated = {
+                ...r,
+                matchData: {
+                    ...r.matchData,
+                    buzzedPlayerIdx: myPlayerIdx
+                },
+                updatedAt: Date.now()
             };
+            pushArcadeRoomToFirebase(updated);
+            renderArcadeLobby();
+        }
 
-            const view = document.getElementById('arcade-game-view');
-            view.innerHTML = `
+        function answerOnlineBuzzerQuestion(optIdx) {
+            const me = getCurrentUser();
+            const r = arcadeRoomState;
+            if (!r || r.status !== 'playing' || r.gameType !== 'quiz') return;
+            const myPlayerIdx = r.playerIds.indexOf(me.id);
+            const md = r.matchData;
+            if (myPlayerIdx === -1 || md.buzzedPlayerIdx !== myPlayerIdx) return;
+
+            const qObj = md.questions[md.qIdx];
+            const nextScores = [...md.scores];
+            if (optIdx === qObj.ans) {
+                nextScores[myPlayerIdx] += 1;
+                AudioEngine.playCoin();
+                showToast(`✅ ${me.name} trả lời đúng (+1 điểm)!`);
+            } else {
+                nextScores[myPlayerIdx] = Math.max(0, nextScores[myPlayerIdx] - 1);
+                AudioEngine.playError();
+                showToast(`❌ ${me.name} trả lời sai (-1 điểm)!`);
+            }
+
+            const nextQIdx = md.qIdx + 1;
+            const updated = {
+                ...r,
+                matchData: {
+                    ...md,
+                    scores: nextScores,
+                    qIdx: nextQIdx,
+                    buzzedPlayerIdx: null
+                },
+                updatedAt: Date.now()
+            };
+            pushArcadeRoomToFirebase(updated);
+            renderArcadeLobby();
+        }
+
+        // --- ONLINE MINIGAME 3: 1-BUTTON SPACE ARENA SHOOTER (2-4 PLAYERS + SPECTATORS) ---
+        function renderOnlineSpaceShooter(container, r, me, myPlayerIdx, isSpectator, spectatorBanner) {
+            const md = r.matchData;
+            container.innerHTML = `
+                ${spectatorBanner}
                 <div style="text-align:center;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                        <span style="font-size:13px; font-weight:700;">🚀 Đấu Trường Vũ Trụ (Mỗi tàu 3 ❤️)</span>
-                        <span class="points-pill">🏆 Quỹ thưởng: ${pot}⭐</span>
+                        <span style="font-size:13px; font-weight:700;">🚀 Đấu Trường Vũ Trụ Online (Mỗi tàu 3 ❤️)</span>
+                        <span class="points-pill">🏆 Quỹ thưởng: ${r.pot}⭐</span>
                     </div>
-                    <canvas id="arcade-shooter-canvas" width="${W}" height="${H}" style="width:100%; max-width:${W}px; background:#0B132B; border:3px solid #2C3E50; border-radius:12px;"></canvas>
-                    <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; margin-top:10px;">
-                        ${ships.map((s, i) => `
-                            <button type="button" class="btn" style="background:${s.theme.color}; padding:10px; font-size:13px;"
-                                onmousedown="fireArcadeShip(${i})" ontouchstart="event.preventDefault(); fireArcadeShip(${i});">
-                                🔥 ${s.member.name} (${s.theme.keyLabel})
+                    <canvas id="arcade-shooter-canvas" width="${md.W}" height="${md.H}" style="width:100%; max-width:${md.W}px; background:#0B132B; border:3px solid #2C3E50; border-radius:12px;"></canvas>
+                    ${!isSpectator ? `
+                        <div style="margin-top:10px;">
+                            <button type="button" class="btn" style="background:${ARCADE_PLAYER_THEMES[myPlayerIdx].color}; padding:14px 20px; font-size:15px; width:100%;"
+                                onmousedown="fireOnlineArcadeShip()" ontouchstart="event.preventDefault(); fireOnlineArcadeShip();">
+                                🔥 BẮN & ĐỔI HƯỚNG TÀU CỦA BẠN (${me.name} - Phím Space)
                             </button>
-                        `).join('')}
-                    </div>
+                        </div>
+                    ` : `
+                        <div style="margin-top:8px; font-size:12.5px; color:#6C3483; font-weight:700;">👀 Bạn đang theo dõi trực tiếp trận chiến vũ trụ!</div>
+                    `}
                 </div>
             `;
-
-            runSpaceShooterLoop();
+            runOnlineSpaceShooterLoop();
         }
 
-        function fireArcadeShip(shipIdx) {
-            const m = activeArcadeMatch;
-            if (!m || m.type !== 'shooter') return;
-            const s = m.ships[shipIdx];
+        function fireOnlineArcadeShip() {
+            const me = getCurrentUser();
+            const r = arcadeRoomState;
+            if (!r || r.status !== 'playing' || r.gameType !== 'shooter') return;
+            const myPlayerIdx = r.playerIds.indexOf(me.id);
+            if (myPlayerIdx === -1) return;
+            const md = r.matchData;
+            const s = md.ships[myPlayerIdx];
             if (!s || s.hp <= 0 || s.cooldown > 0) return;
 
             AudioEngine.playTone(620, 'square', 0.08, 0.06);
@@ -5540,116 +6024,126 @@
             s.rotDir *= -1;
             s.cooldown = 16;
 
-            m.bullets.push({
-                ownerIdx: shipIdx,
-                color: s.theme.color,
+            md.bullets.push({
+                ownerIdx: myPlayerIdx,
+                color: s.color,
                 x: s.x + Math.cos(s.angle) * 20,
                 y: s.y + Math.sin(s.angle) * 20,
                 vx: Math.cos(s.angle) * 6.5,
                 vy: Math.sin(s.angle) * 6.5,
                 life: 75
             });
+
+            if (Date.now() - arcadeLastSyncedShootAt > 180) {
+                arcadeLastSyncedShootAt = Date.now();
+                pushArcadeRoomToFirebase({ ...r, matchData: md, updatedAt: Date.now() });
+            }
         }
 
         function handleArcadeKeyPress(k) {
-            const m = activeArcadeMatch;
-            if (!m) return;
-            const pIdx = ARCADE_PLAYER_THEMES.findIndex(t => t.keyCode === k);
-            if (pIdx === -1 || pIdx >= m.players.length) return;
-
-            if (m.type === 'quiz') {
-                buzzPlayerIn(pIdx);
-            } else if (m.type === 'shooter') {
-                fireArcadeShip(pIdx);
+            const r = arcadeRoomState;
+            if (!r || r.status !== 'playing') return;
+            if (k === ' ' || k === 'q' || k === 'p' || k === 'z' || k === 'm') {
+                if (r.gameType === 'quiz') {
+                    buzzOnlinePlayerIn();
+                } else if (r.gameType === 'shooter') {
+                    fireOnlineArcadeShip();
+                }
             }
         }
 
-        function runSpaceShooterLoop() {
-            const m = activeArcadeMatch;
-            if (!m || m.type !== 'shooter') return;
-            const sc = document.getElementById('arcade-shooter-canvas');
-            if (!sc) return;
-            const sctx = sc.getContext('2d');
+        function runOnlineSpaceShooterLoop() {
+            stopArcadeLoop();
+            function step() {
+                const r = arcadeRoomState;
+                if (!r || r.status !== 'playing' || r.gameType !== 'shooter') return;
+                const sc = document.getElementById('arcade-shooter-canvas');
+                if (!sc) return;
+                const sctx = sc.getContext('2d');
+                const md = r.matchData;
 
-            sctx.fillStyle = '#0B132B';
-            sctx.fillRect(0, 0, m.W, m.H);
+                sctx.fillStyle = '#0B132B';
+                sctx.fillRect(0, 0, md.W, md.H);
 
-            // Stars backdrop
-            sctx.fillStyle = 'rgba(255,255,255,0.45)';
-            for (let i = 0; i < 25; i++) {
-                sctx.fillRect((i * 73) % m.W, (i * 41) % m.H, 2, 2);
-            }
+                sctx.fillStyle = 'rgba(255,255,255,0.45)';
+                for (let i = 0; i < 25; i++) {
+                    sctx.fillRect((i * 73) % md.W, (i * 41) % md.H, 2, 2);
+                }
 
-            // Update & draw ships
-            m.ships.forEach((s) => {
-                if (s.hp <= 0) return;
-                s.angle += 0.055 * s.rotDir;
-                s.x += s.vx;
-                s.y += s.vy;
-                s.vx *= 0.96;
-                s.vy *= 0.96;
-                if (s.cooldown > 0) s.cooldown--;
+                md.ships.forEach((s) => {
+                    if (s.hp <= 0) return;
+                    s.angle += 0.055 * s.rotDir;
+                    s.x += s.vx;
+                    s.y += s.vy;
+                    s.vx *= 0.96;
+                    s.vy *= 0.96;
+                    if (s.cooldown > 0) s.cooldown--;
 
-                if (s.x < 22) { s.x = 22; s.vx *= -0.8; }
-                if (s.x > m.W - 22) { s.x = m.W - 22; s.vx *= -0.8; }
-                if (s.y < 22) { s.y = 22; s.vy *= -0.8; }
-                if (s.y > m.H - 22) { s.y = m.H - 22; s.vy *= -0.8; }
+                    if (s.x < 22) { s.x = 22; s.vx *= -0.8; }
+                    if (s.x > md.W - 22) { s.x = md.W - 22; s.vx *= -0.8; }
+                    if (s.y < 22) { s.y = 22; s.vy *= -0.8; }
+                    if (s.y > md.H - 22) { s.y = md.H - 22; s.vy *= -0.8; }
 
-                sctx.save();
-                sctx.translate(s.x, s.y);
-                sctx.rotate(s.angle);
-                sctx.fillStyle = s.theme.color;
-                sctx.strokeStyle = '#FFF';
-                sctx.lineWidth = 2;
-                sctx.beginPath();
-                sctx.moveTo(18, 0);
-                sctx.lineTo(-12, -12);
-                sctx.lineTo(-7, 0);
-                sctx.lineTo(-12, 12);
-                sctx.closePath();
-                sctx.fill();
-                sctx.stroke();
-                sctx.restore();
+                    sctx.save();
+                    sctx.translate(s.x, s.y);
+                    sctx.rotate(s.angle);
+                    sctx.fillStyle = s.color;
+                    sctx.strokeStyle = '#FFF';
+                    sctx.lineWidth = 2;
+                    sctx.beginPath();
+                    sctx.moveTo(18, 0);
+                    sctx.lineTo(-12, -12);
+                    sctx.lineTo(-7, 0);
+                    sctx.lineTo(-12, 12);
+                    sctx.closePath();
+                    sctx.fill();
+                    sctx.stroke();
+                    sctx.restore();
 
-                sctx.fillStyle = '#FFF';
-                sctx.font = 'bold 11px Fredoka';
-                sctx.textAlign = 'center';
-                sctx.fillText(`${s.member.name} ${'❤️'.repeat(s.hp)}`, s.x, s.y - 20);
-            });
-
-            // Update & draw bullets
-            for (let i = m.bullets.length - 1; i >= 0; i--) {
-                const b = m.bullets[i];
-                b.x += b.vx;
-                b.y += b.vy;
-                b.life--;
-
-                sctx.fillStyle = b.color;
-                sctx.beginPath();
-                sctx.arc(b.x, b.y, 5, 0, Math.PI * 2);
-                sctx.fill();
-
-                let hit = false;
-                m.ships.forEach((target, tIdx) => {
-                    if (tIdx !== b.ownerIdx && target.hp > 0 && Math.hypot(b.x - target.x, b.y - target.y) < 18) {
-                        target.hp -= 1;
-                        hit = true;
-                        AudioEngine.playError();
-                    }
+                    sctx.fillStyle = '#FFF';
+                    sctx.font = 'bold 11px Fredoka';
+                    sctx.textAlign = 'center';
+                    sctx.fillText(`${s.name} ${'❤️'.repeat(s.hp)}`, s.x, s.y - 20);
                 });
 
-                if (hit || b.life <= 0 || b.x < 0 || b.x > m.W || b.y < 0 || b.y > m.H) {
-                    m.bullets.splice(i, 1);
+                for (let i = md.bullets.length - 1; i >= 0; i--) {
+                    const b = md.bullets[i];
+                    b.x += b.vx;
+                    b.y += b.vy;
+                    b.life--;
+
+                    sctx.fillStyle = b.color;
+                    sctx.beginPath();
+                    sctx.arc(b.x, b.y, 5, 0, Math.PI * 2);
+                    sctx.fill();
+
+                    let hit = false;
+                    md.ships.forEach((target, tIdx) => {
+                        if (tIdx !== b.ownerIdx && target.hp > 0 && Math.hypot(b.x - target.x, b.y - target.y) < 18) {
+                            target.hp -= 1;
+                            hit = true;
+                            AudioEngine.playError();
+                        }
+                    });
+
+                    if (hit || b.life <= 0 || b.x < 0 || b.x > md.W || b.y < 0 || b.y > md.H) {
+                        md.bullets.splice(i, 1);
+                    }
                 }
-            }
 
-            const aliveShips = m.ships.filter(s => s.hp > 0);
-            if (aliveShips.length <= 1) {
-                const winner = aliveShips[0] ? aliveShips[0].member : null;
-                return finishArcadeMatch(winner, m.pot, 'Đấu Trường Vũ Trụ', !winner, m.players);
-            }
+                const aliveShips = md.ships.filter(s => s.hp > 0);
+                if (aliveShips.length <= 1) {
+                    const me = getCurrentUser();
+                    if (r.hostId === me.id || r.playerIds.includes(me.id)) {
+                        const winnerId = aliveShips[0] ? aliveShips[0].memberId : null;
+                        finishOnlineArcadeMatch(winnerId, !winnerId);
+                    }
+                    return;
+                }
 
-            arcadeAnimFrameId = requestAnimationFrame(runSpaceShooterLoop);
+                arcadeAnimFrameId = requestAnimationFrame(step);
+            }
+            arcadeAnimFrameId = requestAnimationFrame(step);
         }
 
         /* =========================================================================
