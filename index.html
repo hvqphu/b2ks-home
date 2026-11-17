@@ -5746,4 +5746,58 @@
                 camX = Math.max(0, Math.min(worldW - effW, camX));
             }
             if (worldH + topSafePad + botSafePad <= effH) {
-                camY = (worldH - effH) / 2 - (
+                camY = (worldH - effH) / 2 - (topSafePad - botSafePad) / 2;
+            } else {
+                camY = Math.max(-topSafePad, Math.min(worldH - effH + botSafePad, camY));
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.scale(zoomLevel, zoomLevel);
+            ctx.translate(-camX, -camY);
+
+            // 1. Vẽ bản đồ theo khu vực hiện tại
+            if (me.scene === 'neighborhood') {
+                drawNeighborhoodWorld(lighting);
+            } else if (me.scene === 'private_room') {
+                drawPrivateRoomWorld(lighting);
+            } else {
+                drawHouseInteriorWorld(lighting);
+            }
+
+            // 2. Vẽ các nhân vật đang ở cùng khu vực (sắp xếp theo trục Y để tạo chiều sâu)
+            const visibleMembers = state.members
+                .filter(m => {
+                    if (m.scene !== me.scene) return false;
+                    if (me.scene === 'private_room') {
+                        const myRoomId = me.privateRoomId || activePrivateRoomId;
+                        return (m.privateRoomId || null) === myRoomId;
+                    }
+                    return true;
+                })
+                .sort((a, b) => a.y - b.y);
+
+            visibleMembers.forEach(m => {
+                drawDetailedChibi(m, m.id === me.id);
+            });
+
+            ctx.restore();
+
+            // 3. Lớp phủ ánh sáng ban đêm / hoàng hôn
+            if (lighting.overlayAlpha > 0 && me.scene === 'neighborhood') {
+                ctx.fillStyle = lighting.overlayColor;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            updateHUD();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Khởi tạo dữ liệu và bắt đầu vòng lặp game
+        loadGame();
+        updateHUD();
+        renderChatLog();
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
