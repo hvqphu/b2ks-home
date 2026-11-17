@@ -2046,7 +2046,7 @@
             if (id === 'tv-modal') openTvModal();
             if (id === 'family-sync-modal') renderFamilySyncModal();
             if (id === 'english-center-modal') openEnglishCenterLobby();
-            if (id === 'arcade-modal') renderArcadeLobby();
+            if (id === 'arcade-modal') { pullArcadeRoomFromFirebase(); renderArcadeLobby(); }
         }
 
         function closeModal(id) {
@@ -5267,11 +5267,52 @@
 
         function onRemoteArcadeRoomUpdate(remoteRoom) {
             const prevStatus = arcadeRoomState?.status;
+            const prevUpdated = arcadeRoomState?.updatedAt || 0;
+            const me = getCurrentUser();
+
+            // Merge remote shooter ship actions into local simulation if playing shooter
+            if (
+                prevStatus === 'playing' &&
+                remoteRoom.status === 'playing' &&
+                remoteRoom.gameType === 'shooter' &&
+                arcadeRoomState?.matchData?.ships &&
+                remoteRoom.matchData?.ships
+            ) {
+                const localMd = arcadeRoomState.matchData;
+                const remoteMd = remoteRoom.matchData;
+                remoteMd.ships.forEach((rShip, idx) => {
+                    const lShip = localMd.ships[idx];
+                    if (!lShip || rShip.memberId === me.id) return;
+                    if ((rShip.fireSeq || 0) > (lShip.fireSeq || 0)) {
+                        lShip.x = rShip.x;
+                        lShip.y = rShip.y;
+                        lShip.vx = rShip.vx;
+                        lShip.vy = rShip.vy;
+                        lShip.angle = rShip.angle;
+                        lShip.rotDir = rShip.rotDir;
+                        lShip.fireSeq = rShip.fireSeq;
+                        if (rShip.lastBullet) {
+                            localMd.bullets.push({ ...rShip.lastBullet });
+                        }
+                    }
+                    if (typeof rShip.hp === 'number' && rShip.hp < lShip.hp) {
+                        lShip.hp = rShip.hp;
+                    }
+                });
+                arcadeRoomState.updatedAt = remoteRoom.updatedAt;
+                return;
+            }
+
             arcadeRoomState = remoteRoom;
 
-            // Sync remote shooter ship inputs if playing shooter
-            if (remoteRoom.status === 'playing' && remoteRoom.gameType === 'shooter' && remoteRoom.matchData && remoteRoom.matchData.ships) {
-                // Keep local canvas smooth while applying remote fire events
+            // If match just started on another device and I am a participant, auto-open the arcade modal!
+            if (prevStatus !== 'playing' && remoteRoom.status === 'playing' && Array.isArray(remoteRoom.playerIds) && remoteRoom.playerIds.includes(me.id)) {
+                const modalEl = document.getElementById('arcade-modal');
+                if (modalEl && modalEl.style.display !== 'flex') {
+                    modalEl.style.display = 'flex';
+                    AudioEngine.playSuccess();
+                    showToast('🚀 Trận đấu Khu Vui Chơi đã bắt đầu!');
+                }
             }
 
             if (document.getElementById('arcade-modal').style.display === 'flex') {
@@ -5280,7 +5321,7 @@
                         lastArcadeRenderSig = '';
                         renderArcadeLobby();
                     }
-                } else {
+                } else if (remoteRoom.updatedAt !== prevUpdated || prevStatus !== remoteRoom.status) {
                     renderArcadeLobby();
                 }
             }
@@ -5321,10 +5362,6 @@
             const me = getCurrentUser();
             const r = arcadeRoomState;
             if (!r || r.status !== 'lobby') return;
-            if (!isMemberInArcadeZone(me.id)) {
-                AudioEngine.playError();
-                return showToast('🚶 Bạn phải di chuyển nhân vật đến Khu Vui Chơi B2KS mới tham gia được!');
-            }
             if (me.points < 1) {
                 AudioEngine.playError();
                 return showToast('❌ Bạn không đủ 1⭐ để tham gia đặt cược!');
@@ -5352,10 +5389,6 @@
             const me = getCurrentUser();
             const r = arcadeRoomState;
             if (!r || r.status !== 'lobby' || !r.playerIds.includes(me.id)) return;
-            if (!isMemberInArcadeZone(me.id)) {
-                AudioEngine.playError();
-                return showToast('🚶 Bạn đã rời khỏi Khu Vui Chơi! Hãy quay lại khu vực để sẵn sàng.');
-            }
             AudioEngine.playClick();
             const nextReady = !(r.readyMap && r.readyMap[me.id]);
             const updated = {
@@ -5428,14 +5461,13 @@
             if (!r || r.status !== 'lobby') return;
             const cat = ARCADE_GAME_CATALOG[r.gameType];
 
-            // Verify all players are still physically inside Arcade Zone
             const validPlayers = r.playerIds
                 .map(id => state.members.find(m => m.id === id))
-                .filter(m => m && isMemberInArcadeZone(m.id));
+                .filter(Boolean);
 
             if (validPlayers.length < cat.minPlayers || validPlayers.length > cat.maxPlayers) {
                 AudioEngine.playError();
-                return showToast(`⚠️ Cần từ ${cat.minPlayers} đến ${cat.maxPlayers} người đang đứng tại Khu Vui Chơi!`);
+                return showToast(`⚠️ Cần từ ${cat.minPlayers} đến ${cat.maxPlayers} người tham gia bàn chơi!`);
             }
             const allReady = validPlayers.every(p => r.readyMap && r.readyMap[p.id]);
             if (!allReady) {
@@ -5471,12 +5503,12 @@
                     buzzedPlayerIdx: null
                 };
             } else if (r.gameType === 'shooter') {
-                const W = 560, H = 340;
+                const W = 580, H = 360;
                 const spawns = [
-                    { x: 90, y: 80, angle: 0.7 },
-                    { x: W - 90, y: H - 80, angle: -2.4 },
-                    { x: W - 90, y: 80, angle: 2.4 },
-                    { x: 90, y: H - 80, angle: -0.7 }
+                    { x: 85, y: 80, angle: 0.65 },
+                    { x: W - 85, y: H - 80, angle: -2.45 },
+                    { x: W - 85, y: 80, angle: 2.45 },
+                    { x: 85, y: H - 80, angle: -0.65 }
                 ];
                 matchData = {
                     W, H,
@@ -5490,11 +5522,24 @@
                         vy: 0,
                         angle: spawns[i].angle,
                         rotDir: i % 2 === 0 ? 1 : -1,
-                        hp: 3,
+                        hp: 5,
+                        maxHp: 5,
+                        shield: 0,
+                        rapidFire: 0,
                         cooldown: 0,
-                        lastFireNonce: 0
+                        dashCooldown: 0,
+                        fireSeq: 0,
+                        lastBullet: null
                     })),
-                    bullets: []
+                    bullets: [],
+                    asteroids: [
+                        { x: W * 0.5, y: H * 0.32, r: 22, vx: 0.45, vy: 0.3, rot: 0 },
+                        { x: W * 0.5, y: H * 0.68, r: 20, vx: -0.4, vy: -0.35, rot: 1.2 }
+                    ],
+                    powerups: [
+                        { x: W * 0.5, y: H * 0.5, type: 'shield', active: true, respawn: 0 }
+                    ],
+                    particles: []
                 };
             }
 
@@ -5636,10 +5681,8 @@
                 const validPlayerObjs = r.playerIds
                     .map(id => state.members.find(m => m.id === id))
                     .filter(Boolean);
-                const allPlayersInZone = validPlayerObjs.every(p => isMemberInArcadeZone(p.id));
                 const allReady = validPlayerObjs.length >= cat.minPlayers &&
                                  validPlayerObjs.length <= cat.maxPlayers &&
-                                 allPlayersInZone &&
                                  validPlayerObjs.every(p => r.readyMap && r.readyMap[p.id]);
 
                 container.innerHTML = `
@@ -5702,8 +5745,8 @@
                         ${!allReady ? `
                             <div style="text-align:center; font-size:12px; color:#D35400; margin-top:8px; font-weight:600;">
                                 ${validPlayerObjs.length < cat.minPlayers
-                                    ? `⏳ Đang chờ thêm ${cat.minPlayers - validPlayerObjs.length} thành viên di chuyển tới Khu Vui Chơi và bấm Tham gia...`
-                                    : (!allPlayersInZone ? '⚠️ Có thành viên đã đi ra khỏi Khu Vui Chơi!' : '⏳ Đang chờ tất cả thành viên bấm "✅ Xác Nhận Sẵn Sàng"...')}
+                                    ? `⏳ Đang chờ thêm ${cat.minPlayers - validPlayerObjs.length} thành viên bấm Tham gia...`
+                                    : '⏳ Đang chờ tất cả thành viên bấm "✅ Xác Nhận Sẵn Sàng"...'}
                             </div>
                         ` : ''}
                     </div>
@@ -5982,23 +6025,41 @@
             renderArcadeLobby();
         }
 
-        // --- ONLINE MINIGAME 3: 1-BUTTON SPACE ARENA SHOOTER (2-4 PLAYERS + SPECTATORS) ---
+        // --- ONLINE MINIGAME 3: SPACE ARENA SHOOTER ("ĐẤU TRƯỜNG VŨ TRỤ" 2-4 PLAYERS + SPECTATORS) ---
         function renderOnlineSpaceShooter(container, r, me, myPlayerIdx, isSpectator, spectatorBanner) {
             const md = r.matchData;
+            const hudChips = md.ships.map((s) => `
+                <div style="background:rgba(255,255,255,0.12); border:1.5px solid ${s.color}; color:#FFF; padding:3px 9px; border-radius:999px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:5px;">
+                    <span style="width:10px; height:10px; border-radius:50%; background:${s.color}; display:inline-block;"></span>
+                    <span>${s.name}:</span>
+                    <span>${s.hp > 0 ? '❤️'.repeat(s.hp) : '💥 Bị hạ'}</span>
+                </div>
+            `).join('');
+
             container.innerHTML = `
                 ${spectatorBanner}
                 <div style="text-align:center;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                        <span style="font-size:13px; font-weight:700;">🚀 Đấu Trường Vũ Trụ Online (Mỗi tàu 3 ❤️)</span>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
+                        <span style="font-size:14px; font-weight:700; color:#2C3E50;">🚀 Đấu Trường Vũ Trụ (5 ❤️ • Khiên & Đạn Đôi)</span>
                         <span class="points-pill">🏆 Quỹ thưởng: ${r.pot}⭐</span>
                     </div>
-                    <canvas id="arcade-shooter-canvas" width="${md.W}" height="${md.H}" style="width:100%; max-width:${md.W}px; background:#0B132B; border:3px solid #2C3E50; border-radius:12px;"></canvas>
+                    <div style="background:#141E30; padding:6px 8px; border-radius:10px 10px 0 0; display:flex; justify-content:center; gap:8px; flex-wrap:wrap; border:3px solid #2C3E50; border-bottom:none;">
+                        ${hudChips}
+                    </div>
+                    <canvas id="arcade-shooter-canvas" width="${md.W}" height="${md.H}" style="width:100%; max-width:${md.W}px; background:#070B19; border:3px solid #2C3E50; border-radius:0 0 12px 12px; display:block; margin:0 auto;"></canvas>
                     ${!isSpectator ? `
-                        <div style="margin-top:10px;">
-                            <button type="button" class="btn" style="background:${ARCADE_PLAYER_THEMES[myPlayerIdx].color}; padding:14px 20px; font-size:15px; width:100%;"
-                                onmousedown="fireOnlineArcadeShip()" ontouchstart="event.preventDefault(); fireOnlineArcadeShip();">
-                                🔥 BẮN & ĐỔI HƯỚNG TÀU CỦA BẠN (${me.name} - Phím Space)
+                        <div style="display:grid; grid-template-columns:1fr 1.3fr; gap:8px; margin-top:10px;">
+                            <button type="button" class="btn" style="background:#34495E; padding:13px 10px; font-size:14px;"
+                                onmousedown="dashOnlineArcadeShip()" ontouchstart="event.preventDefault(); dashOnlineArcadeShip();">
+                                ⚡ LƯỚT TĂNG TỐC (Phím W/↑)
                             </button>
+                            <button type="button" class="btn" style="background:${ARCADE_PLAYER_THEMES[myPlayerIdx].color}; padding:13px 12px; font-size:14px;"
+                                onmousedown="fireOnlineArcadeShip()" ontouchstart="event.preventDefault(); fireOnlineArcadeShip();">
+                                🔥 BẮN LASER & ĐỔI HƯỚNG (Space)
+                            </button>
+                        </div>
+                        <div style="margin-top:6px;">
+                            <button type="button" class="btn btn-sm" style="background:#7F8C8D; font-size:11px;" onclick="forfeitOnlineMatch()">🏳️ Thoát / Nhận Thua</button>
                         </div>
                     ` : `
                         <div style="margin-top:8px; font-size:12.5px; color:#6C3483; font-weight:700;">👀 Bạn đang theo dõi trực tiếp trận chiến vũ trụ!</div>
@@ -6006,6 +6067,36 @@
                 </div>
             `;
             runOnlineSpaceShooterLoop();
+        }
+
+        function dashOnlineArcadeShip() {
+            const me = getCurrentUser();
+            const r = arcadeRoomState;
+            if (!r || r.status !== 'playing' || r.gameType !== 'shooter') return;
+            const myPlayerIdx = r.playerIds.indexOf(me.id);
+            if (myPlayerIdx === -1) return;
+            const md = r.matchData;
+            const s = md.ships[myPlayerIdx];
+            if (!s || s.hp <= 0 || (s.dashCooldown || 0) > 0) return;
+
+            AudioEngine.playTone(340, 'triangle', 0.1, 0.06);
+            s.vx = Math.cos(s.angle) * 6.2;
+            s.vy = Math.sin(s.angle) * 6.2;
+            s.dashCooldown = 45;
+            s.fireSeq = (s.fireSeq || 0) + 1;
+            s.lastBullet = null;
+
+            for (let i = 0; i < 8; i++) {
+                md.particles.push({
+                    x: s.x - Math.cos(s.angle) * 14,
+                    y: s.y - Math.sin(s.angle) * 14,
+                    vx: (Math.random() - 0.5) * 2.5 - Math.cos(s.angle) * 2,
+                    vy: (Math.random() - 0.5) * 2.5 - Math.sin(s.angle) * 2,
+                    color: '#5DADE2',
+                    life: 18
+                });
+            }
+            pushArcadeRoomToFirebase({ ...r, matchData: md, updatedAt: Date.now() });
         }
 
         function fireOnlineArcadeShip() {
@@ -6018,23 +6109,39 @@
             const s = md.ships[myPlayerIdx];
             if (!s || s.hp <= 0 || s.cooldown > 0) return;
 
-            AudioEngine.playTone(620, 'square', 0.08, 0.06);
-            s.vx = Math.cos(s.angle) * 3.4;
-            s.vy = Math.sin(s.angle) * 3.4;
+            AudioEngine.playTone(680, 'square', 0.08, 0.06);
+            s.vx = Math.cos(s.angle) * 3.8;
+            s.vy = Math.sin(s.angle) * 3.8;
             s.rotDir *= -1;
-            s.cooldown = 16;
+            s.cooldown = (s.rapidFire || 0) > 0 ? 9 : 15;
+            s.fireSeq = (s.fireSeq || 0) + 1;
 
-            md.bullets.push({
+            const bulletObj = {
                 ownerIdx: myPlayerIdx,
                 color: s.color,
-                x: s.x + Math.cos(s.angle) * 20,
-                y: s.y + Math.sin(s.angle) * 20,
-                vx: Math.cos(s.angle) * 6.5,
-                vy: Math.sin(s.angle) * 6.5,
-                life: 75
-            });
+                x: s.x + Math.cos(s.angle) * 22,
+                y: s.y + Math.sin(s.angle) * 22,
+                vx: Math.cos(s.angle) * 7.2,
+                vy: Math.sin(s.angle) * 7.2,
+                life: 80
+            };
+            md.bullets.push(bulletObj);
+            s.lastBullet = bulletObj;
 
-            if (Date.now() - arcadeLastSyncedShootAt > 180) {
+            if ((s.rapidFire || 0) > 0) {
+                const spread = 0.16;
+                md.bullets.push({
+                    ownerIdx: myPlayerIdx,
+                    color: '#FFE66D',
+                    x: s.x + Math.cos(s.angle + spread) * 22,
+                    y: s.y + Math.sin(s.angle + spread) * 22,
+                    vx: Math.cos(s.angle + spread) * 7.2,
+                    vy: Math.sin(s.angle + spread) * 7.2,
+                    life: 75
+                });
+            }
+
+            if (Date.now() - arcadeLastSyncedShootAt > 120) {
                 arcadeLastSyncedShootAt = Date.now();
                 pushArcadeRoomToFirebase({ ...r, matchData: md, updatedAt: Date.now() });
             }
@@ -6043,6 +6150,10 @@
         function handleArcadeKeyPress(k) {
             const r = arcadeRoomState;
             if (!r || r.status !== 'playing') return;
+            if (k === 'w' || k === 'arrowup') {
+                if (r.gameType === 'shooter') dashOnlineArcadeShip();
+                return;
+            }
             if (k === ' ' || k === 'q' || k === 'p' || k === 'z' || k === 'm') {
                 if (r.gameType === 'quiz') {
                     buzzOnlinePlayerIn();
@@ -6054,6 +6165,23 @@
 
         function runOnlineSpaceShooterLoop() {
             stopArcadeLoop();
+            let matchFinishedTriggered = false;
+
+            function spawnExplosion(md, x, y, color, count = 14) {
+                if (!md.particles) md.particles = [];
+                for (let i = 0; i < count; i++) {
+                    const a = (Math.PI * 2 * i) / count + Math.random() * 0.4;
+                    const spd = 1.2 + Math.random() * 3.2;
+                    md.particles.push({
+                        x, y,
+                        vx: Math.cos(a) * spd,
+                        vy: Math.sin(a) * spd,
+                        color,
+                        life: 22 + Math.floor(Math.random() * 12)
+                    });
+                }
+            }
+
             function step() {
                 const r = arcadeRoomState;
                 if (!r || r.status !== 'playing' || r.gameType !== 'shooter') return;
@@ -6061,78 +6189,247 @@
                 if (!sc) return;
                 const sctx = sc.getContext('2d');
                 const md = r.matchData;
+                if (!md.asteroids) md.asteroids = [];
+                if (!md.powerups) md.powerups = [];
+                if (!md.particles) md.particles = [];
 
-                sctx.fillStyle = '#0B132B';
+                // Deep space background with nebula glow
+                const bgGrad = sctx.createRadialGradient(md.W * 0.5, md.H * 0.5, 20, md.W * 0.5, md.H * 0.5, md.W * 0.7);
+                bgGrad.addColorStop(0, '#1B263B');
+                bgGrad.addColorStop(1, '#070B19');
+                sctx.fillStyle = bgGrad;
                 sctx.fillRect(0, 0, md.W, md.H);
 
-                sctx.fillStyle = 'rgba(255,255,255,0.45)';
-                for (let i = 0; i < 25; i++) {
-                    sctx.fillRect((i * 73) % md.W, (i * 41) % md.H, 2, 2);
+                // Twinkling stars
+                const nowT = Date.now() / 400;
+                for (let i = 0; i < 36; i++) {
+                    const alpha = 0.25 + 0.55 * Math.abs(Math.sin(nowT + i));
+                    sctx.fillStyle = `rgba(255,255,255,${alpha.toFixed(2)})`;
+                    sctx.fillRect((i * 83) % md.W, (i * 47) % md.H, (i % 3 === 0) ? 2.5 : 1.5, (i % 3 === 0) ? 2.5 : 1.5);
                 }
 
-                md.ships.forEach((s) => {
-                    if (s.hp <= 0) return;
-                    s.angle += 0.055 * s.rotDir;
-                    s.x += s.vx;
-                    s.y += s.vy;
-                    s.vx *= 0.96;
-                    s.vy *= 0.96;
-                    if (s.cooldown > 0) s.cooldown--;
+                // Powerups (Shield / Rapid Fire)
+                md.powerups.forEach(pw => {
+                    if (!pw.active) {
+                        pw.respawn = (pw.respawn || 0) - 1;
+                        if (pw.respawn <= 0) {
+                            pw.active = true;
+                            pw.type = pw.type === 'shield' ? 'rapid' : 'shield';
+                        }
+                        return;
+                    }
+                    const pulse = Math.sin(Date.now() / 180) * 3;
+                    sctx.save();
+                    sctx.translate(pw.x, pw.y);
+                    sctx.fillStyle = pw.type === 'shield' ? 'rgba(52, 152, 219, 0.28)' : 'rgba(241, 196, 15, 0.28)';
+                    sctx.beginPath();
+                    sctx.arc(0, 0, 18 + pulse, 0, Math.PI * 2);
+                    sctx.fill();
+                    sctx.font = '18px Arial';
+                    sctx.textAlign = 'center';
+                    sctx.textBaseline = 'middle';
+                    sctx.fillText(pw.type === 'shield' ? '🛡️' : '⚡', 0, 0);
+                    sctx.restore();
+                });
 
-                    if (s.x < 22) { s.x = 22; s.vx *= -0.8; }
-                    if (s.x > md.W - 22) { s.x = md.W - 22; s.vx *= -0.8; }
-                    if (s.y < 22) { s.y = 22; s.vy *= -0.8; }
-                    if (s.y > md.H - 22) { s.y = md.H - 22; s.vy *= -0.8; }
+                // Drifting Asteroids (deflect bullets & bounce ships)
+                md.asteroids.forEach(ast => {
+                    ast.x += ast.vx;
+                    ast.y += ast.vy;
+                    ast.rot = (ast.rot || 0) + 0.015;
+                    if (ast.x < ast.r + 10 || ast.x > md.W - ast.r - 10) ast.vx *= -1;
+                    if (ast.y < ast.r + 10 || ast.y > md.H - ast.r - 10) ast.vy *= -1;
 
                     sctx.save();
-                    sctx.translate(s.x, s.y);
-                    sctx.rotate(s.angle);
-                    sctx.fillStyle = s.color;
-                    sctx.strokeStyle = '#FFF';
+                    sctx.translate(ast.x, ast.y);
+                    sctx.rotate(ast.rot);
+                    sctx.fillStyle = '#5D6D7E';
+                    sctx.strokeStyle = '#AEB6BF';
                     sctx.lineWidth = 2;
                     sctx.beginPath();
-                    sctx.moveTo(18, 0);
-                    sctx.lineTo(-12, -12);
-                    sctx.lineTo(-7, 0);
-                    sctx.lineTo(-12, 12);
+                    for (let k = 0; k < 8; k++) {
+                        const ang = (Math.PI * 2 * k) / 8;
+                        const rad = ast.r * (k % 2 === 0 ? 1 : 0.82);
+                        if (k === 0) sctx.moveTo(Math.cos(ang) * rad, Math.sin(ang) * rad);
+                        else sctx.lineTo(Math.cos(ang) * rad, Math.sin(ang) * rad);
+                    }
                     sctx.closePath();
                     sctx.fill();
                     sctx.stroke();
                     sctx.restore();
+                });
 
+                // Ships update & render
+                md.ships.forEach((s) => {
+                    if (s.hp <= 0) return;
+                    s.angle += 0.052 * s.rotDir;
+                    s.x += s.vx;
+                    s.y += s.vy;
+                    s.vx *= 0.962;
+                    s.vy *= 0.962;
+                    if (s.cooldown > 0) s.cooldown--;
+                    if ((s.dashCooldown || 0) > 0) s.dashCooldown--;
+                    if ((s.shield || 0) > 0) s.shield--;
+                    if ((s.rapidFire || 0) > 0) s.rapidFire--;
+
+                    if (s.x < 24) { s.x = 24; s.vx *= -0.8; }
+                    if (s.x > md.W - 24) { s.x = md.W - 24; s.vx *= -0.8; }
+                    if (s.y < 24) { s.y = 24; s.vy *= -0.8; }
+                    if (s.y > md.H - 24) { s.y = md.H - 24; s.vy *= -0.8; }
+
+                    // Bounce off asteroids
+                    md.asteroids.forEach(ast => {
+                        const dist = Math.hypot(s.x - ast.x, s.y - ast.y);
+                        if (dist < ast.r + 16 && dist > 0) {
+                            const nx = (s.x - ast.x) / dist;
+                            const ny = (s.y - ast.y) / dist;
+                            s.x = ast.x + nx * (ast.r + 17);
+                            s.y = ast.y + ny * (ast.r + 17);
+                            s.vx = nx * 2.5;
+                            s.vy = ny * 2.5;
+                        }
+                    });
+
+                    // Collect powerups
+                    md.powerups.forEach(pw => {
+                        if (pw.active && Math.hypot(s.x - pw.x, s.y - pw.y) < 28) {
+                            pw.active = false;
+                            pw.respawn = 360;
+                            if (pw.type === 'shield') {
+                                s.shield = 300;
+                            } else {
+                                s.rapidFire = 300;
+                            }
+                            AudioEngine.playCoin();
+                            spawnExplosion(md, pw.x, pw.y, '#FFE66D', 10);
+                        }
+                    });
+
+                    // Aim sight line
+                    sctx.save();
+                    sctx.strokeStyle = 'rgba(255,255,255,0.22)';
+                    sctx.setLineDash([4, 4]);
+                    sctx.beginPath();
+                    sctx.moveTo(s.x, s.y);
+                    sctx.lineTo(s.x + Math.cos(s.angle) * 44, s.y + Math.sin(s.angle) * 44);
+                    sctx.stroke();
+                    sctx.setLineDash([]);
+
+                    // Ship body
+                    sctx.translate(s.x, s.y);
+                    sctx.rotate(s.angle);
+                    // Thruster flame
+                    if (Math.hypot(s.vx, s.vy) > 0.8) {
+                        sctx.fillStyle = '#F39C12';
+                        sctx.beginPath();
+                        sctx.moveTo(-10, -5);
+                        sctx.lineTo(-22 - Math.random() * 6, 0);
+                        sctx.lineTo(-10, 5);
+                        sctx.closePath();
+                        sctx.fill();
+                    }
+                    sctx.fillStyle = s.color;
+                    sctx.strokeStyle = '#FFF';
+                    sctx.lineWidth = 2.2;
+                    sctx.beginPath();
+                    sctx.moveTo(20, 0);
+                    sctx.lineTo(-12, -13);
+                    sctx.lineTo(-7, 0);
+                    sctx.lineTo(-12, 13);
+                    sctx.closePath();
+                    sctx.fill();
+                    sctx.stroke();
+                    // Cockpit
+                    sctx.fillStyle = '#AED6F1';
+                    sctx.beginPath();
+                    sctx.arc(3, 0, 4.5, 0, Math.PI * 2);
+                    sctx.fill();
+                    sctx.restore();
+
+                    // Energy Shield ring
+                    if ((s.shield || 0) > 0) {
+                        sctx.save();
+                        sctx.strokeStyle = '#5DADE2';
+                        sctx.lineWidth = 2.5;
+                        sctx.beginPath();
+                        sctx.arc(s.x, s.y, 24, 0, Math.PI * 2);
+                        sctx.stroke();
+                        sctx.restore();
+                    }
+
+                    // Name & HP bar above ship
                     sctx.fillStyle = '#FFF';
                     sctx.font = 'bold 11px Fredoka';
                     sctx.textAlign = 'center';
-                    sctx.fillText(`${s.name} ${'❤️'.repeat(s.hp)}`, s.x, s.y - 20);
+                    sctx.fillText(`${s.name} ${'❤️'.repeat(s.hp)}`, s.x, s.y - 24);
                 });
 
+                // Bullets update & render
                 for (let i = md.bullets.length - 1; i >= 0; i--) {
                     const b = md.bullets[i];
                     b.x += b.vx;
                     b.y += b.vy;
                     b.life--;
 
+                    sctx.save();
                     sctx.fillStyle = b.color;
+                    sctx.shadowColor = b.color;
+                    sctx.shadowBlur = 8;
                     sctx.beginPath();
                     sctx.arc(b.x, b.y, 5, 0, Math.PI * 2);
                     sctx.fill();
+                    sctx.restore();
 
                     let hit = false;
-                    md.ships.forEach((target, tIdx) => {
-                        if (tIdx !== b.ownerIdx && target.hp > 0 && Math.hypot(b.x - target.x, b.y - target.y) < 18) {
-                            target.hp -= 1;
+                    // Hit asteroid
+                    md.asteroids.forEach(ast => {
+                        if (!hit && Math.hypot(b.x - ast.x, b.y - ast.y) < ast.r + 4) {
                             hit = true;
-                            AudioEngine.playError();
+                            spawnExplosion(md, b.x, b.y, '#BDC3C7', 6);
                         }
                     });
+
+                    // Hit enemy ship
+                    if (!hit) {
+                        md.ships.forEach((target, tIdx) => {
+                            if (tIdx !== b.ownerIdx && target.hp > 0 && Math.hypot(b.x - target.x, b.y - target.y) < 20) {
+                                hit = true;
+                                if ((target.shield || 0) > 0) {
+                                    target.shield = 0;
+                                    AudioEngine.playClick();
+                                    spawnExplosion(md, target.x, target.y, '#5DADE2', 12);
+                                } else {
+                                    target.hp -= 1;
+                                    AudioEngine.playError();
+                                    spawnExplosion(md, target.x, target.y, target.color, target.hp <= 0 ? 24 : 10);
+                                }
+                            }
+                        });
+                    }
 
                     if (hit || b.life <= 0 || b.x < 0 || b.x > md.W || b.y < 0 || b.y > md.H) {
                         md.bullets.splice(i, 1);
                     }
                 }
 
+                // Particles update & render
+                for (let i = md.particles.length - 1; i >= 0; i--) {
+                    const pt = md.particles[i];
+                    pt.x += pt.vx;
+                    pt.y += pt.vy;
+                    pt.life--;
+                    sctx.fillStyle = pt.color;
+                    sctx.globalAlpha = Math.max(0, pt.life / 30);
+                    sctx.beginPath();
+                    sctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
+                    sctx.fill();
+                    sctx.globalAlpha = 1;
+                    if (pt.life <= 0) md.particles.splice(i, 1);
+                }
+
                 const aliveShips = md.ships.filter(s => s.hp > 0);
-                if (aliveShips.length <= 1) {
+                if (aliveShips.length <= 1 && !matchFinishedTriggered) {
+                    matchFinishedTriggered = true;
                     const me = getCurrentUser();
                     if (r.hostId === me.id || r.playerIds.includes(me.id)) {
                         const winnerId = aliveShips[0] ? aliveShips[0].memberId : null;
