@@ -503,7 +503,6 @@
         <div class="hud-group">
             <button class="btn btn-primary" onclick="openModal('tasks-modal')">📋 Nhiệm vụ</button>
             <button class="btn btn-accent" onclick="openModal('bag-modal')">🎒 Túi đồ</button>
-            <button class="btn" style="background:#E67E22;" onclick="openModal('shop-modal')">🏪 Siêu thị</button>
             <button class="btn btn-purple" onclick="openModal('custom-modal')">🎨 Tùy chỉnh</button>
             <button class="btn" onclick="requestParentAccess(() => openModal('donate-modal'))">🎁 Tặng điểm</button>
             <button class="btn" style="background:#0F766E;" onclick="requestParentAccess(() => openModal('family-sync-modal'))">🔗 Gia đình & PIN</button>
@@ -739,6 +738,26 @@
                 <label>2. Chọn màu nhuộm tóc (10⭐ nếu thay đổi):</label>
                 <div class="swatch-grid" id="salon-haircolor-grid"></div>
             </div>
+        </div>
+    </div>
+
+    <!-- 4F. ENGLISH CENTER GRADE 6 QUIZ MODAL -->
+    <div class="modal-overlay" id="english-center-modal">
+        <div class="modal-content pixel-box" style="max-width:640px;">
+            <div class="modal-header">
+                <h2>🎓 Trung Tâm Tiếng Anh B2KS (Lớp 6)</h2>
+                <button class="btn btn-primary btn-sm" onclick="closeModal('english-center-modal')">Đóng</button>
+            </div>
+            <div style="background:#E8F8F5; border:2px solid #16A085; border-radius:10px; padding:10px 12px; margin-bottom:12px; font-size:13px; display:flex; align-items:center; gap:10px;">
+                <span style="font-size:26px;">👩‍🏫</span>
+                <div><b>Cô Giáo Mai:</b> "Chào mừng em đến với <b>B2KS English Center</b>! Hãy chọn chủ đề để tạo bộ đề ngẫu nhiên 10 câu chuẩn Tiếng Anh Lớp 6 và rinh sao thưởng nhé!"</div>
+            </div>
+            <div id="eng-topic-bar" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+                <button class="btn btn-primary btn-sm" onclick="startEnglishGrade6Quiz('mix')">🎲 Đề Tổng Hợp (10 câu)</button>
+                <button class="btn btn-accent btn-sm" onclick="startEnglishGrade6Quiz('grammar')">📘 Ngữ Pháp Lớp 6</button>
+                <button class="btn btn-purple btn-sm" onclick="startEnglishGrade6Quiz('vocab')">🔤 Từ Vựng & Giao Tiếp</button>
+            </div>
+            <div id="eng-quiz-body"></div>
         </div>
     </div>
 
@@ -1256,11 +1275,16 @@
             { id: 'slacks_grey', label: 'Quần Tây Xám', color: '#5D6D7E', style: 'pants' }
         ];
 
+        const DEFAULT_FIREBASE_URL = 'https://b2ks-home-default-rtdb.asia-southeast1.firebasedatabase.app';
+
         let deviceConfig = JSON.parse(localStorage.getItem('b2ks_v16_device')) || {
             currentMemberId: 'dad',
             isLockedToMember: false,
-            firebaseUrl: ''
+            firebaseUrl: DEFAULT_FIREBASE_URL
         };
+        if (!deviceConfig.firebaseUrl) {
+            deviceConfig.firebaseUrl = DEFAULT_FIREBASE_URL;
+        }
 
         function saveDeviceConfig() {
             localStorage.setItem('b2ks_v16_device', JSON.stringify(deviceConfig));
@@ -3894,6 +3918,15 @@
                     label: '💇 Salon Tóc',
                     action: () => openModal('salon-modal')
                 });
+                // Trung Tâm Tiếng Anh B2KS (Khu Tây - Đại lộ Nam)
+                items.push({
+                    x: 340, y: 930, radius: 88,
+                    label: '🎓 Vào Trung Tâm Tiếng Anh',
+                    action: () => {
+                        openModal('english-center-modal');
+                        startEnglishGrade6Quiz('mix');
+                    }
+                });
                 // Công viên & Luyện Tiếng Anh (Khu Tây Bắc)
                 items.push({
                     x: 175, y: 425, radius: 82,
@@ -4802,6 +4835,23 @@
                 npcOutfit: '🕶️'
             }, lighting);
 
+            // [Block West-Center]: 4. TRUNG TÂM TIẾNG ANH B2KS (x: 340, y: 865)
+            drawShopBuilding(340, 865, {
+                wallColor: '#E8F8F5',
+                awningColor: '#16A085',
+                signColor: '#0E6251',
+                title: '🎓 ENGLISH CENTER',
+                icons: '🇬🇧📚✏️',
+                npcName: 'Cô Mai',
+                npcHairStyle: 'long',
+                npcHairColor: '#2C3E50',
+                npcShirtColor: '#16A085',
+                npcShirtPattern: 'collar',
+                npcPantsColor: '#1B4F72',
+                npcPantsStyle: 'skirt',
+                npcOutfit: ''
+            }, lighting);
+
             // [Block Bottom-West]: Quảng Trường Đài Phun Nước (x: 150..510, y: 1215..1470)
             ctx.fillStyle = '#D4EFDF';
             ctx.strokeStyle = '#27AE60';
@@ -5402,6 +5452,158 @@
             update();
             render();
             requestAnimationFrame(gameLoop);
+        }
+
+
+        /* =========================================================================
+           11. GRADE 6 ENGLISH CENTER QUIZ GENERATOR (10 QUESTIONS / SET)
+           ========================================================================= */
+        const GRADE6_ENGLISH_BANK = [
+            { cat: 'grammar', q: 'She ______ to school by bicycle every morning.', opts: ['go', 'goes', 'going', 'is go'], ans: 1, exp: 'Thì Hiện tại đơn với chủ ngữ số ít "She" -> động từ thêm "es" (goes).' },
+            { cat: 'grammar', q: 'Look! The students ______ football in the schoolyard.', opts: ['play', 'plays', 'are playing', 'is playing'], ans: 2, exp: 'Có dấu hiệu "Look!" -> Thì Hiện tại tiếp diễn (are playing).' },
+            { cat: 'grammar', q: 'How ______ classrooms are there in your new school?', opts: ['much', 'many', 'old', 'often'], ans: 1, exp: '"Classrooms" là danh từ đếm được số nhiều -> dùng "How many".' },
+            { cat: 'grammar', q: 'My bedroom is ______ the second floor.', opts: ['in', 'at', 'on', 'under'], ans: 2, exp: 'Dùng giới từ "on" trước số tầng (on the second floor).' },
+            { cat: 'grammar', q: 'There ______ a big sofa and two armchairs in the living room.', opts: ['is', 'are', 'am', 'be'], ans: 0, exp: 'Cấu trúc "There is + danh từ số ít (a big sofa)".' },
+            { cat: 'grammar', q: 'We shouldn’t ______ too much noise in the library.', opts: ['make', 'making', 'to make', 'makes'], ans: 0, exp: 'Sau động từ khuyết thiếu "shouldn’t" dùng động từ nguyên mẫu (make).' },
+            { cat: 'grammar', q: 'Ho Chi Minh City is ______ than Da Nang.', opts: ['large', 'more large', 'larger', 'largest'], ans: 2, exp: 'So sánh hơn của tính từ ngắn "large" là "larger".' },
+            { cat: 'grammar', q: '______ do you usually have English lessons? – On Monday and Thursday.', opts: ['Where', 'What', 'When', 'Who'], ans: 2, exp: 'Câu trả lời chỉ thời gian (thứ Hai và thứ Năm) -> dùng "When".' },
+            { cat: 'grammar', q: 'They ______ a picnic in the park this Sunday.', opts: ['are having', 'has', 'had', 'having'], ans: 0, exp: 'Thì Hiện tại tiếp diễn dùng cho kế hoạch đã định sẵn trong tương lai gần.' },
+            { cat: 'grammar', q: 'You ______ pick flowers in the school garden. It is against the rules.', opts: ['must', 'mustn’t', 'can', 'should'], ans: 1, exp: '"Mustn’t" diễn tả sự cấm đoán (không được phép hái hoa).' },
+            { cat: 'grammar', q: 'Mount Everest is the ______ mountain in the world.', opts: ['high', 'higher', 'highest', 'most high'], ans: 2, exp: 'So sánh nhất với tính từ ngắn "high" -> "the highest".' },
+            { cat: 'grammar', q: 'My father ______ TV in the living room at the moment.', opts: ['watches', 'watch', 'is watching', 'watched'], ans: 2, exp: 'Dấu hiệu "at the moment" -> Thì Hiện tại tiếp diễn (is watching).' },
+            { cat: 'grammar', q: '______ your sister like listening to pop music?', opts: ['Do', 'Does', 'Is', 'Are'], ans: 1, exp: 'Câu hỏi thì Hiện tại đơn với động từ thường "like" và chủ ngữ số ít "your sister" -> dùng "Does".' },
+            { cat: 'grammar', q: 'There are ______ apples in the fridge, so we don’t need to buy more.', opts: ['any', 'some', 'a', 'an'], ans: 1, exp: '"Some" dùng trong câu khẳng định với danh từ đếm được số nhiều (apples).' },
+            { cat: 'grammar', q: 'If we ______ more trees, our neighbourhood will be greener.', opts: ['plant', 'plants', 'will plant', 'planted'], ans: 0, exp: 'Câu điều kiện loại 1: Mệnh đề If chia Hiện tại đơn (plant).' },
+            { cat: 'vocab', q: 'Nam is very ______. He always helps his friends with their homework.', opts: ['shy', 'kind', 'lazy', 'boring'], ans: 1, exp: '"Kind" (tốt bụng) phù hợp với hành động luôn giúp đỡ bạn bè.' },
+            { cat: 'vocab', q: 'Which word has a different sound in the underlined part: "b<u>oo</u>k", "l<u>oo</u>k", "f<u>oo</u>d", "g<u>oo</u>d"?', opts: ['book', 'look', 'food', 'good'], ans: 2, exp: '"Food" phát âm là /uː/, các từ còn lại phát âm là /ʊ/.' },
+            { cat: 'vocab', q: 'We use a ______ to draw straight lines in Maths.', opts: ['compass', 'rubber', 'ruler', 'pencil sharpener'], ans: 2, exp: '"Ruler" là cái thước kẻ dùng để vẽ đường thẳng.' },
+            { cat: 'vocab', q: 'Tet is the biggest traditional ______ in Viet Nam.', opts: ['festival', 'subject', 'building', 'instrument'], ans: 0, exp: '"Festival" nghĩa là lễ hội.' },
+            { cat: 'vocab', q: 'You must ______ your hands before meals.', opts: ['wash', 'brush', 'clean', 'do'], ans: 0, exp: 'Cụm từ cố định: "wash your hands" (rửa tay).' },
+            { cat: 'vocab', q: 'A place where you can borrow and read many books is a ______.', opts: ['stadium', 'post office', 'library', 'supermarket'], ans: 2, exp: '"Library" là thư viện.' },
+            { cat: 'vocab', q: 'Odd one out (Chọn từ khác loại):', opts: ['kitchen', 'bathroom', 'bedroom', 'wardrobe'], ans: 3, exp: '"Wardrobe" (tủ quần áo) là đồ vật, các từ còn lại là các phòng trong nhà.' },
+            { cat: 'vocab', q: 'What is the opposite of "noisy"?', opts: ['crowded', 'quiet', 'exciting', 'modern'], ans: 1, exp: 'Trái nghĩa với "noisy" (ồn ào) là "quiet" (yên tĩnh).' },
+            { cat: 'vocab', q: '"Would you like to go to the cinema tonight?" – "______"', opts: ['Yes, I’d love to.', 'No, I don’t.', 'Yes, I am.', 'You’re welcome.'], ans: 0, exp: 'Cách đáp lại lời mời "Would you like to...?" lịch sự là "Yes, I’d love to."' },
+            { cat: 'vocab', q: 'My best friend has a round face and ______ black hair.', opts: ['tall', 'long', 'heavy', 'high'], ans: 1, exp: 'Dùng tính từ "long" (dài) để miêu tả mái tóc.' },
+            { cat: 'vocab', q: 'Turn ______ at the traffic lights, and the post office is on your right.', opts: ['left', 'straight', 'behind', 'next'], ans: 0, exp: 'Cụm chỉ đường: "Turn left" (rẽ trái).' },
+            { cat: 'vocab', q: 'Ha Long Bay is famous for its beautiful ______ and caves.', opts: ['islands', 'deserts', 'rivers', 'streets'], ans: 0, exp: 'Vịnh Hạ Long nổi tiếng với các hòn đảo (islands) và hang động đẹp.' },
+            { cat: 'vocab', q: 'We use a ______ to look up new English words.', opts: ['calculator', 'dictionary', 'compass', 'schoolbag'], ans: 1, exp: '"Dictionary" là cuốn từ điển dùng để tra từ mới.' },
+            { cat: 'vocab', q: 'People often ______ their houses with peach blossoms and kumquat trees at Tet.', opts: ['decorate', 'celebrate', 'clean', 'visit'], ans: 0, exp: '"Decorate" nghĩa là trang trí nhà cửa.' },
+            { cat: 'vocab', q: 'In the future, robots will help us ______ the housework.', opts: ['do', 'make', 'play', 'go'], ans: 0, exp: 'Cụm từ cố định: "do the housework" (làm việc nhà).' }
+        ];
+
+        let currentEngQuiz = { questions: [], userAnswers: [], submitted: false, category: 'mix', setNumber: 1 };
+
+        function startEnglishGrade6Quiz(cat = 'mix') {
+            let pool = cat === 'mix'
+                ? [...GRADE6_ENGLISH_BANK]
+                : GRADE6_ENGLISH_BANK.filter(item => item.cat === cat);
+            if (pool.length < 10) pool = [...GRADE6_ENGLISH_BANK];
+
+            // Fisher-Yates shuffle for questions & options
+            for (let i = pool.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [pool[i], pool[j]] = [pool[j], pool[i]];
+            }
+            const selected = pool.slice(0, 10).map(item => {
+                const mapped = item.opts.map((text, idx) => ({ text, isCorrect: idx === item.ans }));
+                for (let i = mapped.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [mapped[i], mapped[j]] = [mapped[j], mapped[i]];
+                }
+                return {
+                    q: item.q,
+                    opts: mapped.map(m => m.text),
+                    ans: mapped.findIndex(m => m.isCorrect),
+                    exp: item.exp
+                };
+            });
+
+            currentEngQuiz = {
+                questions: selected,
+                userAnswers: new Array(10).fill(-1),
+                submitted: false,
+                category: cat,
+                setNumber: (currentEngQuiz.setNumber || 0) + 1
+            };
+            renderEnglishQuizBody();
+        }
+
+        function selectEngOption(qIdx, optIdx) {
+            if (currentEngQuiz.submitted) return;
+            currentEngQuiz.userAnswers[qIdx] = optIdx;
+            renderEnglishQuizBody();
+        }
+
+        function submitEnglishGrade6Quiz() {
+            if (currentEngQuiz.submitted) return;
+            const unanswered = currentEngQuiz.userAnswers.filter(a => a === -1).length;
+            if (unanswered > 0) {
+                showToast(`⚠️ Bạn còn ${unanswered} câu chưa chọn đáp án!`);
+                return;
+            }
+            currentEngQuiz.submitted = true;
+            let correctCount = 0;
+            currentEngQuiz.questions.forEach((q, idx) => {
+                if (currentEngQuiz.userAnswers[idx] === q.ans) correctCount++;
+            });
+
+            const bonus = correctCount >= 8 ? 5 : 0;
+            const totalStars = correctCount + bonus;
+            const me = getCurrentUser();
+            me.points += totalStars;
+            AudioEngine.playSuccess();
+            triggerSpeechBubble(me, `I got ${correctCount}/10 in English! (+${totalStars}⭐)`, true);
+            showToast(`🎓 Hoàn thành bài thi: Đúng ${correctCount}/10 câu! Nhận +${totalStars}⭐`);
+            updateHUD();
+            saveGame();
+            renderEnglishQuizBody();
+        }
+
+        function renderEnglishQuizBody() {
+            const box = document.getElementById('eng-quiz-body');
+            if (!box) return;
+            const catNames = { mix: 'Tổng Hợp Lớp 6', grammar: 'Ngữ Pháp Lớp 6', vocab: 'Từ Vựng & Giao Tiếp Lớp 6' };
+            let html = `<div style="font-size:12px; color:#0E6251; font-weight:700; margin-bottom:8px;">📝 Bộ đề #${currentEngQuiz.setNumber} • Chủ đề: ${catNames[currentEngQuiz.category] || 'Tổng Hợp'} (1⭐/câu đúng, thưởng thêm +5⭐ nếu đạt ≥8/10)</div>`;
+
+            if (currentEngQuiz.submitted) {
+                const correctCount = currentEngQuiz.questions.reduce((acc, q, i) => acc + (currentEngQuiz.userAnswers[i] === q.ans ? 1 : 0), 0);
+                const bonus = correctCount >= 8 ? 5 : 0;
+                html += `<div style="background:#FEF9E7; border:2px solid #F39C12; border-radius:10px; padding:12px; margin-bottom:12px; text-align:center;">
+                    <div style="font-size:16px; font-weight:700; color:#D35400;">🏆 Kết quả: ${correctCount}/10 câu đúng (+${correctCount + bonus}⭐)</div>
+                    ${bonus > 0 ? '<div style="font-size:12.5px; color:#27AE60; font-weight:700; margin-top:3px;">🌟 Xuất sắc! Bạn nhận thêm +5⭐ thưởng điểm cao!</div>' : ''}
+                    <button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="startEnglishGrade6Quiz('${currentEngQuiz.category}')">🔄 Tạo bộ đề 10 câu mới</button>
+                </div>`;
+            }
+
+            currentEngQuiz.questions.forEach((item, idx) => {
+                const chosen = currentEngQuiz.userAnswers[idx];
+                html += `<div style="background:#FFF; border:2px solid #D5D8DC; border-radius:10px; padding:10px; margin-bottom:10px;">
+                    <div style="font-weight:700; font-size:13.5px; color:#2C3E50; margin-bottom:8px;">Câu ${idx + 1}/10: ${item.q}</div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">`;
+                item.opts.forEach((opt, oIdx) => {
+                    let bg = '#F8F9F9', border = '#BDC3C7', color = '#2C3E50';
+                    if (!currentEngQuiz.submitted && chosen === oIdx) {
+                        bg = '#D6EAF8'; border = '#2980B9';
+                    } else if (currentEngQuiz.submitted) {
+                        if (oIdx === item.ans) { bg = '#D4EFDF'; border = '#27AE60'; color = '#145A32'; }
+                        else if (chosen === oIdx && oIdx !== item.ans) { bg = '#FADBD8'; border = '#E74C3C'; color = '#78281F'; }
+                    }
+                    const letter = ['A', 'B', 'C', 'D'][oIdx];
+                    html += `<button type="button" onclick="selectEngOption(${idx}, ${oIdx})" style="text-align:left; padding:7px 10px; border-radius:8px; border:2px solid ${border}; background:${bg}; color:${color}; font-family:inherit; font-size:12.5px; font-weight:600; cursor:pointer;">
+                        ${letter}. ${opt}
+                    </button>`;
+                });
+                html += `</div>`;
+                if (currentEngQuiz.submitted) {
+                    html += `<div style="margin-top:6px; font-size:12px; color:#1F618D; background:#EBF5FB; padding:5px 8px; border-radius:6px;">💡 ${item.exp}</div>`;
+                }
+                html += `</div>`;
+            });
+
+            if (!currentEngQuiz.submitted) {
+                html += `<button class="btn btn-accent" style="width:100%; padding:10px; font-size:14px;" onclick="submitEnglishGrade6Quiz()">✅ Nộp bài & Nhận Sao Thưởng</button>`;
+            }
+            box.innerHTML = html;
         }
 
         loadGame();
