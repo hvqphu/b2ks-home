@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>B2KS Daily Routines v16 - RPG Khu Phố & Gia Đình</title>
+    <title>B2KS Daily Routines v17 - RPG Khu Phố & Khu Vui Chơi Đối Kháng</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
 
@@ -123,7 +123,7 @@
         }
 
         /* Canvas */
-        canvas {
+        canvas#gameCanvas {
             display: block;
             width: 100vw;
             height: 100dvh;
@@ -564,23 +564,19 @@
             </div>
             <div style="font-size: 14px; line-height: 1.55;">
                 <p><b>🕹️ Di chuyển tự do:</b> Dùng phím <b>Mũi tên / W A S D</b> hoặc <b>Nút xoay Joystick</b> góc dưới bên trái màn hình.</p>
-                <p><b>🌗 Chu kỳ Sáng / Tối Thời Gian Thực:</b></p>
+                <p><b>🕹️ Khu Vui Chơi Đối Kháng (Multiplayer Arcade):</b></p>
                 <ul>
-                    <li>Bầu trời, ánh sáng khu phố và đèn trong nhà tự động thay đổi theo <b>đồng hồ thực tế trên thiết bị của bạn</b> (Bình minh, Ban ngày, Hoàng hôn, Ban đêm bật đèn ấm áp).</li>
+                    <li>Ghé <b>Khu Vui Chơi B2KS</b> ở trung tâm khu phố để tham gia các trò chơi đối kháng 2–4 người trên cùng màn hình (Cờ Caro XO, Đố Vui Giành Chuông, Đấu Súng Không Gian).</li>
+                    <li>Mỗi người tham gia cược <b>1⭐</b>, người chiến thắng nhận trọn quỹ thưởng!</li>
                 </ul>
                 <p><b>🏢 Khám phá Khu phố & Nhà phố gia đình:</b></p>
                 <ul>
                     <li>Đi tới cổng ngôi nhà và bấm nút <b>🏠 Vào nhà</b> để bước vào <b>Nhà phố gia đình</b>.</li>
-                    <li>Mỗi phòng đều có <b>cửa ra vào bằng gỗ</b> nối với sảnh cầu thang giữa nhà; ở chân cầu thang tầng 1 có <b>Cửa chính ra phố</b>.</li>
-                    <li>🔒 <b>Quyền riêng tư:</b> Nếu chủ phòng khóa cửa, cửa gỗ sẽ đóng chặt và hiện ổ khóa cho đến khi chủ phòng mở khóa.</li>
+                    <li>Ghé <b>🎓 Trung Tâm Tiếng Anh</b>, chọn chủ đề yêu thích và hoàn thành 10 câu hỏi để nhận sao thưởng.</li>
                 </ul>
                 <p><b>💬 Bong bóng hội thoại & Điểm thưởng:</b></p>
                 <ul>
                     <li>Gõ lời thoại ở thanh bên dưới để hiện <b>bong bóng thoại trên đầu nhân vật</b>. Câu tiếng Anh sẽ tự động cộng <b>+5⭐</b>!</li>
-                </ul>
-                <p><b>🚪 Tủ quần áo trong phòng riêng:</b></p>
-                <ul>
-                    <li>Mỗi phòng riêng đều có một <b>Tủ quần áo gỗ (🧥)</b>. Bạn chỉ có thể thay đổi quần áo, kiểu tóc và phụ kiện khi đi đến gần và <b>mở tủ quần áo trong chính phòng riêng của mình</b>!</li>
                 </ul>
             </div>
         </div>
@@ -646,7 +642,7 @@
         </div>
     </div>
 
-    <!-- 4. SUPERMARKET MODAL (NO CLOTHING ITEMS) -->
+    <!-- 4. SUPERMARKET MODAL -->
     <div class="modal-overlay" id="shop-modal">
         <div class="modal-content pixel-box">
             <div class="modal-header">
@@ -711,7 +707,7 @@
         </div>
     </div>
 
-    <!-- 4D. HAIR SALON MODAL (ONLY PLACE TO CHANGE HAIR STYLE & COLOR USING POINTS) -->
+    <!-- 4D. HAIR SALON MODAL -->
     <div class="modal-overlay" id="salon-modal">
         <div class="modal-content pixel-box">
             <div class="modal-header">
@@ -741,7 +737,7 @@
         </div>
     </div>
 
-    <!-- 4F. ENGLISH CENTER GRADE 6 QUIZ MODAL -->
+    <!-- 4F. ENGLISH CENTER GRADE 6 QUIZ MODAL (QUESTIONS APPEAR ONLY AFTER SELECTING CATEGORY) -->
     <div class="modal-overlay" id="english-center-modal">
         <div class="modal-content pixel-box" style="max-width:640px;">
             <div class="modal-header">
@@ -761,7 +757,62 @@
         </div>
     </div>
 
-    <!-- 4E. PRIVATE ROOM FLOATING TOOLBAR & DECOR PICKER (NON-BLOCKING OVER GAME CANVAS) -->
+    <!-- 4G. MULTIPLAYER ARCADE ZONE MODAL (1-2-3-4 PLAYER BETTING MINIGAMES) -->
+    <div class="modal-overlay" id="arcade-modal">
+        <div class="modal-content pixel-box" style="max-width:680px;">
+            <div class="modal-header">
+                <h2>🕹️ Khu Vui Chơi Đối Kháng B2KS (1–4 Người)</h2>
+                <button class="btn btn-primary btn-sm" onclick="closeArcadeModal()">Đóng</button>
+            </div>
+            <div id="arcade-lobby-view">
+                <div style="background:#FEF9E7; border:2px solid #F39C12; border-radius:10px; padding:10px 12px; margin-bottom:12px; font-size:13px; display:flex; align-items:center; gap:10px;">
+                    <span style="font-size:26px;">👾</span>
+                    <div><b>Quản Trò Arcade:</b> "Chào mừng đến sảnh game đối kháng! Mỗi người chơi tham gia cược <b>1⭐</b>, người thắng nhận trọn bộ số điểm của cả bàn!"</div>
+                </div>
+
+                <div class="form-group">
+                    <label>1. Chọn thành viên tham gia trận đấu (Từ 2 đến 4 người - Mỗi người cược 1⭐):</label>
+                    <div id="arcade-player-selector" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:8px;"></div>
+                </div>
+
+                <div style="background:#EBF5FB; border:2px solid #2980B9; border-radius:8px; padding:8px 12px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+                    <span style="font-size:13px; font-weight:700; color:#1B4F72;">👥 Số người chơi: <span id="arcade-selected-count">2</span> người</span>
+                    <span class="points-pill" style="font-size:13px;">🏆 Tổng quỹ thưởng: <span id="arcade-pot-preview">2</span>⭐</span>
+                </div>
+
+                <div class="form-group">
+                    <label>2. Chọn trò chơi đối kháng:</label>
+                    <div class="grid-2">
+                        <div class="card-item" style="background:#FDEDEC;">
+                            <div>
+                                <b>❌⭕ Cờ Caro / Tic-Tac-Toe</b>
+                                <div style="font-size:12px; color:#555; margin-top:3px;">Dành cho <b>2 người</b>. Đấu trí xếp 3 ô thẳng hàng để ẵm trọn quỹ cược!</div>
+                            </div>
+                            <button class="btn btn-primary btn-sm" onclick="startArcadeMatch('tictactoe')">▶️ Chơi XO (2 Người)</button>
+                        </div>
+                        <div class="card-item" style="background:#E8F8F5;">
+                            <div>
+                                <b>⚡ Đố Vui Giành Chuông</b>
+                                <div style="font-size:12px; color:#555; margin-top:3px;">Dành cho <b>2–4 người</b>. Bấm nút của mình thật nhanh để giành quyền trả lời!</div>
+                            </div>
+                            <button class="btn btn-sm" style="background:#16A085;" onclick="startArcadeMatch('quiz')">▶️ Chơi Đố Vui (2–4 Người)</button>
+                        </div>
+                        <div class="card-item" style="background:#F5EEF8;">
+                            <div>
+                                <b>🚀 Đấu Súng Không Gian (1-Nút)</b>
+                                <div style="font-size:12px; color:#555; margin-top:3px;">Dành cho <b>2–4 người</b>. Tàu tự xoay nòng, bấm 1 nút để lao tới & bắn hạ đối thủ!</div>
+                            </div>
+                            <button class="btn btn-purple btn-sm" onclick="startArcadeMatch('shooter')">▶️ Bắn Súng (2–4 Người)</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="arcade-game-view" style="display:none;"></div>
+        </div>
+    </div>
+
+    <!-- 4E. PRIVATE ROOM FLOATING TOOLBAR & DECOR PICKER -->
     <div id="private-room-toolbar" class="pixel-box" style="display:none; position:fixed; top:92px; left:50%; transform:translateX(-50%); z-index:92; padding:6px 10px; gap:8px; align-items:center; flex-wrap:wrap; max-width:95vw; background:rgba(255,255,255,0.95);">
         <span id="pr-room-badge" style="font-weight:700; font-size:12.5px; color:#2C3E50;">🛏️ Phòng Riêng</span>
         <label id="pr-privacy-label" style="display:flex; align-items:center; gap:5px; font-weight:700; font-size:12px; cursor:pointer; background:#EEF2F7; padding:3px 8px; border-radius:8px;">
@@ -778,7 +829,7 @@
         <button class="btn btn-primary btn-sm" style="padding:4px 9px; font-size:11.5px;" onclick="exitPrivateRoomToHallway()">🚪 Ra hành lang</button>
     </div>
 
-    <!-- Compact Decor Slot Picker Modal (opened when interacting with a decor slot in private room) -->
+    <!-- Compact Decor Slot Picker Modal -->
     <div class="modal-overlay" id="slot-picker-modal">
         <div class="modal-content pixel-box" style="max-width:440px;">
             <div class="modal-header">
@@ -792,7 +843,7 @@
         </div>
     </div>
 
-    <!-- 4F. LIVING ROOM YOUTUBE TV MODAL (30 MIN/DAY LIMIT FOR KIDS + RECHARGE CARDS) -->
+    <!-- 4F. LIVING ROOM YOUTUBE TV MODAL -->
     <div class="modal-overlay" id="tv-modal">
         <div class="modal-content pixel-box" style="max-width:620px;">
             <div class="modal-header">
@@ -832,7 +883,6 @@
                 <button class="btn btn-sm btn-primary" onclick="switchCustomTab('house')">🏢 Nhà phố gia đình</button>
             </div>
 
-            <!-- Tab Nhân vật với hình ảnh trực quan -->
             <div id="custom-tab-char">
                 <div id="wardrobe-locked-banner" style="display:none; background:#FDEDEC; border:2.5px solid #E74C3C; border-radius:10px; padding:12px; margin-bottom:12px; color:#922B21; font-size:13px; line-height:1.5;">
                     <div style="font-weight:700; font-size:14px; margin-bottom:4px;">🔒 Tủ quần áo chưa được mở!</div>
@@ -892,7 +942,6 @@
                 <button class="btn btn-sm" style="margin-top:8px;" onclick="addNewFamilyMember()">Thêm thành viên</button>
             </div>
 
-            <!-- Tab Phòng riêng -->
             <div id="custom-tab-room" style="display:none;">
                 <div style="background:#EEF2F7; padding:10px; border-radius:8px; margin-bottom:12px;">
                     <label style="display:flex; align-items:center; gap:8px; font-weight:700; cursor:pointer;">
@@ -914,7 +963,6 @@
                 <div id="room-decor-inventory" class="grid-2"></div>
             </div>
 
-            <!-- Tab Xây Nhà -->
             <div id="custom-tab-house" style="display:none;">
                 <div id="house-builder-locked" style="color:red; font-weight:600; display:none;">
                     ⚠️ Chỉ có Bố hoặc Mẹ mới có quyền chọn vị trí xây nhà và kiểu dáng ngôi nhà!
@@ -976,8 +1024,7 @@
         </div>
     </div>
 
-
-    <!-- 8. PASSCODE GATE MODAL (MÃ PIN PHỤ HUYNH) -->
+    <!-- 8. PASSCODE GATE MODAL -->
     <div class="modal-overlay" id="pin-modal" style="z-index:260;">
         <div class="modal-content pixel-box" style="max-width:340px; text-align:center;">
             <div class="modal-header">
@@ -1006,7 +1053,7 @@
         </div>
     </div>
 
-    <!-- 9. FAMILY SYNC & DEVICE LOCK MODAL (4 ĐIỆN THOẠI & KHÓA MÁY CHO CON) -->
+    <!-- 9. FAMILY SYNC & DEVICE LOCK MODAL -->
     <div class="modal-overlay" id="family-sync-modal">
         <div class="modal-content pixel-box" style="max-width:540px;">
             <div class="modal-header">
@@ -1123,7 +1170,6 @@
             const mm = String(now.getMinutes()).padStart(2, '0');
             const timeStr = `${hh}:${mm}`;
 
-            // Dawn: 5:00 - 7:00
             if (h >= 5 && h < 7) {
                 return {
                     phase: 'dawn',
@@ -1135,7 +1181,6 @@
                     isNight: false
                 };
             }
-            // Day: 7:00 - 17:00
             if (h >= 7 && h < 17) {
                 return {
                     phase: 'day',
@@ -1147,7 +1192,6 @@
                     isNight: false
                 };
             }
-            // Sunset / Dusk: 17:00 - 19:00
             if (h >= 17 && h < 19) {
                 return {
                     phase: 'sunset',
@@ -1159,7 +1203,6 @@
                     isNight: true
                 };
             }
-            // Night: 19:00 - 5:00
             return {
                 phase: 'night',
                 label: `🌙 ${timeStr}`,
@@ -1190,14 +1233,12 @@
         const STREET_WORLD = { width: 2200, height: 1560 };
         const HOUSE_WORLD = { width: 1120, height: 800 };
 
-        // 3 residential plots distributed across North-West and Central blocks
         const PLOTS = [
             { x: 420, y: 340, label: 'Lô số 1 (Khu Bắc)' },
             { x: 840, y: 340, label: 'Lô số 2 (Trung tâm)' },
             { x: 420, y: 860, label: 'Lô số 3 (Đại lộ Tây)' }
         ];
 
-        // Supermarket Catalog (NO clothing/fashion items!)
         const SHOP_CATALOG = [
             { id: 'd_plant', category: 'decor', name: 'Chậu cây Monstera', icon: '🪴', price: 25, desc: 'Chậu gốm trắng & cây lá xẻ xanh mướt' },
             { id: 'd_bookshelf', category: 'decor', name: 'Giá sách Gỗ 3 Tầng', icon: '📚', price: 40, desc: 'Kệ gỗ đầy sách màu sắc cho góc học tập' },
@@ -1212,7 +1253,6 @@
             { id: 'v_dish', category: 'voucher', name: 'Thẻ Miễn Rửa Bát 1 Lần', icon: '🍽️', price: 60, desc: 'Chuyển lượt rửa bát cho Bố/Mẹ' }
         ];
 
-        // Fashion Boutique Catalog (Sets, Hats, Accessories -> Stored directly in Owner's Wardrobe)
         const FASHION_CATALOG = [
             { id: 'f_set_royal', sub: 'set', name: 'Set Hoàng Tử / Công Chúa', icon: '🤴', price: 75, shirtColor: '#8E44AD', shirtPattern: 'vest', pantsColor: '#2C3E50', pantsStyle: 'pants', desc: 'Gồm: Áo gile tím cổ trắng hoàng gia + Quần tây dài xanh than lịch lãm' },
             { id: 'f_set_princess', sub: 'set', name: 'Set Váy Hồng Dạ Hội', icon: '👗', price: 75, shirtColor: '#E91E63', shirtPattern: 'heart', pantsColor: '#D81B60', pantsStyle: 'skirt', desc: 'Gồm: Áo hồng in trái tim + Chân váy xòe xếp ly hồng đậm nữ tính' },
@@ -1364,7 +1404,7 @@
         };
 
         function loadGame() {
-            const saved = localStorage.getItem('b2ks_daily_routines_rpg_v16') || localStorage.getItem('b2ks_daily_routines_rpg_v16');
+            const saved = localStorage.getItem('b2ks_daily_routines_rpg_v16');
             if (saved) {
                 try {
                     const parsed = JSON.parse(saved);
@@ -1383,7 +1423,6 @@
                     }
                 } catch (e) { console.error(e); }
             }
-            // Per-device active member always comes from deviceConfig so each phone keeps its own character!
             if (deviceConfig.currentMemberId && state.members.some(m => m.id === deviceConfig.currentMemberId)) {
                 state.currentUserId = deviceConfig.currentMemberId;
             }
@@ -1652,7 +1691,7 @@
             }).catch(() => {});
         }, 1200);
 
-        /* ACTIVITY COOLDOWN & DAILY CAP (PREVENT SPAMMING EAT / SLEEP / REST POINTS) */
+        /* ACTIVITY COOLDOWN & DAILY CAP */
         const ACTIVITY_RULES = {
             eat: { label: 'Ăn cơm', cooldownMs: 15 * 60 * 1000, maxPerDay: 3, reward: 2, fullMsg: 'Bụng no căng rồi! Để lát nữa mới ăn tiếp được nhé 😋', doneMsg: 'Hôm nay đã ăn đủ 3 bữa chính rồi! 🍽️' },
             sleep: { label: 'Đi ngủ', cooldownMs: 30 * 60 * 1000, maxPerDay: 2, reward: 2, fullMsg: 'Mình vừa ngủ dậy, tỉnh táo lắm rồi! Đi chơi thôi ☀️', doneMsg: 'Hôm nay đã ngủ đủ giấc trưa & tối rồi! 😴' },
@@ -1847,25 +1886,6 @@
             showToast(`🚪 Đã mở tủ quần áo trong ${room.name}!`);
         }
 
-        function goToMyWardrobe() {
-            const user = getCurrentUser();
-            const myRoom = getMemberPrivateRoom(user);
-            if (!myRoom) {
-                return showToast('⚠️ Không tìm thấy tủ quần áo của bạn!');
-            }
-            activePrivateRoomId = myRoom.id;
-            user.scene = 'private_room';
-            user.privateRoomId = myRoom.id;
-            user.x = 670;
-            user.y = 240;
-            user.dir = 'up';
-            AudioEngine.playSuccess();
-            syncPrivateRoomToolbar();
-            updateHUD();
-            saveGame();
-            openWardrobeModal(myRoom);
-        }
-
         function canMoveInsideHouse(member, nextX, nextY) {
             const inStairwell = (nextX >= 500 && nextX <= 620 && nextY >= 155 && nextY <= 745);
             if (inStairwell) return { allowed: true };
@@ -1901,7 +1921,7 @@
         }
 
         /* =========================================================================
-           5. UI, MODALS, TASKS (WITH TIMESTAMPS & DELETE), SHOP & VISUAL CUSTOMIZATION
+           5. UI, MODALS, TASKS, SHOP & VISUAL CUSTOMIZATION
            ========================================================================= */
         function showToast(msg) {
             const container = document.getElementById('toast-container');
@@ -2024,6 +2044,8 @@
             if (id === 'house-modal') renderHouseModal();
             if (id === 'tv-modal') openTvModal();
             if (id === 'family-sync-modal') renderFamilySyncModal();
+            if (id === 'english-center-modal') openEnglishCenterLobby();
+            if (id === 'arcade-modal') renderArcadeLobby();
         }
 
         function closeModal(id) {
@@ -2080,7 +2102,7 @@
             saveGame();
         }
 
-        /* TASKS & HOMEWORK WITH TIMESTAMP & PARENT DELETE */
+        /* TASKS & HOMEWORK */
         function toggleHomeworkUpload() {
             const type = document.getElementById('task-type').value;
             document.getElementById('parent-file-group').style.display = (type === 'homework') ? 'block' : 'none';
@@ -2093,7 +2115,6 @@
             if (idx === -1) return;
             const task = state.tasks[idx];
 
-            // Refund points to creator if task is not yet completed
             if (task.status !== 'completed') {
                 const creator = state.members.find(m => m.id === task.creatorId);
                 if (creator) {
@@ -2157,7 +2178,6 @@
                     statusBadge = `<span class="tag" style="background:#D4EDDA; color:#155724;">🎉 Hoàn thành ${t.grade !== null ? `(${t.grade}/10)` : ''}</span>`;
                 }
 
-                // Parent delete button
                 if (isParent(user)) {
                     actionButtons += `<button class="btn btn-sm btn-danger" onclick="deleteTask(${t.id})" title="Xóa công việc/bài tập">🗑️ Xóa</button>`;
                 }
@@ -2358,10 +2378,9 @@
             openModal('hw-action-modal');
         }
 
-        /* DETAILED ITEM ILLUSTRATION HELPER (CANVAS + SVG THUMBNAILS) */
+        /* DETAILED ITEM ILLUSTRATION HELPER */
         function renderItemIllustrationSVG(itemId, size = 54) {
             if (itemId === 'd_pc') {
-                // Desk + Monitor + PC Tower + Keyboard + Chair
                 return `<svg width="${size}" height="${size}" viewBox="0 0 64 64">
                     <rect x="8" y="36" width="48" height="5" rx="2" fill="#A04000" stroke="#2C3E50" stroke-width="2"/>
                     <rect x="11" y="41" width="5" height="17" fill="#7E5109" stroke="#2C3E50" stroke-width="2"/>
@@ -2434,29 +2453,23 @@
             c.save();
             c.translate(x, y);
             if (decorId === 'd_pc') {
-                // Detailed Study Desk + Monitor + PC Case + Chair
                 c.fillStyle = '#E74C3C';
                 c.strokeStyle = '#2C3E50';
                 c.lineWidth = 2;
                 c.beginPath(); c.roundRect(-10, 4, 20, 14, 3); c.fill(); c.stroke();
-                // Desk top
                 c.fillStyle = '#A04000';
                 c.fillRect(-30, -4, 60, 7);
                 c.strokeRect(-30, -4, 60, 7);
-                // Desk legs
                 c.fillStyle = '#7E5109';
                 c.fillRect(-27, 3, 5, 16);
                 c.fillRect(22, 3, 5, 16);
-                // Computer Monitor
                 c.fillStyle = '#2C3E50';
                 c.fillRect(-16, -24, 26, 17);
                 c.strokeRect(-16, -24, 26, 17);
                 c.fillStyle = '#5DADE2';
                 c.fillRect(-14, -22, 22, 12);
-                // Monitor stand
                 c.fillStyle = '#7F8C8D';
                 c.fillRect(-6, -7, 6, 3);
-                // PC Tower
                 c.fillStyle = '#34495E';
                 c.fillRect(14, -19, 10, 15);
                 c.strokeRect(14, -19, 10, 15);
@@ -2505,7 +2518,7 @@
             c.restore();
         }
 
-        /* SUPERMARKET (NO OUTFITS), PERSONAL BAG, FASHION BOUTIQUE & HAIR SALON */
+        /* SUPERMARKET, PERSONAL BAG, FASHION BOUTIQUE & HAIR SALON */
         function renderShop(tab) {
             const grid = document.getElementById('shop-items-grid');
             const user = getCurrentUser();
@@ -2618,7 +2631,6 @@
                 return;
             }
 
-            // Decor items in bag
             const ownedDecors = user.inventory.map(id => SHOP_CATALOG.find(i => i.id === id && i.category === 'decor')).filter(Boolean);
             if (ownedDecors.length === 0) {
                 grid.innerHTML = '<p style="color:#666; font-size:13px;">Chưa có đồ trang trí phòng. Hãy mua tại <b>🏪 Siêu thị</b>!</p>';
@@ -2656,7 +2668,7 @@
             const idx = user.inventory.indexOf('tv_30min');
             if (idx === -1) return showToast('⚠️ Bạn không còn Thẻ xem YouTube nào!');
             user.inventory.splice(idx, 1);
-            user.tvBonusSecondsToday += 1800; // +30 minutes
+            user.tvBonusSecondsToday += 1800;
             AudioEngine.playSuccess();
             showToast('📺 Đã nạp thêm +30 phút xem YouTube hôm nay!');
             saveGame();
@@ -2664,7 +2676,7 @@
             if (document.getElementById('tv-modal').style.display === 'flex') updateTvStatusUI();
         }
 
-        /* FASHION BOUTIQUE WITH LIVE TRY-ON & MINI OUTFIT PREVIEW */
+        /* FASHION BOUTIQUE */
         let tryOnFashionState = { setItem: null, accItem: null };
         let currentFashionTab = 'set';
 
@@ -2698,7 +2710,6 @@
             const pCtx = pCanvas.getContext('2d');
             pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
 
-            // Boutique spotlight background
             pCtx.fillStyle = '#FFF5F7';
             pCtx.fillRect(0, 0, pCanvas.width, pCanvas.height);
             pCtx.fillStyle = '#FADBD8';
@@ -2712,9 +2723,7 @@
 
             const previewMember = {
                 ...user,
-                x: 52,
-                y: 80,
-                dir: 'down',
+                x: 52, y: 80, dir: 'down',
                 shirtColor: setIt ? setIt.shirtColor : user.shirtColor,
                 shirtPattern: setIt ? setIt.shirtPattern : user.shirtPattern,
                 pantsColor: setIt ? setIt.pantsColor : user.pantsColor,
@@ -2809,7 +2818,7 @@
             updateHUD(); renderFashionStore(item.sub); saveGame();
         }
 
-        /* HAIR SALON (EXCLUSIVELY FOR HAIR STYLE & HAIR COLOR WITH POINTS) */
+        /* HAIR SALON */
         let salonDraft = { hairStyle: 'short', hairColor: '#2C3E50' };
 
         function renderSalonModal() {
@@ -2901,7 +2910,7 @@
         }
 
         /* =========================================================================
-           PRIVATE ROOM DEDICATED INTERACTIVE SCENE (MOVE & INTERACT + DOOR EXIT)
+           PRIVATE ROOM DEDICATED INTERACTIVE SCENE
            ========================================================================= */
         const PRIVATE_ROOM_WORLD = { width: 760, height: 420 };
         const ROOM_DECOR_SLOTS = [
@@ -2926,7 +2935,6 @@
             activePrivateRoomId = room.id;
             user.scene = 'private_room';
             user.privateRoomId = room.id;
-            // Spawn just inside the private room wooden door (door is at bottom center x=380, y=385)
             user.x = 380;
             user.y = 335;
             user.dir = 'up';
@@ -2945,7 +2953,6 @@
             user.privateRoomId = null;
             activePrivateRoomId = null;
             if (room) {
-                // Step character safely into central hallway outside the room door
                 user.x = room.doorSide === 'right' ? 525 : 595;
                 user.y = room.y + room.h - 45;
                 user.dir = room.doorSide === 'right' ? 'right' : 'left';
@@ -3084,11 +3091,9 @@
             const ownerMember = getPrivateRoomPrimaryOwner(room);
             const isOwner = room && room.ownerIds && room.ownerIds.includes(me.id);
 
-            // Outer dark backdrop
             ctx.fillStyle = '#1C2833';
             ctx.fillRect(-100, -100, W + 200, H + 200);
 
-            // Wall & Wooden Floor
             const wallColor = (ownerMember && ownerMember.roomWall) || (room && room.wall) || '#D5F5E3';
             ctx.fillStyle = wallColor;
             ctx.fillRect(0, 0, W, 200);
@@ -3096,23 +3101,19 @@
             ctx.fillStyle = '#E59866';
             ctx.fillRect(0, 200, W, H - 200);
 
-            // Wooden plank lines on floor
             ctx.strokeStyle = 'rgba(135, 54, 0, 0.16)';
             ctx.lineWidth = 2;
             for (let fy = 235; fy < H; fy += 35) {
                 ctx.beginPath(); ctx.moveTo(0, fy); ctx.lineTo(W, fy); ctx.stroke();
             }
 
-            // Baseboard trim
             ctx.fillStyle = '#873600';
             ctx.fillRect(0, 192, W, 10);
 
-            // Room outer border
             ctx.strokeStyle = '#2C3E50';
             ctx.lineWidth = 6;
             ctx.strokeRect(0, 0, W, H);
 
-            // Window with real-time sky view (day/night!)
             ctx.fillStyle = lighting.isNight ? '#1C2541' : '#AED6F1';
             ctx.strokeStyle = '#2C3E50';
             ctx.lineWidth = 3.5;
@@ -3127,7 +3128,6 @@
             ctx.moveTo(265, 86); ctx.lineTo(380, 86);
             ctx.stroke();
 
-            // Cozy Bed on left side (Interactive!)
             ctx.fillStyle = '#8E44AD';
             ctx.strokeStyle = '#2C3E50';
             ctx.lineWidth = 3;
@@ -3142,7 +3142,6 @@
             ctx.textAlign = 'center';
             ctx.fillText('🛏️ Giường ngủ', 107, 136);
 
-            // Study Desk / Bookshelf corner on upper-center-right
             ctx.fillStyle = '#A04000';
             ctx.beginPath(); ctx.roundRect(445, 135, 95, 65, 6); ctx.fill(); ctx.stroke();
             ctx.fillStyle = '#F9E79F';
@@ -3152,7 +3151,6 @@
             ctx.fillStyle = '#2C3E50';
             ctx.fillText('📚 Kệ sách', 492, 126);
 
-            // Wooden Wardrobe on right side (Interactive!)
             const isWardrobeOpen = room && (wardrobeOpenedRoomId === room.id);
             ctx.fillStyle = '#873600';
             ctx.beginPath(); ctx.roundRect(625, 95, 95, 135, 8); ctx.fill(); ctx.stroke();
@@ -3177,13 +3175,11 @@
             ctx.textAlign = 'center';
             ctx.fillText(isOwner ? '🧥 Tủ quần áo' : '🔒 Tủ riêng', 672, 82);
 
-            // Soft Rug in center
             ctx.fillStyle = '#FADBD8';
             ctx.strokeStyle = '#E6B0AA';
             ctx.lineWidth = 3;
             ctx.beginPath(); ctx.ellipse(380, 290, 155, 52, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
-            // Draw Decor Slots & Placed Furniture
             const slotsMap = (ownerMember && ownerMember.roomSlots) || {};
             ROOM_DECOR_SLOTS.forEach(slot => {
                 const placedId = slotsMap[slot.id];
@@ -3194,7 +3190,7 @@
                 ctx.beginPath();
                 ctx.ellipse(slot.x, slot.y + 18, 36, 13, 0, 0, Math.PI * 2);
                 ctx.stroke();
-                cSetLineDashClear(ctx);
+                ctx.setLineDash([]);
 
                 if (placedId) {
                     drawWorldDecorItem(ctx, placedId, slot.x, slot.y);
@@ -3211,7 +3207,6 @@
                 ctx.restore();
             });
 
-            // Prominent Wooden Exit Door at Bottom Center (walk through door to exit to hallway!)
             ctx.fillStyle = '#6E2C00';
             ctx.strokeStyle = '#2C3E50';
             ctx.lineWidth = 3;
@@ -3228,7 +3223,6 @@
             ctx.textAlign = 'center';
             ctx.fillText('🚪 RA HÀNH LANG', 380, H - 5);
 
-            // Warm night lamp glow if night
             if (lighting.isNight) {
                 const grad = ctx.createRadialGradient(380, 120, 15, 380, 160, 260);
                 grad.addColorStop(0, 'rgba(255, 243, 176, 0.34)');
@@ -3238,20 +3232,14 @@
             }
         }
 
-        function cSetLineDashClear(c) {
-            c.setLineDash([]);
-        }
-
-        /* =========================================================================
-           LIVING ROOM SMART YOUTUBE TV (30 MIN/DAY FOR KIDS + RECHARGE CARDS)
-           ========================================================================= */
+        /* LIVING ROOM SMART YOUTUBE TV */
         let tvTimerInterval = null;
         let currentTvVideoId = 'XqZsoesa55w';
 
         function getRemainingTvSeconds(member) {
             ensureMemberProps(member);
             if (isParent(member)) return Infinity;
-            const limit = 1800 + (member.tvBonusSecondsToday || 0); // 30 mins base + bonus cards
+            const limit = 1800 + (member.tvBonusSecondsToday || 0);
             return Math.max(0, limit - (member.tvSecondsUsedToday || 0));
         }
 
@@ -3370,9 +3358,7 @@
             updateHUD(); saveGame();
         }
 
-        /* =========================================================================
-           VISUAL CHARACTER & CLOTHING CUSTOMIZATION (WITH SVG GARMENT ICONS)
-           ========================================================================= */
+        /* VISUAL CHARACTER & CLOTHING CUSTOMIZATION */
         let draftChar = {
             hairStyle: 'short',
             hairColor: '#2C3E50',
@@ -3464,7 +3450,6 @@
         function renderVisualCharacterPickers() {
             const user = getCurrentUser();
 
-            // 1. Purchased Fashion Sets in Wardrobe
             const setGrid = document.getElementById('visual-fashion-set-grid');
             setGrid.innerHTML = '';
             const ownedSets = user.inventory.map(id => FASHION_CATALOG.find(f => f.id === id && f.sub === 'set')).filter(Boolean);
@@ -3482,7 +3467,6 @@
                 });
             }
 
-            // 2. Basic Shirt Cards
             const shirtGrid = document.getElementById('visual-shirt-grid');
             shirtGrid.innerHTML = '';
             SHIRT_VISUAL_OPTIONS.forEach(s => {
@@ -3495,7 +3479,6 @@
                 `;
             });
 
-            // 3. Basic Pants / Skirt Cards
             const pantsGrid = document.getElementById('visual-pants-grid');
             pantsGrid.innerHTML = '';
             PANTS_VISUAL_OPTIONS.forEach(p => {
@@ -3508,7 +3491,6 @@
                 `;
             });
 
-            // 4. Purchased Hats & Accessories in Wardrobe
             const outfitGrid = document.getElementById('visual-outfit-grid');
             outfitGrid.innerHTML = `
                 <div class="visual-option-card ${draftChar.outfit === '' ? 'selected' : ''}" style="padding:5px 10px;" onclick="selectDraftOutfit('')">
@@ -3540,18 +3522,6 @@
             draftChar.shirtPattern = st.shirtPattern;
             draftChar.pantsColor = st.pantsColor;
             draftChar.pantsStyle = st.pantsStyle;
-            renderVisualCharacterPickers();
-        }
-
-        function selectDraftHair(style) {
-            AudioEngine.playClick();
-            draftChar.hairStyle = style;
-            renderVisualCharacterPickers();
-        }
-
-        function selectDraftColor(prop, color) {
-            AudioEngine.playClick();
-            draftChar[prop] = color;
             renderVisualCharacterPickers();
         }
 
@@ -3589,9 +3559,7 @@
             pCtx.fill();
 
             const previewMember = {
-                x: 55,
-                y: 82,
-                dir: 'down',
+                x: 55, y: 82, dir: 'down',
                 name: document.getElementById('custom-char-name').value.trim() || getCurrentUser().name,
                 hairStyle: draftChar.hairStyle,
                 hairColor: draftChar.hairColor,
@@ -3825,7 +3793,7 @@
         }
 
         /* =========================================================================
-           7. CANVAS ENGINE, CAMERA (SAFE HUD PADDING) & INTERACTIONS
+           7. CANVAS ENGINE, CAMERA & INTERACTIONS
            ========================================================================= */
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -3840,7 +3808,15 @@
         const keys = {};
         window.addEventListener('keydown', e => {
             if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
-            keys[e.key.toLowerCase()] = true;
+            const k = e.key.toLowerCase();
+            keys[k] = true;
+
+            // Handle active Arcade Multiplayer controls when Arcade modal is open
+            if (document.getElementById('arcade-modal').style.display === 'flex' && activeArcadeMatch) {
+                handleArcadeKeyPress(k);
+                return;
+            }
+
             if ((e.key === ' ' || e.key === 'Enter') && currentInteractTarget) {
                 e.preventDefault();
                 triggerInteraction();
@@ -3876,7 +3852,7 @@
         window.addEventListener('mousemove', e => { if (joyActive) handleJoyMove(e.clientX, e.clientY); });
         window.addEventListener('mouseup', resetJoy);
 
-        // Ambient Cars on Horizontal & Vertical Avenues
+        // Ambient Cars
         const streetCars = [
             { axis: 'h', x: 150, y: 505, speed: 2.1, color: '#E74C3C', dir: 1 },
             { axis: 'h', x: 1650, y: 560, speed: -2.3, color: '#3498DB', dir: -1 },
@@ -3900,34 +3876,37 @@
                     label: '🏠 Vào nhà',
                     action: () => openModal('house-modal')
                 });
-                // Siêu thị B2KS (Khu Đông Bắc - Đại lộ Bắc)
+                // Siêu thị B2KS
                 items.push({
                     x: 1680, y: 410, radius: 88,
                     label: '🏪 Vào Siêu thị',
                     action: () => openModal('shop-modal')
                 });
-                // Cửa Hàng Thời Trang (Khu Tây Nam - Đại lộ Nam)
+                // Khu Vui Chơi Đối Kháng B2KS (Trung tâm bản đồ - x: 885, y: 740)
+                items.push({
+                    x: 885, y: 790, radius: 90,
+                    label: '🕹️ Vào Khu Vui Chơi (1⭐/lượt)',
+                    action: () => openModal('arcade-modal')
+                });
+                // Cửa Hàng Thời Trang
                 items.push({
                     x: 820, y: 930, radius: 88,
                     label: '👗 Cửa Hàng Thời Trang',
                     action: () => openModal('fashion-modal')
                 });
-                // Salon Tóc (Khu Đông Nam - Đại lộ Nam)
+                // Salon Tóc
                 items.push({
                     x: 1740, y: 930, radius: 88,
                     label: '💇 Salon Tóc',
                     action: () => openModal('salon-modal')
                 });
-                // Trung Tâm Tiếng Anh B2KS (Khu Tây - Đại lộ Nam)
+                // Trung Tâm Tiếng Anh B2KS (Mở sảnh chọn chủ đề trước, chưa hiện câu hỏi)
                 items.push({
                     x: 340, y: 930, radius: 88,
                     label: '🎓 Vào Trung Tâm Tiếng Anh',
-                    action: () => {
-                        openModal('english-center-modal');
-                        startEnglishGrade6Quiz('mix');
-                    }
+                    action: () => openModal('english-center-modal')
                 });
-                // Công viên & Luyện Tiếng Anh (Khu Tây Bắc)
+                // Công viên & Luyện Tiếng Anh
                 items.push({
                     x: 175, y: 425, radius: 82,
                     label: '💬 Luyện Tiếng Anh',
@@ -3936,7 +3915,7 @@
                         showToast('💡 Hãy nhập một câu tiếng Anh để nhận +5⭐!');
                     }
                 });
-                // Quảng trường Đài Phun Nước (Khu Hạ Tây - Dọc phố số 1)
+                // Quảng trường Đài Phun Nước
                 const parkSt = getActivityStatus(me, 'park_rest');
                 const parkLabel = parkSt.canEarn
                     ? `⛲ Nghỉ chân Quảng trường (+2⭐) [${parkSt.count}/${parkSt.maxPerDay}]`
@@ -3946,7 +3925,7 @@
                     label: parkLabel,
                     action: () => performRoutineActivity(me, 'park_rest', 'What a lovely sunny park!')
                 });
-                // Thư viện & Góc Đọc Sách (Khu Hạ Đông - Dọc phố số 2)
+                // Thư viện & Góc Đọc Sách
                 items.push({
                     x: 1580, y: 1360, radius: 85,
                     label: '📚 Góc Đọc Sách Tiếng Anh',
@@ -3961,14 +3940,12 @@
                 const room = getActivePrivateRoom();
                 const isOwner = room && room.ownerIds && room.ownerIds.includes(me.id);
 
-                // Exit door to hallway
                 items.push({
                     x: 380, y: PRIVATE_ROOM_WORLD.height - 25, radius: 62,
                     label: '🚪 Ra hành lang',
                     action: exitPrivateRoomToHallway
                 });
 
-                // Bed interaction (with cooldown & daily limit)
                 const sleepSt = getActivityStatus(me, 'sleep');
                 const sleepLabel = sleepSt.canEarn
                     ? `😴 Đi ngủ / Nghỉ ngơi (+2⭐) [${sleepSt.count}/${sleepSt.maxPerDay}]`
@@ -3979,7 +3956,6 @@
                     action: () => performRoutineActivity(me, 'sleep', 'Time to rest and recharge! 😴✨')
                 });
 
-                // Bookshelf / Study corner interaction
                 items.push({
                     x: 492, y: 215, radius: 72,
                     label: '📖 Đọc sách tiếng Anh',
@@ -3991,7 +3967,6 @@
                     }
                 });
 
-                // Wardrobe interaction
                 items.push({
                     x: 670, y: 235, radius: 80,
                     label: isOwner ? '🧥 Mở tủ quần áo' : '🔒 Tủ quần áo riêng',
@@ -4005,7 +3980,6 @@
                     }
                 });
 
-                // Decor Slots interaction (owner can place/remove furniture when walking near a slot)
                 if (isOwner) {
                     ROOM_DECOR_SLOTS.forEach(slot => {
                         items.push({
@@ -4091,7 +4065,7 @@
         }
 
         /* =========================================================================
-           8. HIGH-DETAIL CHIBI CHARACTER RENDERER (WITH GARMENT STYLES)
+           8. HIGH-DETAIL CHIBI CHARACTER RENDERER
            ========================================================================= */
         function drawDetailedChibi(member, isMe) {
             drawDetailedChibiOnContext(ctx, member, isMe, 1);
@@ -4109,23 +4083,19 @@
             c.lineWidth = 2.4;
             c.strokeStyle = '#2C3E50';
 
-            // 1. Soft Ground Shadow
             c.fillStyle = 'rgba(0,0,0,0.24)';
             c.beginPath();
             c.ellipse(0, 27, 16, 6, 0, 0, Math.PI * 2);
             c.fill();
 
-            // 2. Pants / Skirt / Shorts & Sneakers
             const leftLegY = 14 + walkCycle * 4;
             const rightLegY = 14 - walkCycle * 4;
             const pStyle = member.pantsStyle || 'pants';
 
             if (pStyle === 'skirt') {
-                // Skin legs under skirt
                 c.fillStyle = '#FFE0BD';
                 c.beginPath(); c.roundRect(-8, leftLegY + 2, 6.5, 8, 2); c.fill(); c.stroke();
                 c.beginPath(); c.roundRect(1.5, rightLegY + 2, 6.5, 8, 2); c.fill(); c.stroke();
-                // Pleated Skirt
                 c.fillStyle = member.pantsColor || '#8E44AD';
                 c.beginPath();
                 c.moveTo(-11, 12 + bob);
@@ -4148,7 +4118,6 @@
                 c.beginPath(); c.roundRect(1.5, rightLegY, 7.5, 10, 2); c.fill(); c.stroke();
             }
 
-            // Shoes + white sole
             c.fillStyle = '#E74C3C';
             c.beginPath(); c.roundRect(-10.5, leftLegY + 7, 9, 5, 2); c.fill(); c.stroke();
             c.beginPath(); c.roundRect(1.5, rightLegY + 7, 9, 5, 2); c.fill(); c.stroke();
@@ -4156,7 +4125,6 @@
             c.fillRect(-9.5, leftLegY + 10.5, 7, 1.5);
             c.fillRect(2.5, rightLegY + 10.5, 7, 1.5);
 
-            // 3. Sleeves & Hands
             const leftArmY = -2 - walkCycle * 4;
             const rightArmY = -2 + walkCycle * 4;
             c.fillStyle = member.shirtColor || '#3498DB';
@@ -4166,7 +4134,6 @@
             c.beginPath(); c.arc(-13.8, leftArmY + 9 + bob, 3, 0, Math.PI * 2); c.fill(); c.stroke();
             c.beginPath(); c.arc(13.8, rightArmY + 9 + bob, 3, 0, Math.PI * 2); c.fill(); c.stroke();
 
-            // 4. Detailed Torso with Shirt Pattern
             c.fillStyle = member.shirtColor || '#3498DB';
             c.beginPath();
             c.roundRect(-11.5, -3 + bob, 23, 18, 5);
@@ -4197,7 +4164,6 @@
                 c.closePath(); c.fill();
             }
 
-            // 5. Back Hair Layer
             c.fillStyle = member.hairColor || '#2C3E50';
             if (member.hairStyle === 'long') {
                 c.beginPath();
@@ -4215,14 +4181,12 @@
                 c.fillRect(12, -21 + bob, 3, 5);
             }
 
-            // 6. Chibi Head
             c.fillStyle = '#FFE0BD';
             c.beginPath();
             c.arc(0, -18 + bob, 16.5, 0, Math.PI * 2);
             c.fill();
             c.stroke();
 
-            // 7. Expressive Anime/Chibi Eyes, Eyebrows, Blush & Smile
             let eyeOffsetX = 0;
             if (member.dir === 'left') eyeOffsetX = -2.5;
             if (member.dir === 'right') eyeOffsetX = 2.5;
@@ -4256,7 +4220,6 @@
             c.arc(eyeOffsetX, -13 + bob, 3.5, 0.12 * Math.PI, 0.88 * Math.PI);
             c.stroke();
 
-            // 8. Front Hair Bangs
             c.fillStyle = member.hairColor || '#2C3E50';
             c.strokeStyle = '#2C3E50';
             c.lineWidth = 2.4;
@@ -4285,14 +4248,12 @@
             c.arc(0, -22 + bob, 12, 1.2 * Math.PI, 1.75 * Math.PI);
             c.stroke();
 
-            // 9. Hat / Accessory
             if (member.outfit) {
                 c.font = '21px Arial';
                 c.textAlign = 'center';
                 c.fillText(member.outfit, 0, -38 + bob);
             }
 
-            // 10. Name Badge & Speech Bubble
             if (c === ctx) {
                 c.fillStyle = isMe ? '#FF6B6B' : 'rgba(44, 62, 80, 0.9)';
                 c.beginPath();
@@ -4360,7 +4321,7 @@
         }
 
         /* =========================================================================
-           9. STREET & 3-STORY TOWNHOUSE RENDERERS (WITH DOORS & REALTIME LIGHTING)
+           9. STREET & 3-STORY TOWNHOUSE RENDERERS
            ========================================================================= */
         function drawStreetTownhouse(x, y, style, lighting) {
             ctx.save();
@@ -4390,7 +4351,6 @@
                 ctx.strokeRect(-88, fy, 176, 9);
 
                 [-54, 18].forEach(wx => {
-                    // Warm lit window at night!
                     ctx.fillStyle = lighting.isNight ? '#F9E79F' : '#AED6F1';
                     ctx.fillRect(wx, fy - 62, 36, 38);
                     ctx.strokeRect(wx, fy - 62, 36, 38);
@@ -4425,7 +4385,6 @@
             ctx.fill();
             ctx.stroke();
 
-            // Entrance Door
             ctx.fillStyle = '#8E44AD';
             ctx.beginPath();
             ctx.roundRect(-20, 12, 40, 58, [8, 8, 0, 0]);
@@ -4465,34 +4424,29 @@
 
         function drawShopBuilding(x, y, config, lighting) {
             ctx.save();
-            // Ground shadow
             ctx.fillStyle = 'rgba(0,0,0,0.18)';
             ctx.beginPath();
             ctx.ellipse(x, y + 66, 102, 14, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Main Building Body
             ctx.fillStyle = config.wallColor;
             ctx.fillRect(x - 95, y - 70, 190, 130);
             ctx.lineWidth = 3.5;
             ctx.strokeStyle = '#2C3E50';
             ctx.strokeRect(x - 95, y - 70, 190, 130);
 
-            // Display Windows (warm glow at night)
             [-76, 36].forEach(wx => {
                 ctx.fillStyle = lighting.isNight ? '#F9E79F' : '#D6EAF8';
                 ctx.fillRect(x + wx, y - 16, 40, 44);
                 ctx.strokeRect(x + wx, y - 16, 40, 44);
             });
 
-            // Striped Awning
             for (let ax = x - 95; ax < x + 95; ax += 19) {
                 ctx.fillStyle = (Math.round((ax - (x - 95)) / 19) % 2 === 0) ? config.awningColor : '#FFFFFF';
                 ctx.fillRect(ax, y - 52, 19, 16);
                 ctx.strokeRect(ax, y - 52, 19, 16);
             }
 
-            // Signboard
             ctx.fillStyle = config.signColor;
             ctx.fillRect(x - 98, y - 82, 196, 28);
             ctx.strokeRect(x - 98, y - 82, 196, 28);
@@ -4501,12 +4455,10 @@
             ctx.textAlign = 'center';
             ctx.fillText(config.title, x, y - 63);
 
-            // Window icons
             ctx.font = '26px Arial';
             ctx.fillText(config.icons, x, y + 6);
             ctx.restore();
 
-            // Staff NPC
             drawDetailedChibiOnContext(ctx, {
                 x: x, y: y + 42, dir: 'down', name: config.npcName,
                 hairStyle: config.npcHairStyle, hairColor: config.npcHairColor,
@@ -4520,14 +4472,12 @@
             const W = STREET_WORLD.width;
             const H = STREET_WORLD.height;
 
-            // 1. Dynamic Sky Backdrop
             const skyGrad = ctx.createLinearGradient(0, 0, 0, 240);
             skyGrad.addColorStop(0, lighting.skyTop);
             skyGrad.addColorStop(1, lighting.skyBottom);
             ctx.fillStyle = skyGrad;
             ctx.fillRect(0, 0, W, 240);
 
-            // Sun / Moon & Stars
             if (lighting.phase === 'night') {
                 ctx.fillStyle = '#FFFFFF';
                 for (let s = 0; s < 40; s++) {
@@ -4548,7 +4498,6 @@
                 ctx.beginPath(); ctx.arc(1780, sunY, 27, 0, Math.PI * 2); ctx.fill();
             }
 
-            // Drifting Clouds
             const cloudShift = (Date.now() / 65) % W;
             ctx.fillStyle = lighting.isNight ? 'rgba(200,214,229,0.28)' : 'rgba(255,255,255,0.9)';
             [200, 680, 1180, 1680].forEach((baseX, i) => {
@@ -4561,7 +4510,6 @@
                 ctx.fill();
             });
 
-            // Rolling Hills Horizon
             ctx.fillStyle = '#7DCEA0';
             ctx.beginPath();
             ctx.moveTo(0, 235);
@@ -4570,14 +4518,12 @@
             ctx.quadraticCurveTo(1920, 180, W, 235);
             ctx.fill();
 
-            // 2. Lush Green District Lawn
             const grassGrad = ctx.createLinearGradient(0, 225, 0, H);
             grassGrad.addColorStop(0, '#58D68D');
             grassGrad.addColorStop(1, '#2ECC71');
             ctx.fillStyle = grassGrad;
             ctx.fillRect(0, 225, W, H - 225);
 
-            // White Picket Fence along North border
             ctx.fillStyle = '#FDFEFE';
             ctx.strokeStyle = '#95A5A6';
             ctx.lineWidth = 1.5;
@@ -4586,122 +4532,72 @@
                 ctx.strokeRect(fx, 216, 12, 22);
             }
 
-            // 3. MULTI-AVENUE GRID ROAD NETWORK (2 Horizontal Avenues + 2 Vertical Streets)
-            // Horizontal Avenue 1 (North Ave): y = 415..595 (Sidewalks y=415..465 & y=595..635, Road y=465..595)
-            // Horizontal Avenue 2 (South Ave): y = 935..1115 (Sidewalks y=935..985 & y=1115..1155, Road y=985..1115)
-            // Vertical Street 1 (West St): x = 560..710 (Sidewalks x=560..595 & x=675..710, Road x=595..675)
-            // Vertical Street 2 (East Ave): x = 1060..1250 (Sidewalks x=1060..1095 & x=1215..1250, Road x=1095..1215)
-
             const hRoads = [
                 { y: 465, h: 130, swTop: 415, swBot: 595, name: 'ĐẠI LỘ BẮC B2KS' },
                 { y: 985, h: 130, swTop: 935, swBot: 1115, name: 'ĐẠI LỘ NAM B2KS' }
             ];
-            const vRoads = [
-                { x: 595, w: 80, swLeft: 560, swRight: 675 },
-                { x: 1095, w: 120, swLeft: 1060, swRight: 1215 }
-            ];
+            const vRoad = { x: 1090, w: 130, swLeft: 1040, swRight: 1220 };
 
-            // Draw Sidewalks First
-            ctx.fillStyle = '#EAEDED';
-            hRoads.forEach(hr => {
-                ctx.fillRect(0, hr.swTop, W, 50);
-                ctx.fillRect(0, hr.swBot, W, 42);
-            });
-            vRoads.forEach(vr => {
-                ctx.fillRect(vr.swLeft, 240, 35, H - 240);
-                ctx.fillRect(vr.swRight, 240, 35, H - 240);
-            });
-
-            // Sidewalk Paver Lines
-            ctx.strokeStyle = '#BDC3C7';
-            ctx.lineWidth = 1.5;
-            hRoads.forEach(hr => {
-                for (let sx = 0; sx < W; sx += 50) {
-                    ctx.strokeRect(sx, hr.swTop, 50, 50);
-                    ctx.strokeRect(sx, hr.swBot, 50, 42);
-                }
-            });
-            vRoads.forEach(vr => {
-                for (let sy = 240; sy < H; sy += 50) {
-                    ctx.strokeRect(vr.swLeft, sy, 35, 50);
-                    ctx.strokeRect(vr.swRight, sy, 35, 50);
-                }
-            });
-
-            // Draw Asphalt Roads (Seamless Intersections)
-            ctx.fillStyle = '#34495E';
-            hRoads.forEach(hr => ctx.fillRect(0, hr.y, W, hr.h));
-            vRoads.forEach(vr => ctx.fillRect(vr.x, 240, vr.w, H - 240));
-
-            // Crosswalks at all 4 Intersections
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-            hRoads.forEach(hr => {
-                vRoads.forEach(vr => {
-                    // Left & Right crosswalk stripes
-                    for (let cy = hr.y + 10; cy < hr.y + hr.h - 12; cy += 22) {
-                        ctx.fillRect(vr.x - 24, cy, 18, 11);
-                        ctx.fillRect(vr.x + vr.w + 6, cy, 18, 11);
-                    }
-                    // Top & Bottom crosswalk stripes
-                    for (let cx = vr.x + 8; cx < vr.x + vr.w - 10; cx += 20) {
-                        ctx.fillRect(cx, hr.y - 24, 10, 18);
-                        ctx.fillRect(cx, hr.y + hr.h + 6, 10, 18);
-                    }
-                });
-            });
-
-            // Yellow Dashed Center Lines (Broken cleanly at intersections)
-            ctx.strokeStyle = '#F4D03F';
-            ctx.lineWidth = 4;
-            ctx.setLineDash([28, 20]);
-            hRoads.forEach(hr => {
-                const midY = hr.y + hr.h / 2;
-                ctx.beginPath();
-                ctx.moveTo(0, midY); ctx.lineTo(560, midY);
-                ctx.moveTo(710, midY); ctx.lineTo(1060, midY);
-                ctx.moveTo(1250, midY); ctx.lineTo(W, midY);
-                ctx.stroke();
-            });
-            vRoads.forEach(vr => {
-                const midX = vr.x + vr.w / 2;
-                ctx.beginPath();
-                ctx.moveTo(midX, 250); ctx.lineTo(midX, 430);
-                ctx.moveTo(midX, 625); ctx.lineTo(midX, 950);
-                ctx.moveTo(midX, 1145); ctx.lineTo(midX, H - 20);
-                ctx.stroke();
-            });
-            ctx.setLineDash([]);
-
-            // Street Name Signs at Intersections
-            [
-                { x: 545, y: 405, text: '🪧 Đại lộ Bắc' },
-                { x: 1270, y: 405, text: '🪧 Phố Đông' },
-                { x: 545, y: 925, text: '🪧 Đại lộ Nam' },
-                { x: 1270, y: 925, text: '🪧 Ngã Tư Trung Tâm' }
-            ].forEach(sign => {
-                ctx.fillStyle = '#1F618D';
-                ctx.strokeStyle = '#FFFFFF';
+            hRoads.forEach(r => {
+                ctx.fillStyle = '#E5E7E9';
+                ctx.fillRect(0, r.swTop, W, r.h + 100);
+                ctx.strokeStyle = '#95A5A6';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.roundRect(sign.x - 52, sign.y - 16, 104, 22, 6);
-                ctx.fill();
+                ctx.moveTo(0, r.swTop); ctx.lineTo(W, r.swTop);
+                ctx.moveTo(0, r.swBot + 50); ctx.lineTo(W, r.swBot + 50);
                 ctx.stroke();
-                ctx.fillStyle = '#FFFFFF';
-                ctx.font = 'bold 11px Fredoka';
-                ctx.textAlign = 'center';
-                ctx.fillText(sign.text, sign.x, sign.y - 1);
+
+                ctx.fillStyle = '#34495E';
+                ctx.fillRect(0, r.y, W, r.h);
+
+                ctx.strokeStyle = '#F7DC6F';
+                ctx.lineWidth = 5;
+                ctx.setLineDash([34, 24]);
+                ctx.beginPath();
+                ctx.moveTo(0, r.y + r.h / 2);
+                ctx.lineTo(W, r.y + r.h / 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
             });
 
-            // 4. Ambient Moving Cars (Horizontal & Vertical)
+            ctx.fillStyle = '#E5E7E9';
+            ctx.fillRect(vRoad.swLeft, 225, vRoad.w + 100, H - 225);
+            ctx.fillStyle = '#34495E';
+            ctx.fillRect(vRoad.x, 225, vRoad.w, H - 225);
+
+            ctx.strokeStyle = '#F7DC6F';
+            ctx.lineWidth = 5;
+            ctx.setLineDash([34, 24]);
+            ctx.beginPath();
+            ctx.moveTo(vRoad.x + vRoad.w / 2, 235);
+            ctx.lineTo(vRoad.x + vRoad.w / 2, H);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            hRoads.forEach(r => {
+                ctx.fillStyle = '#34495E';
+                ctx.fillRect(vRoad.x, r.y, vRoad.w, r.h);
+                ctx.fillStyle = 'rgba(255,255,255,0.85)';
+                for (let zy = r.y + 10; zy < r.y + r.h - 10; zy += 22) {
+                    ctx.fillRect(vRoad.x - 28, zy, 22, 11);
+                    ctx.fillRect(vRoad.x + vRoad.w + 6, zy, 22, 11);
+                }
+                for (let zx = vRoad.x + 10; zx < vRoad.x + vRoad.w - 10; zx += 22) {
+                    ctx.fillRect(zx, r.y - 28, 11, 22);
+                    ctx.fillRect(zx, r.y + r.h + 6, 11, 22);
+                }
+            });
+
             streetCars.forEach(car => {
-                if (car.axis === 'v') {
-                    car.y += car.speed;
-                    if (car.y > H + 100) car.y = 220;
-                    if (car.y < 220) car.y = H + 100;
-                } else {
+                if (car.axis === 'h') {
                     car.x += car.speed;
                     if (car.x > W + 100) car.x = -100;
                     if (car.x < -100) car.x = W + 100;
+                } else {
+                    car.y += car.speed;
+                    if (car.y > H + 100) car.y = 220;
+                    if (car.y < 220) car.y = H + 100;
                 }
 
                 ctx.save();
@@ -4714,901 +4610,1140 @@
                 ctx.fillStyle = car.color;
                 ctx.strokeStyle = '#2C3E50';
                 ctx.lineWidth = 2.5;
-                ctx.beginPath(); ctx.roundRect(-34, -15, 68, 20, 6); ctx.fill(); ctx.stroke();
-                ctx.beginPath(); ctx.roundRect(-18, -28, 36, 15, 6); ctx.fill(); ctx.stroke();
+                ctx.beginPath(); ctx.roundRect(-34, -15, 68, 24, 7); ctx.fill(); ctx.stroke();
                 ctx.fillStyle = '#AED6F1';
-                ctx.fillRect(-14, -25, 13, 10);
-                ctx.fillRect(3, -25, 13, 10);
+                ctx.beginPath(); ctx.roundRect(-18, -26, 36, 13, 5); ctx.fill(); ctx.stroke();
                 ctx.fillStyle = '#1C2833';
-                ctx.beginPath(); ctx.arc(-18, 6, 7.5, 0, Math.PI * 2); ctx.fill();
-                ctx.beginPath(); ctx.arc(18, 6, 7.5, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(-20, 10, 8, 0, Math.PI * 2); ctx.arc(20, 10, 8, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#F9E79F';
+                ctx.fillRect(30, -9, 5, 7);
                 if (lighting.isNight) {
-                    ctx.fillStyle = 'rgba(249, 231, 159, 0.35)';
-                    ctx.beginPath(); ctx.moveTo(34, -5); ctx.lineTo(90, -20); ctx.lineTo(90, 12); ctx.closePath(); ctx.fill();
+                    const beam = ctx.createLinearGradient(34, -5, 135, -5);
+                    beam.addColorStop(0, 'rgba(255, 243, 176, 0.5)');
+                    beam.addColorStop(1, 'rgba(255, 243, 176, 0)');
+                    ctx.fillStyle = beam;
+                    ctx.beginPath(); ctx.moveTo(34, -10); ctx.lineTo(135, -35); ctx.lineTo(135, 25); ctx.lineTo(34, 0); ctx.closePath(); ctx.fill();
                 }
                 ctx.restore();
             });
 
-            // 5. DISTRIBUTED NEIGHBORHOOD BLOCKS & LANDMARKS
-
-            // [Block NW - Top Left]: Công Viên Khu Phố (x: 45..295, y: 265..405)
-            ctx.fillStyle = '#ABEBC6';
-            ctx.strokeStyle = '#27AE60';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.roundRect(45, 265, 255, 140, 20);
-            ctx.fill();
-            ctx.stroke();
-            ctx.font = '34px Arial';
+            // 1. Công viên & Bảng Tiếng Anh
+            ctx.fillStyle = '#F9E79F';
+            ctx.beginPath(); ctx.arc(175, 360, 75, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#F39C12'; ctx.lineWidth = 4; ctx.stroke();
+            ctx.fillStyle = '#27AE60';
+            ctx.beginPath(); ctx.roundRect(120, 325, 110, 48, 8); ctx.fill();
+            ctx.strokeStyle = '#2C3E50'; ctx.lineWidth = 3; ctx.stroke();
+            ctx.fillStyle = '#FFF';
+            ctx.font = 'bold 12px Fredoka';
             ctx.textAlign = 'center';
-            ctx.fillText('🌳🪑🌸🌳', 172, 332);
-            ctx.fillStyle = '#145A32';
-            ctx.font = 'bold 13px Fredoka';
-            ctx.fillText('Công Viên Bắc B2KS', 172, 362);
+            ctx.fillText('💬 CÔNG VIÊN', 175, 345);
+            ctx.fillText('TIẾNG ANH +5⭐', 175, 363);
 
-            // Empty Residential Plots
+            // 2. Quảng trường Đài Phun Nước
+            ctx.fillStyle = '#FDEBD0';
+            ctx.beginPath(); ctx.ellipse(340, 1330, 155, 95, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#E67E22'; ctx.lineWidth = 4; ctx.stroke();
+            ctx.fillStyle = '#5DADE2';
+            ctx.beginPath(); ctx.ellipse(340, 1325, 68, 42, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#2C3E50'; ctx.lineWidth = 3; ctx.stroke();
+            const spray = Math.sin(Date.now() / 160) * 5;
+            ctx.fillStyle = '#EBF5FB';
+            ctx.beginPath(); ctx.arc(340, 1305 - spray, 16, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#2C3E50';
+            ctx.font = 'bold 13px Fredoka';
+            ctx.fillText('⛲ QUẢNG TRƯỜNG B2KS (+2⭐)', 340, 1398);
+
+            // 3. Góc Đọc Sách Ngoài Trời
+            ctx.fillStyle = '#E8F8F5';
+            ctx.beginPath(); ctx.roundRect(1450, 1255, 260, 145, 22); ctx.fill();
+            ctx.strokeStyle = '#16A085'; ctx.lineWidth = 4; ctx.stroke();
+            ctx.fillStyle = '#117864';
+            ctx.font = 'bold 14px Fredoka';
+            ctx.fillText('📚 GÓC ĐỌC SÁCH & THƯ GIÃN', 1580, 1285);
+            ctx.font = '32px Arial';
+            ctx.fillText('📖  🪑  🌿  ☕', 1580, 1335);
+
+            // 4. Sân Bóng Đá Mini Gia Đình
+            ctx.fillStyle = '#229954';
+            ctx.fillRect(1780, 1230, 340, 210);
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(1780, 1230, 340, 210);
+            ctx.beginPath();
+            ctx.moveTo(1950, 1230); ctx.lineTo(1950, 1440);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(1950, 1335, 34, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.fillStyle = '#FFF';
+            ctx.font = 'bold 12px Fredoka';
+            ctx.fillText('⚽ SÂN BÓNG ĐÁ B2KS', 1950, 1220);
+
+            // Plots & House
             PLOTS.forEach((p, idx) => {
-                if (idx !== state.house.plotIndex) {
-                    ctx.strokeStyle = 'rgba(44,62,80,0.45)';
+                if (idx === state.house.plotIndex) {
+                    drawStreetTownhouse(p.x, p.y, state.house.style, lighting);
+                } else {
+                    ctx.fillStyle = 'rgba(255,255,255,0.65)';
+                    ctx.strokeStyle = '#2C3E50';
                     ctx.setLineDash([8, 6]);
-                    ctx.lineWidth = 3;
-                    ctx.strokeRect(p.x - 75, p.y - 40, 150, 110);
+                    ctx.beginPath(); ctx.roundRect(p.x - 80, p.y - 45, 160, 95, 12); ctx.fill(); ctx.stroke();
                     ctx.setLineDash([]);
                     ctx.fillStyle = '#2C3E50';
                     ctx.font = 'bold 12px Fredoka';
                     ctx.textAlign = 'center';
-                    ctx.fillText(`🚧 Đất trống`, p.x, p.y + 10);
-                    ctx.fillText(`(${p.label})`, p.x, p.y + 28);
+                    ctx.fillText(`🌱 ${p.label}`, p.x, p.y + 5);
                 }
             });
 
-            // Active 3-Story Family Townhouse
-            const activePlot = PLOTS[state.house.plotIndex] || PLOTS[1];
-            drawStreetTownhouse(activePlot.x, activePlot.y, state.house.style, lighting);
-
-            // [Block NE - Top Right]: 1. SIÊU THỊ B2KS (x: 1680, y: 345) + Mini Garden Plaza
-            ctx.fillStyle = '#FEF5E7';
-            ctx.strokeStyle = '#E67E22';
-            ctx.lineWidth = 2.5;
-            ctx.beginPath(); ctx.roundRect(1330, 275, 210, 125, 16); ctx.fill(); ctx.stroke();
-            ctx.font = '30px Arial'; ctx.textAlign = 'center';
-            ctx.fillText('🛒🧺🍎', 1435, 338);
-            ctx.fillStyle = '#A04000'; ctx.font = 'bold 12px Fredoka';
-            ctx.fillText('Bãi Đỗ Xe Siêu Thị', 1435, 368);
-
+            // 5. Siêu Thị Gia Đình
             drawShopBuilding(1680, 345, {
-                wallColor: '#FEF9E7',
-                awningColor: '#E67E22',
-                signColor: '#D35400',
-                title: '🏪 SIÊU THỊ B2KS',
-                icons: '📺🧸📚',
-                npcName: 'NV Linh',
-                npcHairStyle: 'long',
-                npcHairColor: '#4E342E',
-                npcShirtColor: '#E67E22',
-                npcShirtPattern: 'collar',
-                npcPantsColor: '#2C3E50',
-                npcPantsStyle: 'skirt',
-                npcOutfit: ''
+                wallColor: '#FFF9C4', awningColor: '#E74C3C', signColor: '#D35400',
+                title: '🏪 SIÊU THỊ GIA ĐÌNH B2KS', icons: '🛋️  🍦  🎬  🧸',
+                npcName: 'Thu Ngân Linh', npcHairStyle: 'long', npcHairColor: '#4E342E',
+                npcShirtColor: '#E67E22', npcShirtPattern: 'collar', npcPantsColor: '#2C3E50', npcPantsStyle: 'skirt', npcOutfit: ''
             }, lighting);
 
-            // [Block SW - Middle Left]: 2. CỬA HÀNG THỜI TRANG B2KS (x: 820, y: 865)
-            drawShopBuilding(820, 865, {
-                wallColor: '#FDEDEC',
-                awningColor: '#E91E63',
-                signColor: '#C2185B',
-                title: '👗 THỜI TRANG B2KS',
-                icons: '👗🧢🕶️',
-                npcName: 'NV Vy',
-                npcHairStyle: 'pigtails',
-                npcHairColor: '#8E44AD',
-                npcShirtColor: '#E91E63',
-                npcShirtPattern: 'heart',
-                npcPantsColor: '#D81B60',
-                npcPantsStyle: 'skirt',
-                npcOutfit: '🎀'
+            // 6. KHU VUI CHƠI ĐỐI KHÁNG B2KS (Trung tâm bản đồ - Dưới Đại lộ Bắc)
+            drawShopBuilding(885, 725, {
+                wallColor: '#FEF9E7', awningColor: '#F39C12', signColor: '#C0392B',
+                title: '🕹️ KHU VUI CHƠI B2KS (1⭐)', icons: '❌⭕  ⚡  🚀  🏆',
+                npcName: 'Quản Trò Bin', npcHairStyle: 'spiky', npcHairColor: '#2C3E50',
+                npcShirtColor: '#E74C3C', npcShirtPattern: 'star', npcPantsColor: '#2980B9', npcPantsStyle: 'shorts', npcOutfit: '🎮'
             }, lighting);
 
-            // [Block SE - Middle Right]: 3. SALON TÓC B2KS (x: 1740, y: 865) + Cafe Corner
-            ctx.fillStyle = '#EBF5FB';
-            ctx.strokeStyle = '#3498DB';
-            ctx.lineWidth = 2.5;
-            ctx.beginPath(); ctx.roundRect(1340, 745, 230, 175, 18); ctx.fill(); ctx.stroke();
-            ctx.font = '32px Arial'; ctx.textAlign = 'center';
-            ctx.fillText('☕🍰 umbrellas 🌴', 1455, 825);
-            ctx.fillStyle = '#1B4F72'; ctx.font = 'bold 13px Fredoka';
-            ctx.fillText('Góc Cà Phê Phố Đông', 1455, 860);
-
-            drawShopBuilding(1740, 865, {
-                wallColor: '#F5EEF8',
-                awningColor: '#9B59B6',
-                signColor: '#7D3C98',
-                title: '💇 SALON TÓC B2KS',
-                icons: '✂️💇‍♀️💈',
-                npcName: 'Stylist Anh',
-                npcHairStyle: 'spiky',
-                npcHairColor: '#2980B9',
-                npcShirtColor: '#8E44AD',
-                npcShirtPattern: 'vest',
-                npcPantsColor: '#2C3E50',
-                npcPantsStyle: 'pants',
-                npcOutfit: '🕶️'
-            }, lighting);
-
-            // [Block West-Center]: 4. TRUNG TÂM TIẾNG ANH B2KS (x: 340, y: 865)
+            // 7. Trung Tâm Tiếng Anh B2KS
             drawShopBuilding(340, 865, {
-                wallColor: '#E8F8F5',
-                awningColor: '#16A085',
-                signColor: '#0E6251',
-                title: '🎓 ENGLISH CENTER',
-                icons: '🇬🇧📚✏️',
-                npcName: 'Cô Mai',
-                npcHairStyle: 'long',
-                npcHairColor: '#2C3E50',
-                npcShirtColor: '#16A085',
-                npcShirtPattern: 'collar',
-                npcPantsColor: '#1B4F72',
-                npcPantsStyle: 'skirt',
-                npcOutfit: ''
+                wallColor: '#E8F8F5', awningColor: '#16A085', signColor: '#117864',
+                title: '🎓 TRUNG TÂM TIẾNG ANH B2KS', icons: '📘  🔤  🇬🇧  🏆',
+                npcName: 'Cô Giáo Mai', npcHairStyle: 'long', npcHairColor: '#4E342E',
+                npcShirtColor: '#16A085', npcShirtPattern: 'collar', npcPantsColor: '#2C3E50', npcPantsStyle: 'skirt', npcOutfit: '🎓'
             }, lighting);
 
-            // [Block Bottom-West]: Quảng Trường Đài Phun Nước (x: 150..510, y: 1215..1470)
-            ctx.fillStyle = '#D4EFDF';
-            ctx.strokeStyle = '#27AE60';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.roundRect(130, 1210, 390, 265, 24);
-            ctx.fill();
-            ctx.stroke();
+            // 8. Cửa Hàng Thời Trang
+            drawShopBuilding(820, 865, {
+                wallColor: '#FDEDEC', awningColor: '#E91E63', signColor: '#C2185B',
+                title: '👗 CỬA HÀNG THỜI TRANG', icons: '👔  👗  👑  🕶️',
+                npcName: 'Nhà Thiết Kế Vy', npcHairStyle: 'pigtails', npcHairColor: '#8E44AD',
+                npcShirtColor: '#E91E63', npcShirtPattern: 'heart', npcPantsColor: '#8E44AD', npcPantsStyle: 'skirt', npcOutfit: '🎀'
+            }, lighting);
 
-            // Fountain Circle
-            ctx.fillStyle = '#85C1E9';
-            ctx.strokeStyle = '#2980B9';
-            ctx.lineWidth = 4;
-            ctx.beginPath(); ctx.arc(325, 1335, 58, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-            ctx.font = '38px Arial'; ctx.textAlign = 'center';
-            ctx.fillText('⛲', 325, 1348);
-            ctx.fillStyle = '#145A32'; ctx.font = 'bold 14px Fredoka';
-            ctx.fillText('Quảng Trường Đài Phun Nước', 325, 1425);
+            // 9. Salon Tóc Nghệ Thuật
+            drawShopBuilding(1740, 865, {
+                wallColor: '#F5EEF8', awningColor: '#9B59B6', signColor: '#6C3483',
+                title: '💇 SALON TÓC NGHỆ THUẬT', icons: '✂️  💇‍♀️  🎨  ✨',
+                npcName: 'Stylist Tuấn Anh', npcHairStyle: 'spiky', npcHairColor: '#2980B9',
+                npcShirtColor: '#8E44AD', npcShirtPattern: 'vest', npcPantsColor: '#2C3E50', npcPantsStyle: 'pants', npcOutfit: ''
+            }, lighting);
 
-            // [Block Bottom-Center]: Sân Chơi Thể Thao Mini (x: 745..1025, y: 1210..1470)
-            ctx.fillStyle = '#FCF3CF';
-            ctx.strokeStyle = '#F39C12';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.roundRect(745, 1210, 280, 265, 20);
-            ctx.fill();
-            ctx.stroke();
-            ctx.font = '36px Arial'; ctx.textAlign = 'center';
-            ctx.fillText('⚽🏀🛝', 885, 1335);
-            ctx.fillStyle = '#9A7D0A'; ctx.font = 'bold 13px Fredoka';
-            ctx.fillText('Sân Chơi Thiếu Nhi B2KS', 885, 1385);
+            // Trees
+            const treeCoords = [
+                [60, 290], [275, 290], [600, 320], [1005, 310], [1265, 300], [1460, 320], [1930, 310], [2120, 330],
+                [80, 730], [540, 750], [1300, 740], [1510, 810], [2020, 760],
+                [90, 1260], [620, 1280], [920, 1340], [1290, 1270], [2140, 1480]
+            ];
+            treeCoords.forEach(([tx, ty]) => drawCuteTree(tx, ty));
 
-            // [Block Bottom-East]: Thư Viện & Góc Đọc Sách (x: 1340..1860, y: 1210..1470)
-            ctx.fillStyle = '#E8DAEF';
-            ctx.strokeStyle = '#8E44AD';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.roundRect(1340, 1210, 520, 265, 22);
-            ctx.fill();
-            ctx.stroke();
-            ctx.font = '38px Arial'; ctx.textAlign = 'center';
-            ctx.fillText('🏛️📖🌳🦉', 1600, 1335);
-            ctx.fillStyle = '#5B2C6F'; ctx.font = 'bold 14px Fredoka';
-            ctx.fillText('Thư Viện Cộng Đồng & Vườn Đọc Sách', 1600, 1385);
-
-            // Decorative Trees & Street Lamps across avenues
-            [
-                { x: 1020, y: 360 }, { x: 1960, y: 360 },
-                { x: 180, y: 860 }, { x: 1020, y: 860 }, { x: 2020, y: 860 },
-                { x: 80, y: 1350 }, { x: 1960, y: 1350 }
-            ].forEach(tree => {
-                ctx.font = '36px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('🌳', tree.x, tree.y);
-            });
-
-            [
-                { x: 320, y: 410 }, { x: 740, y: 410 }, { x: 1300, y: 410 }, { x: 1900, y: 410 },
-                { x: 320, y: 930 }, { x: 1020, y: 930 }, { x: 1300, y: 930 }, { x: 1950, y: 930 },
-                { x: 555, y: 740 }, { x: 1255, y: 740 }, { x: 555, y: 1260 }, { x: 1255, y: 1260 }
-            ].forEach(lamp => {
-                ctx.fillStyle = '#2C3E50';
-                ctx.fillRect(lamp.x - 3, lamp.y - 36, 6, 44);
-                ctx.fillStyle = lighting.isNight ? 'rgba(249, 231, 159, 0.72)' : 'rgba(249, 231, 159, 0.35)';
-                ctx.beginPath(); ctx.arc(lamp.x, lamp.y - 40, lighting.isNight ? 32 : 16, 0, Math.PI * 2); ctx.fill();
-                ctx.fillStyle = '#F9E79F';
-                ctx.beginPath(); ctx.arc(lamp.x, lamp.y - 40, 8, 0, Math.PI * 2); ctx.fill();
+            // Street Lamps
+            const lampX = [250, 620, 990, 1340, 1720, 2060];
+            [425, 945].forEach(ly => {
+                lampX.forEach(lx => drawStreetLamp(lx, ly, lighting.isNight));
             });
         }
 
-        function drawDetailedInteriorFurniture() {}
-
-        function drawSharedRoomsFurniture() {
-            // Living Room (Floor 1 Left)
-            ctx.fillStyle = '#FADBD8';
-            ctx.strokeStyle = '#E6B0AA';
-            ctx.lineWidth = 3;
-            ctx.beginPath(); ctx.roundRect(240, 655, 160, 75, 14); ctx.fill(); ctx.stroke();
-
-            ctx.fillStyle = '#E74C3C';
-            ctx.strokeStyle = '#2C3E50';
-            ctx.lineWidth = 2.5;
-            ctx.beginPath(); ctx.roundRect(265, 635, 110, 36, 8); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#EC7063';
-            ctx.fillRect(275, 642, 42, 20);
-            ctx.fillRect(323, 642, 42, 20);
-
-            ctx.fillStyle = '#D35400';
-            ctx.beginPath(); ctx.roundRect(285, 685, 70, 26, 5); ctx.fill(); ctx.stroke();
-
-            ctx.fillStyle = '#F9E79F';
-            ctx.fillRect(185, 582, 50, 34);
-            ctx.strokeRect(185, 582, 50, 34);
-            ctx.font = '24px Arial';
-            ctx.fillText('📋', 210, 608);
-
-            // Kitchen & Dining (Floor 1 Right)
-            ctx.fillStyle = '#AED6F1';
-            ctx.fillRect(650, 585, 42, 65);
-            ctx.strokeRect(650, 585, 42, 65);
-            ctx.fillStyle = '#95A5A6';
-            ctx.fillRect(696, 610, 95, 40);
-            ctx.strokeRect(696, 610, 95, 40);
-            ctx.font = '26px Arial';
-            ctx.fillText('🍳', 742, 636);
-
-            ctx.fillStyle = '#A04000';
-            ctx.beginPath(); ctx.roundRect(780, 655, 115, 55, 10); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#FDFEFE';
-            ctx.fillRect(792, 663, 91, 38);
-            ctx.font = '28px Arial';
-            ctx.fillText('🍲🥗', 838, 690);
-
-            // Common Room (Floor 2 Left - No TV, cozy family lounge rug & sofa)
-            ctx.fillStyle = '#D5F5E3';
-            ctx.beginPath(); ctx.roundRect(190, 425, 175, 85, 16); ctx.fill();
-            ctx.fillStyle = '#9B59B6';
-            ctx.beginPath(); ctx.roundRect(230, 455, 100, 34, 8); ctx.fill(); ctx.stroke();
-
-            // Parents Bedroom (Floor 2 Right)
-            ctx.fillStyle = '#8E44AD';
-            ctx.beginPath(); ctx.roundRect(875, 385, 115, 95, 8); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#F5EEF8';
-            ctx.fillRect(882, 412, 101, 62);
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(890, 392, 38, 16);
-            ctx.fillRect(936, 392, 38, 16);
-
-            // Kids Bedrooms (Floor 3)
-            ctx.fillStyle = '#27AE60';
-            ctx.beginPath(); ctx.roundRect(125, 155, 75, 95, 8); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#EAFAF1';
-            ctx.fillRect(131, 182, 63, 62);
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(142, 162, 40, 15);
-
-            ctx.fillStyle = '#F39C12';
-            ctx.beginPath(); ctx.roundRect(920, 155, 75, 95, 8); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#FEF9E7';
-            ctx.fillRect(926, 182, 63, 62);
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(937, 162, 40, 15);
-
-            // Smart YouTube TV in Living Room (Floor 1 Left)
-            ctx.fillStyle = '#1C2833';
-            ctx.strokeStyle = '#2C3E50';
-            ctx.lineWidth = 2.5;
-            ctx.beginPath(); ctx.roundRect(285, 578, 74, 42, 5); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#E74C3C';
-            ctx.fillRect(290, 583, 64, 32);
-            // YouTube Play Triangle
-            ctx.fillStyle = '#FFFFFF';
-            ctx.beginPath(); ctx.moveTo(317, 592); ctx.lineTo(317, 606); ctx.lineTo(330, 599); ctx.closePath(); ctx.fill();
-        }
-
-        function drawWoodenWardrobe(wx, wy, room) {
-            const me = getCurrentUser();
-            const isOwner = room.ownerIds && room.ownerIds.includes(me.id);
-            const isOpen = (wardrobeOpenedRoomId === room.id);
-
+        function drawCuteTree(x, y) {
             ctx.save();
-            ctx.translate(wx, wy);
-
-            // Wardrobe shadow
-            ctx.fillStyle = 'rgba(0,0,0,0.2)';
-            ctx.beginPath();
-            ctx.ellipse(0, 74, 34, 7, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Main Wooden Wardrobe Cabinet
-            ctx.fillStyle = '#873600';
-            ctx.strokeStyle = '#2C3E50';
-            ctx.lineWidth = 2.8;
-            ctx.beginPath();
-            ctx.roundRect(-28, 0, 56, 72, [5, 5, 2, 2]);
-            ctx.fill();
-            ctx.stroke();
-
-            // Crown Molding Top
-            ctx.fillStyle = '#6E2C00';
-            ctx.fillRect(-31, -4, 62, 7);
-            ctx.strokeRect(-31, -4, 62, 7);
-
-            if (isOpen) {
-                // Open interior showing hanging clothes!
-                ctx.fillStyle = '#3E2723';
-                ctx.fillRect(-23, 6, 46, 56);
-                // Hanging rod
-                ctx.strokeStyle = '#BDC3C7';
-                ctx.lineWidth = 2;
-                ctx.beginPath(); ctx.moveTo(-22, 13); ctx.lineTo(22, 13); ctx.stroke();
-                // Colorful hanging shirts
-                ['#E74C3C', '#3498DB', '#F1C40F', '#2ECC71'].forEach((col, i) => {
-                    ctx.fillStyle = col;
-                    ctx.fillRect(-19 + i * 10, 14, 8, 22);
-                });
-            } else {
-                // Double Wardrobe Doors
-                ctx.fillStyle = '#A04000';
-                ctx.fillRect(-24, 6, 23, 56);
-                ctx.strokeRect(-24, 6, 23, 56);
-                ctx.fillRect(1, 6, 23, 56);
-                ctx.strokeRect(1, 6, 23, 56);
-
-                // Inner Door Panels
-                ctx.strokeStyle = '#6E2C00';
-                ctx.lineWidth = 1.5;
-                ctx.strokeRect(-20, 11, 15, 20);
-                ctx.strokeRect(-20, 36, 15, 20);
-                ctx.strokeRect(5, 11, 15, 20);
-                ctx.strokeRect(5, 36, 15, 20);
-
-                // Brass Handles
-                ctx.fillStyle = '#F1C40F';
-                ctx.beginPath();
-                ctx.arc(-4, 34, 2.3, 0, Math.PI * 2);
-                ctx.arc(4, 34, 2.3, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
-            // Bottom Drawer
+            ctx.fillStyle = 'rgba(0,0,0,0.16)';
+            ctx.beginPath(); ctx.ellipse(x, y + 26, 22, 7, 0, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = '#7E5109';
             ctx.strokeStyle = '#2C3E50';
-            ctx.lineWidth = 2;
-            ctx.fillRect(-24, 63, 48, 8);
-            ctx.strokeRect(-24, 63, 48, 8);
-
-            // Label tag above wardrobe
-            ctx.fillStyle = isOwner ? '#27AE60' : 'rgba(44, 62, 80, 0.85)';
-            ctx.beginPath();
-            ctx.roundRect(-30, -21, 60, 15, 5);
-            ctx.fill();
-            ctx.fillStyle = '#FFF';
-            ctx.font = 'bold 9.5px Fredoka';
-            ctx.textAlign = 'center';
-            ctx.fillText(isOwner ? '🧥 Tủ đồ' : '🔒 Tủ riêng', 0, -10);
-
+            ctx.lineWidth = 2.5;
+            ctx.fillRect(x - 6, y, 12, 26);
+            ctx.strokeRect(x - 6, y, 12, 26);
+            ctx.fillStyle = '#27AE60';
+            ctx.beginPath(); ctx.arc(x, y - 10, 23, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#2ECC71';
+            ctx.beginPath(); ctx.arc(x - 7, y - 16, 13, 0, Math.PI * 2); ctx.fill();
             ctx.restore();
         }
 
-        function drawRoomWoodenDoor(r) {
-            const doorX = r.doorSide === 'right' ? r.x + r.w : r.x;
-            const doorTop = r.y + r.h - 90;
-            const doorH = 84;
-            const isLocked = r.ownerIds && r.ownerIds.length > 0 && !r.isUnlocked;
-
+        function drawStreetLamp(x, y, isNight) {
             ctx.save();
-            // Door frame threshold on floor
-            ctx.fillStyle = '#6E2C00';
-            ctx.fillRect(doorX - 5, doorTop, 10, doorH);
+            ctx.fillStyle = '#2C3E50';
+            ctx.fillRect(x - 3, y - 48, 6, 48);
+            ctx.beginPath(); ctx.arc(x, y - 52, 9, 0, Math.PI * 2);
+            ctx.fillStyle = isNight ? '#F9E79F' : '#ECF0F1';
+            ctx.fill();
+            ctx.strokeStyle = '#2C3E50'; ctx.lineWidth = 2; ctx.stroke();
 
-            if (isLocked) {
-                // Closed wooden door leaf blocking entrance
-                ctx.fillStyle = '#A04000';
-                ctx.strokeStyle = '#2C3E50';
-                ctx.lineWidth = 2.5;
-                ctx.beginPath();
-                ctx.roundRect(doorX - 6, doorTop + 2, 12, doorH - 4, 3);
-                ctx.fill();
-                ctx.stroke();
-
-                // Gold doorknob
-                ctx.fillStyle = '#F1C40F';
-                ctx.beginPath();
-                ctx.arc(doorX, doorTop + doorH / 2, 3, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Lock badge
-                ctx.font = '22px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('🔒', doorX, doorTop + 34);
-            } else {
-                // Open wooden door swung inward so player clearly sees the doorway!
-                const swingDir = r.doorSide === 'right' ? -1 : 1;
-                ctx.fillStyle = '#BA4A00';
-                ctx.strokeStyle = '#2C3E50';
-                ctx.lineWidth = 2.5;
-                ctx.beginPath();
-                ctx.moveTo(doorX, doorTop + 2);
-                ctx.lineTo(doorX + swingDir * 28, doorTop + 14);
-                ctx.lineTo(doorX + swingDir * 28, doorTop + doorH - 2);
-                ctx.lineTo(doorX, doorTop + doorH - 2);
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
-
-                // Door panel detail & knob
-                ctx.fillStyle = '#F1C40F';
-                ctx.beginPath();
-                ctx.arc(doorX + swingDir * 21, doorTop + doorH / 2 + 4, 2.5, 0, Math.PI * 2);
-                ctx.fill();
+            if (isNight) {
+                const grad = ctx.createRadialGradient(x, y - 52, 4, x, y - 52, 85);
+                grad.addColorStop(0, 'rgba(249, 231, 159, 0.55)');
+                grad.addColorStop(1, 'rgba(249, 231, 159, 0)');
+                ctx.fillStyle = grad;
+                ctx.beginPath(); ctx.arc(x, y - 52, 85, 0, Math.PI * 2); ctx.fill();
             }
             ctx.restore();
         }
 
         function drawHouseInteriorWorld(lighting) {
+            const W = HOUSE_WORLD.width;
+            const H = HOUSE_WORLD.height;
+
             ctx.fillStyle = '#1C2833';
-            ctx.fillRect(0, 0, HOUSE_WORLD.width, HOUSE_WORLD.height);
+            ctx.fillRect(-100, -100, W + 200, H + 200);
 
-            // Outer Building Shell
-            ctx.fillStyle = '#ECF0F1';
-            ctx.fillRect(85, 95, 950, 680);
+            ctx.fillStyle = '#F8F9F9';
+            ctx.strokeStyle = '#2C3E50';
             ctx.lineWidth = 6;
-            ctx.strokeStyle = '#1A252F';
-            ctx.strokeRect(85, 95, 950, 680);
+            ctx.fillRect(85, 95, 950, 670);
+            ctx.strokeRect(85, 95, 950, 670);
 
-            // Pitched Roof
             ctx.fillStyle = '#C0392B';
             ctx.beginPath();
-            ctx.moveTo(70, 95);
-            ctx.lineTo(560, 25);
-            ctx.lineTo(1050, 95);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
-
-            // Central Stairwell Hallway
-            ctx.fillStyle = '#D5DBDB';
-            ctx.fillRect(500, 110, 120, 650);
-            ctx.strokeStyle = '#7F8C8D';
-            ctx.lineWidth = 2;
-            for (let sy = 145; sy < 720; sy += 22) {
-                ctx.fillStyle = '#ABB2B9';
-                ctx.fillRect(525, sy, 70, 8);
-                ctx.strokeRect(525, sy, 70, 8);
-            }
-            ctx.fillStyle = '#2C3E50';
-            ctx.font = 'bold 11px Fredoka';
+            ctx.moveTo(60, 95); ctx.lineTo(560, 20); ctx.lineTo(1060, 95);
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#FFF';
+            ctx.font = 'bold 17px Fredoka';
             ctx.textAlign = 'center';
-            ctx.fillText('🪜 CẦU THANG', 560, 130);
+            ctx.fillText('🏢 NHÀ PHỐ GIA ĐÌNH B2KS (3 TẦNG)', 560, 68);
+
+            ctx.fillStyle = '#EBEDEF';
+            ctx.fillRect(500, 110, 120, 640);
+            ctx.fillStyle = '#D5DBDB';
+            for (let sy = 175; sy < 720; sy += 24) {
+                ctx.fillRect(528, sy, 64, 10);
+                ctx.strokeStyle = '#AEB6BF';
+                ctx.lineWidth = 1.5;
+                ctx.strokeRect(528, sy, 64, 10);
+            }
+
+            ctx.fillStyle = '#8E44AD';
+            ctx.strokeStyle = '#2C3E50';
+            ctx.lineWidth = 3;
+            ctx.fillRect(528, 718, 64, 34);
+            ctx.strokeRect(528, 718, 64, 34);
+            ctx.fillStyle = '#FFF';
+            ctx.font = 'bold 11px Fredoka';
+            ctx.fillText('🚪 RA PHỐ', 560, 739);
 
             const rooms = getHouseRooms();
-            const me = getCurrentUser();
-            const myCurRoom = getRoomAtPosition(me.x, me.y);
-
-            // Draw shared ground-floor & common furniture first
-            drawDetailedInteriorFurniture();
-
             rooms.forEach(r => {
-                const isPrivateRoom = r.ownerIds && r.ownerIds.length > 0;
-                const playerInsideThisRoom = myCurRoom && myCurRoom.id === r.id;
-
-                if (isPrivateRoom && !playerInsideThisRoom) {
-                    // Conceal private room interior while viewing from the hallway!
-                    ctx.fillStyle = r.wall;
-                    ctx.fillRect(r.x, r.y, r.w, r.h);
-
-                    ctx.fillStyle = 'rgba(44, 62, 80, 0.08)';
-                    ctx.fillRect(r.x, r.y + 46, r.w, r.h - 46);
-
-                    ctx.strokeStyle = '#2C3E50';
-                    ctx.lineWidth = 4;
-                    ctx.strokeRect(r.x, r.y, r.w, r.h);
-
-                    // Draw door frame & status on hallway wall
-                    drawRoomWoodenDoor(r);
-
-                    ctx.fillStyle = '#2C3E50';
-                    ctx.font = 'bold 14px Fredoka';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(r.name, r.x + r.w / 2, r.y + 28);
-
-                    ctx.fillStyle = 'rgba(44, 62, 80, 0.72)';
-                    ctx.font = 'bold 12px Fredoka';
-                    ctx.fillText(r.isUnlocked ? '🚪 Bước qua cửa để vào phòng riêng' : '🔒 Phòng riêng đang khóa', r.x + r.w / 2, r.y + r.h / 2 + 12);
-                    return;
-                }
-
-                // Shared room or currently entered room floor/wall
-                ctx.fillStyle = r.floor;
+                ctx.fillStyle = r.wall;
                 ctx.fillRect(r.x, r.y, r.w, r.h);
 
-                ctx.fillStyle = r.wall;
-                ctx.fillRect(r.x, r.y, r.w, 46);
+                ctx.fillStyle = r.floor;
+                ctx.fillRect(r.x, r.y + r.h - 65, r.w, 65);
 
                 ctx.strokeStyle = '#2C3E50';
                 ctx.lineWidth = 4;
                 ctx.strokeRect(r.x, r.y, r.w, r.h);
 
-                ctx.fillStyle = r.floor;
-                if (r.doorSide === 'right') {
-                    ctx.fillRect(r.x + r.w - 6, r.y + r.h - 90, 14, 84);
+                ctx.fillStyle = 'rgba(44, 62, 80, 0.85)';
+                ctx.beginPath();
+                ctx.roundRect(r.x + 12, r.y + 8, r.w - 24, 24, 6);
+                ctx.fill();
+                ctx.fillStyle = '#FFF';
+                ctx.font = 'bold 12px Fredoka';
+                ctx.textAlign = 'center';
+                const lockBadge = (r.ownerIds && r.ownerIds.length > 0) ? (r.isUnlocked ? ' 🔓' : ' 🔒') : '';
+                ctx.fillText(r.name + lockBadge, r.x + r.w / 2, r.y + 24);
+
+                const doorX = r.doorSide === 'right' ? (r.x + r.w - 6) : (r.x - 6);
+                const doorY = r.y + r.h - 90;
+                const doorH = 85;
+
+                if (r.ownerIds && r.ownerIds.length > 0 && !r.isUnlocked) {
+                    ctx.fillStyle = '#873600';
+                    ctx.fillRect(doorX, doorY, 12, doorH);
+                    ctx.strokeStyle = '#2C3E50';
+                    ctx.lineWidth = 2.5;
+                    ctx.strokeRect(doorX, doorY, 12, doorH);
+                    ctx.font = '18px Arial';
+                    ctx.fillText('🔒', doorX + 6, doorY + 45);
                 } else {
-                    ctx.fillRect(r.x - 8, r.y + r.h - 90, 14, 84);
+                    ctx.fillStyle = r.floor;
+                    ctx.fillRect(doorX - 2, doorY, 16, doorH);
+                    ctx.fillStyle = '#A04000';
+                    ctx.fillRect(r.doorSide === 'right' ? doorX - 24 : doorX + 12, doorY, 24, 9);
+                }
+            });
+
+            // Phòng khách
+            ctx.fillStyle = '#E74C3C';
+            ctx.strokeStyle = '#2C3E50';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath(); ctx.roundRect(135, 670, 125, 45, 8); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#2C3E50';
+            ctx.fillRect(295, 595, 50, 26);
+            ctx.fillStyle = '#3498DB';
+            ctx.fillRect(298, 598, 44, 18);
+            ctx.fillStyle = '#FFF';
+            ctx.font = 'bold 9px Fredoka';
+            ctx.textAlign = 'center';
+            ctx.fillText('📺 TV', 320, 610);
+            ctx.fillStyle = '#2C3E50';
+            ctx.fillRect(405, 620, 44, 34);
+            ctx.fillStyle = '#FFF';
+            ctx.font = 'bold 10px Fredoka';
+            ctx.fillText('📋 BẢNG', 427, 640);
+
+            // Phòng ăn
+            ctx.fillStyle = '#A04000';
+            ctx.beginPath(); ctx.ellipse(830, 665, 62, 32, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.font = '20px Arial';
+            ctx.fillText('🍲 🍗 🥗', 830, 671);
+
+            // Phòng bố mẹ
+            ctx.fillStyle = '#8E44AD';
+            ctx.beginPath(); ctx.roundRect(875, 405, 115, 78, 8); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#FFF';
+            ctx.fillRect(888, 412, 36, 16);
+            ctx.fillRect(938, 412, 36, 16);
+
+            // Phòng con 1 & 2
+            ctx.fillStyle = '#3498DB';
+            ctx.beginPath(); ctx.roundRect(130, 175, 85, 68, 8); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#FFF'; ctx.fillRect(142, 182, 42, 14);
+
+            ctx.fillStyle = '#2ECC71';
+            ctx.beginPath(); ctx.roundRect(895, 175, 85, 68, 8); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#FFF'; ctx.fillRect(910, 182, 42, 14);
+
+            // Tủ quần áo
+            const me = getCurrentUser();
+            rooms.forEach(r => {
+                if (!r.wardrobe) return;
+                const wx = r.wardrobe.x;
+                const wy = r.wardrobe.y;
+                const isOpen = (wardrobeOpenedRoomId === r.id);
+                const isOwner = r.ownerIds && r.ownerIds.includes(me.id);
+
+                ctx.save();
+                ctx.fillStyle = '#873600';
+                ctx.strokeStyle = '#2C3E50';
+                ctx.lineWidth = 2.4;
+                ctx.beginPath();
+                ctx.roundRect(wx - 24, wy, 48, 56, 5);
+                ctx.fill();
+                ctx.stroke();
+
+                if (isOpen) {
+                    ctx.fillStyle = '#3E2723';
+                    ctx.fillRect(wx - 20, wy + 5, 40, 44);
+                    ['#E74C3C', '#3498DB', '#F1C40F', '#2ECC71'].forEach((col, ci) => {
+                        ctx.fillStyle = col;
+                        ctx.fillRect(wx - 17 + ci * 9, wy + 10, 7, 18);
+                    });
+                } else {
+                    ctx.fillStyle = '#A04000';
+                    ctx.fillRect(wx - 20, wy + 5, 18, 44);
+                    ctx.strokeRect(wx - 20, wy + 5, 18, 44);
+                    ctx.fillRect(wx + 2, wy + 5, 18, 44);
+                    ctx.strokeRect(wx + 2, wy + 5, 18, 44);
+                    ctx.fillStyle = '#F1C40F';
+                    ctx.beginPath();
+                    ctx.arc(wx - 4, wy + 27, 2.2, 0, Math.PI * 2);
+                    ctx.arc(wx + 4, wy + 27, 2.2, 0, Math.PI * 2);
+                    ctx.fill();
                 }
 
-                drawRoomWoodenDoor(r);
-
-                ctx.fillStyle = '#2C3E50';
-                ctx.font = 'bold 13px Fredoka';
+                ctx.fillStyle = isOwner ? '#27AE60' : '#34495E';
+                ctx.beginPath();
+                ctx.roundRect(wx - 26, wy - 15, 52, 13, 4);
+                ctx.fill();
+                ctx.fillStyle = '#FFF';
+                ctx.font = 'bold 8.5px Fredoka';
                 ctx.textAlign = 'center';
-                ctx.fillText(r.name, r.x + r.w / 2, r.y + 28);
+                ctx.fillText(isOwner ? '🧥 Tủ đồ' : '🔒 Tủ riêng', wx, wy - 5.5);
+                ctx.restore();
+            });
 
-                if (lighting.isNight) {
-                    const lampX = r.x + r.w / 2;
-                    const lampY = r.y + 46;
-                    const grad = ctx.createRadialGradient(lampX, lampY + 40, 8, lampX, lampY + 55, 165);
+            state.members.forEach(m => {
+                m.roomDecor.forEach(d => {
+                    drawWorldDecorItem(ctx, d.id, d.x, d.y);
+                });
+            });
+
+            if (lighting.isNight) {
+                rooms.forEach(r => {
+                    const grad = ctx.createRadialGradient(r.x + r.w / 2, r.y + 45, 10, r.x + r.w / 2, r.y + 80, 180);
                     grad.addColorStop(0, 'rgba(255, 243, 176, 0.36)');
                     grad.addColorStop(1, 'rgba(255, 243, 176, 0)');
                     ctx.fillStyle = grad;
                     ctx.fillRect(r.x, r.y, r.w, r.h);
-
-                    ctx.fillStyle = '#F9E79F';
-                    ctx.beginPath(); ctx.arc(lampX, lampY, 7, 0, Math.PI * 2); ctx.fill();
-                }
-            });
-
-            // Re-draw shared room furniture on top of shared floors
-            drawSharedRoomsFurniture();
-
-            // Prominent Front Exit Double-Door to Street at Bottom of Stairwell
-            ctx.fillStyle = '#6E2C00';
-            ctx.strokeStyle = '#2C3E50';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.roundRect(512, 732, 96, 38, [8, 8, 0, 0]);
-            ctx.fill();
-            ctx.stroke();
-
-            ctx.fillStyle = '#F9E79F';
-            ctx.fillRect(522, 738, 32, 16);
-            ctx.fillRect(566, 738, 32, 16);
-            ctx.fillStyle = '#FFF';
-            ctx.font = 'bold 10.5px Fredoka';
-            ctx.textAlign = 'center';
-            ctx.fillText('🚪 CỬA RA PHỐ', 560, 766);
+                });
+            }
         }
 
         /* =========================================================================
-           10. MAIN GAME LOOP (SAFE VIEWPORT MARGINS FOR TOP & BOTTOM HUD)
+           10. GRADE 6 ENGLISH CENTER QUIZ ENGINE (CLICK CATEGORY TO GENERATE)
            ========================================================================= */
-        function update() {
-            const me = getCurrentUser();
-            const speed = 4.5;
-            let dx = 0, dy = 0;
+        const GRADE6_ENGLISH_BANK = [
+            // GRAMMAR
+            { cat: 'grammar', q: 'She ______ to school by bicycle every morning.', opts: ['go', 'goes', 'going', 'is go'], ans: 1, exp: 'Thì hiện tại đơn với chủ ngữ ngôi thứ 3 số ít "She" -> động từ thêm -es (goes).' },
+            { cat: 'grammar', q: 'Look! The children ______ football in the schoolyard.', opts: ['play', 'plays', 'are playing', 'is playing'], ans: 2, exp: 'Có dấu hiệu "Look!" -> Thì hiện tại tiếp diễn: are + V-ing.' },
+            { cat: 'grammar', q: 'There ______ two bookshelves and a bed in my bedroom.', opts: ['is', 'are', 'am', 'be'], ans: 1, exp: 'Danh từ đứng ngay sau là số nhiều "two bookshelves" -> dùng "There are".' },
+            { cat: 'grammar', q: 'My sister ______ tall and she has long black hair.', opts: ['is', 'has', 'are', 'have'], ans: 0, exp: 'Miêu tả chiều cao dùng động từ to be: "She is tall".' },
+            { cat: 'grammar', q: 'How ______ books are there on your desk?', opts: ['much', 'many', 'old', 'often'], ans: 1, exp: '"books" là danh từ đếm được số nhiều -> dùng "How many".' },
+            { cat: 'grammar', q: 'We ______ English on Mondays and Thursdays.', opts: ['has', 'have', 'having', 'are have'], ans: 1, exp: 'Chủ ngữ "We" ở thì hiện tại đơn dùng "have".' },
+            { cat: 'grammar', q: 'The cat is ______ the table and the sofa.', opts: ['between', 'in', 'under', 'on'], ans: 0, exp: 'Cấu trúc "between A and B" (ở giữa A và B).' },
+            { cat: 'grammar', q: '______ your father work in a hospital?', opts: ['Do', 'Does', 'Is', 'Are'], ans: 1, exp: 'Câu hỏi hiện tại đơn với động từ thường "work" và chủ ngữ số ít "your father" -> dùng "Does".' },
+            { cat: 'grammar', q: 'Mount Everest is the ______ mountain in the world.', opts: ['high', 'higher', 'highest', 'most high'], ans: 2, exp: 'So sánh nhất với tính từ ngắn "high" -> "the highest".' },
+            { cat: 'grammar', q: 'You ______ make noise in the library.', opts: ['must', 'mustn’t', 'can', 'should'], ans: 1, exp: '"mustn’t" nghĩa là không được phép làm ồn trong thư viện.' },
+            { cat: 'grammar', q: 'Nam is ______ than his younger brother.', opts: ['taller', 'tallest', 'tall', 'more tall'], ans: 0, exp: 'So sánh hơn với tính từ ngắn "tall" + than -> "taller".' },
+            { cat: 'grammar', q: 'What ______ you doing at the moment?', opts: ['do', 'does', 'are', 'is'], ans: 2, exp: '"at the moment" -> Hiện tại tiếp diễn: What are you doing?' },
+            // VOCABULARY & COMMUNICATION
+            { cat: 'vocab', q: 'We use a ______ to draw straight lines in Maths.', opts: ['compass', 'ruler', 'rubber', 'pencil case'], ans: 1, exp: '"ruler" là cây thước kẻ dùng để vẽ đường thẳng.' },
+            { cat: 'vocab', q: 'A person who is friendly and likes meeting people is ______.', opts: ['shy', 'outgoing', 'lazy', 'boring'], ans: 1, exp: '"outgoing" nghĩa là cởi mở, hòa đồng.' },
+            { cat: 'vocab', q: 'You can buy medicine at the ______.', opts: ['bakery', 'pharmacy', 'cinema', 'post office'], ans: 1, exp: '"pharmacy" là hiệu thuốc.' },
+            { cat: 'vocab', q: 'Mai: "Would you like to go to the cinema tonight?" — Lan: "______"', opts: ['Yes, I’d love to!', 'Yes, I do.', 'No, I am not.', 'You’re welcome.'], ans: 0, exp: 'Lời mời "Would you like to...?" -> đáp lại lịch sự bằng "Yes, I’d love to!".' },
+            { cat: 'vocab', q: 'In Viet Nam, people decorate their houses with peach blossoms at ______.', opts: ['Christmas', 'Tet', 'Halloween', 'Easter'], ans: 1, exp: 'Hoa đào (peach blossoms) là biểu tượng đặc trưng của dịp Tết Nguyên Đán.' },
+            { cat: 'vocab', q: 'Ha Long Bay is a famous natural ______ in Viet Nam.', opts: ['wonder', 'desert', 'island', 'forest'], ans: 0, exp: '"natural wonder" nghĩa là kỳ quan thiên nhiên.' },
+            { cat: 'vocab', q: 'Which room in the house do we usually cook meals in?', opts: ['Bedroom', 'Bathroom', 'Kitchen', 'Attic'], ans: 2, exp: '"Kitchen" là nhà bếp — nơi nấu ăn.' },
+            { cat: 'vocab', q: 'Lan: "Thank you for helping me with my homework!" — Minh: "______"', opts: ['My pleasure!', 'Good luck!', 'See you!', 'I’m sorry.'], ans: 0, exp: 'Đáp lại lời cảm ơn dùng "My pleasure!" hoặc "You’re welcome!".' },
+            { cat: 'vocab', q: 'In ______, we learn about mountains, rivers, and countries.', opts: ['History', 'Geography', 'Physics', 'Music'], ans: 1, exp: '"Geography" là môn Địa lý.' },
+            { cat: 'vocab', q: 'Turn ______ at the traffic lights, and the bank is on your right.', opts: ['left', 'straight', 'cross', 'between'], ans: 0, exp: '"Turn left" nghĩa là rẽ trái.' },
+            { cat: 'vocab', q: 'We should bring a ______ when going camping in the forest to see at night.', opts: ['torch', 'pillow', 'wardrobe', 'fridge'], ans: 0, exp: '"torch" là đèn pin dùng chiếu sáng ban đêm.' },
+            { cat: 'vocab', q: 'A place where you can see many old things and paintings is a ______.', opts: ['museum', 'stadium', 'supermarket', 'factory'], ans: 0, exp: '"museum" là bảo tàng.' }
+        ];
 
-            if (keys['arrowup'] || keys['w']) { dy -= 1; me.dir = 'up'; }
-            if (keys['arrowdown'] || keys['s']) { dy += 1; me.dir = 'down'; }
-            if (keys['arrowleft'] || keys['a']) { dx -= 1; me.dir = 'left'; }
-            if (keys['arrowright'] || keys['d']) { dx += 1; me.dir = 'right'; }
+        let engQuizSession = {
+            questions: [],
+            currentIndex: 0,
+            score: 0,
+            answered: false,
+            topic: 'mix'
+        };
+
+        // Lobby state: Do NOT display any questions until user clicks a category button!
+        function openEnglishCenterLobby() {
+            const body = document.getElementById('eng-quiz-body');
+            if (!body) return;
+            body.innerHTML = `
+                <div style="background:#FFF; border:2.5px dashed #16A085; border-radius:12px; padding:24px 16px; text-align:center;">
+                    <div style="font-size:38px; margin-bottom:8px;">📚✨</div>
+                    <div style="font-weight:700; font-size:15px; color:#117864; margin-bottom:6px;">
+                        Sẵn sàng thử thách Tiếng Anh Lớp 6!
+                    </div>
+                    <div style="font-size:13px; color:#555; max-width:440px; margin:0 auto;">
+                        Hãy bấm chọn một thể loại đề thi ở phía trên (<b>Đề Tổng Hợp</b>, <b>Ngữ Pháp</b> hoặc <b>Từ Vựng & Giao Tiếp</b>) để hệ thống tạo bộ đề ngẫu nhiên 10 câu cho bạn nhé!
+                    </div>
+                </div>
+            `;
+        }
+
+        function startEnglishGrade6Quiz(topic = 'mix') {
+            AudioEngine.playClick();
+            let pool = topic === 'mix'
+                ? [...GRADE6_ENGLISH_BANK]
+                : GRADE6_ENGLISH_BANK.filter(item => item.cat === topic);
+
+            for (let i = pool.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [pool[i], pool[j]] = [pool[j], pool[i]];
+            }
+
+            engQuizSession = {
+                questions: pool.slice(0, 10),
+                currentIndex: 0,
+                score: 0,
+                answered: false,
+                topic
+            };
+            renderEnglishQuizQuestion();
+        }
+
+        function renderEnglishQuizQuestion() {
+            const body = document.getElementById('eng-quiz-body');
+            if (!body) return;
+
+            if (engQuizSession.currentIndex >= engQuizSession.questions.length) {
+                const total = engQuizSession.questions.length;
+                const correct = engQuizSession.score;
+                const user = getCurrentUser();
+                let starsEarned = correct * 2;
+                if (correct >= 8) starsEarned += 5;
+
+                user.points = isParent(user) ? Math.min(MAX_PARENT_POINTS, user.points + starsEarned) : user.points + starsEarned;
+                AudioEngine.playSuccess();
+                updateHUD();
+                saveGame();
+
+                body.innerHTML = `
+                    <div style="text-align:center; background:#FEF9E7; border:2.5px solid #F39C12; border-radius:12px; padding:16px;">
+                        <div style="font-size:40px;">🏆</div>
+                        <h3 style="margin:6px 0; color:#2C3E50;">Hoàn Thành Bài Thi Tiếng Anh Lớp 6!</h3>
+                        <p style="font-size:15px; margin:6px 0;">Kết quả của <b>${user.name}</b>: <b style="color:#27AE60; font-size:18px;">${correct} / ${total} câu đúng</b></p>
+                        <p style="font-size:14px; color:#D35400; font-weight:700;">⭐ Phần thưởng: +${starsEarned}⭐ ${correct >= 8 ? '(Bao gồm +5⭐ thưởng xuất sắc!)' : ''}</p>
+                        <button class="btn btn-primary" style="margin-top:8px;" onclick="startEnglishGrade6Quiz('${engQuizSession.topic}')">🔄 Làm Bộ Đề Ngẫu Nhiên Khác</button>
+                    </div>
+                `;
+                return;
+            }
+
+            const qObj = engQuizSession.questions[engQuizSession.currentIndex];
+            const qNum = engQuizSession.currentIndex + 1;
+            const letters = ['A', 'B', 'C', 'D'];
+
+            body.innerHTML = `
+                <div style="background:#FFF; border:2.5px solid #2C3E50; border-radius:12px; padding:12px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <span class="tag" style="background:#D6EAF8;">Câu ${qNum} / ${engQuizSession.questions.length}</span>
+                        <span class="points-pill">Đúng: ${engQuizSession.score} câu</span>
+                    </div>
+                    <div style="font-size:15.5px; font-weight:700; color:#2C3E50; margin-bottom:12px; line-height:1.45;">
+                        ${qNum}. ${qObj.q}
+                    </div>
+                    <div id="eng-options-list" style="display:flex; flex-direction:column; gap:8px;">
+                        ${qObj.opts.map((opt, idx) => `
+                            <button type="button" class="btn" id="eng-opt-${idx}"
+                                style="background:#F8F9F9; color:#2C3E50; justify-content:flex-start; text-align:left; padding:9px 12px; font-size:13.5px; white-space:normal;"
+                                onclick="selectEnglishQuizAnswer(${idx})">
+                                <b>${letters[idx]}.</b>&nbsp;${opt}
+                            </button>
+                        `).join('')}
+                    </div>
+                    <div id="eng-feedback-box" style="display:none; margin-top:12px; padding:10px; border-radius:8px; font-size:13px;"></div>
+                </div>
+            `;
+        }
+
+        function selectEnglishQuizAnswer(chosenIdx) {
+            if (engQuizSession.answered) return;
+            engQuizSession.answered = true;
+
+            const qObj = engQuizSession.questions[engQuizSession.currentIndex];
+            const isCorrect = (chosenIdx === qObj.ans);
+            if (isCorrect) {
+                engQuizSession.score += 1;
+                AudioEngine.playCoin();
+            } else {
+                AudioEngine.playError();
+            }
+
+            qObj.opts.forEach((_, idx) => {
+                const btn = document.getElementById(`eng-opt-${idx}`);
+                if (!btn) return;
+                btn.disabled = true;
+                if (idx === qObj.ans) {
+                    btn.style.background = '#D4EDDA';
+                    btn.style.borderColor = '#27AE60';
+                    btn.style.color = '#145A32';
+                } else if (idx === chosenIdx && !isCorrect) {
+                    btn.style.background = '#FADBD8';
+                    btn.style.borderColor = '#E74C3C';
+                    btn.style.color = '#922B21';
+                }
+            });
+
+            const fb = document.getElementById('eng-feedback-box');
+            fb.style.display = 'block';
+            fb.style.background = isCorrect ? '#EAFAF1' : '#FDEDEC';
+            fb.style.border = isCorrect ? '2px solid #27AE60' : '2px solid #E74C3C';
+            fb.innerHTML = `
+                <div style="font-weight:700; color:${isCorrect ? '#1E8449' : '#C0392B'}; margin-bottom:4px;">
+                    ${isCorrect ? '✅ Chính xác!' : '❌ Chưa đúng rồi!'}
+                </div>
+                <div style="color:#2C3E50; margin-bottom:8px;">💡 <b>Giải thích:</b> ${qObj.exp}</div>
+                <button type="button" class="btn btn-primary btn-sm" onclick="nextEnglishQuizQuestion()">
+                    ${engQuizSession.currentIndex + 1 < engQuizSession.questions.length ? 'Câu tiếp theo ➔' : 'Xem kết quả & Nhận sao 🏆'}
+                </button>
+            `;
+        }
+
+        function nextEnglishQuizQuestion() {
+            AudioEngine.playClick();
+            engQuizSession.currentIndex += 1;
+            engQuizSession.answered = false;
+            renderEnglishQuizQuestion();
+        }
+
+        /* =========================================================================
+           10B. MULTIPLAYER ARCADE ZONE (1-2-3-4 PLAYER BETTING MINIGAMES)
+           ========================================================================= */
+        const ARCADE_PLAYER_THEMES = [
+            { color: '#E74C3C', keyLabel: 'Phím Q', keyCode: 'q' },
+            { color: '#2980B9', keyLabel: 'Phím P', keyCode: 'p' },
+            { color: '#27AE60', keyLabel: 'Phím Z', keyCode: 'z' },
+            { color: '#F39C12', keyLabel: 'Phím M', keyCode: 'm' }
+        ];
+
+        let arcadeSelectedPlayerIds = [];
+        let activeArcadeMatch = null;
+        let arcadeAnimFrameId = null;
+
+        function renderArcadeLobby() {
+            stopArcadeLoop();
+            activeArcadeMatch = null;
+            document.getElementById('arcade-lobby-view').style.display = 'block';
+            document.getElementById('arcade-game-view').style.display = 'none';
+
+            // Preselect current user + 1 other member by default
+            if (arcadeSelectedPlayerIds.length < 2) {
+                const cur = getCurrentUser();
+                const other = state.members.find(m => m.id !== cur.id) || state.members[0];
+                arcadeSelectedPlayerIds = cur.id === other.id ? [cur.id] : [cur.id, other.id];
+            }
+            arcadeSelectedPlayerIds = arcadeSelectedPlayerIds.filter(id => state.members.some(m => m.id === id));
+
+            const selectorEl = document.getElementById('arcade-player-selector');
+            selectorEl.innerHTML = '';
+            state.members.forEach(m => {
+                const isSelected = arcadeSelectedPlayerIds.includes(m.id);
+                const pIdx = arcadeSelectedPlayerIds.indexOf(m.id);
+                const badge = isSelected ? `<span class="tag" style="background:${ARCADE_PLAYER_THEMES[pIdx].color}; color:#FFF;">P${pIdx + 1}</span>` : '';
+                selectorEl.innerHTML += `
+                    <div onclick="toggleArcadePlayer('${m.id}')" style="cursor:pointer; border:2.5px solid ${isSelected ? '#27AE60' : '#BDC3C7'}; background:${isSelected ? '#EAFAF1' : '#FFF'}; border-radius:10px; padding:8px; display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span style="font-size:20px;">${m.outfit || getRoleEmoji(m.role)}</span>
+                            <div>
+                                <div style="font-weight:700; font-size:13px;">${m.name}</div>
+                                <div style="font-size:11px; color:#555;">Có: <b>${m.points}⭐</b></div>
+                            </div>
+                        </div>
+                        ${badge}
+                    </div>
+                `;
+            });
+
+            document.getElementById('arcade-selected-count').innerText = arcadeSelectedPlayerIds.length;
+            document.getElementById('arcade-pot-preview').innerText = arcadeSelectedPlayerIds.length;
+        }
+
+        function toggleArcadePlayer(memberId) {
+            AudioEngine.playClick();
+            const idx = arcadeSelectedPlayerIds.indexOf(memberId);
+            if (idx !== -1) {
+                arcadeSelectedPlayerIds.splice(idx, 1);
+            } else {
+                if (arcadeSelectedPlayerIds.length >= 4) {
+                    return showToast('⚠️ Tối đa 4 người chơi cùng lúc!');
+                }
+                arcadeSelectedPlayerIds.push(memberId);
+            }
+            renderArcadeLobby();
+        }
+
+        function closeArcadeModal() {
+            stopArcadeLoop();
+            activeArcadeMatch = null;
+            closeModal('arcade-modal');
+        }
+
+        function stopArcadeLoop() {
+            if (arcadeAnimFrameId) {
+                cancelAnimationFrame(arcadeAnimFrameId);
+                arcadeAnimFrameId = null;
+            }
+        }
+
+        function startArcadeMatch(gameType) {
+            const count = arcadeSelectedPlayerIds.length;
+            if (count < 2) {
+                AudioEngine.playError();
+                return showToast('⚠️ Hãy chọn ít nhất 2 thành viên để thi đấu!');
+            }
+            if (gameType === 'tictactoe' && count !== 2) {
+                AudioEngine.playError();
+                return showToast('⚠️ Cờ Caro XO chỉ dành cho đúng 2 người chơi!');
+            }
+
+            const players = arcadeSelectedPlayerIds.map(id => state.members.find(m => m.id === id)).filter(Boolean);
+            for (const p of players) {
+                if (p.points < 1) {
+                    AudioEngine.playError();
+                    return showToast(`❌ ${p.name} không đủ 1⭐ để đặt cược!`);
+                }
+            }
+
+            // Deduct 1 star ante from each participating player
+            players.forEach(p => { p.points -= 1; });
+            const pot = players.length;
+            AudioEngine.playCoin();
+            updateHUD();
+            saveGame();
+
+            document.getElementById('arcade-lobby-view').style.display = 'none';
+            document.getElementById('arcade-game-view').style.display = 'block';
+
+            if (gameType === 'tictactoe') {
+                initTicTacToeMatch(players, pot);
+            } else if (gameType === 'quiz') {
+                initBuzzerQuizMatch(players, pot);
+            } else if (gameType === 'shooter') {
+                initSpaceShooterMatch(players, pot);
+            }
+        }
+
+        function finishArcadeMatch(winnerMember, pot, gameTitle, isDraw = false, allPlayers = []) {
+            stopArcadeLoop();
+            activeArcadeMatch = null;
+
+            if (isDraw) {
+                allPlayers.forEach(p => {
+                    p.points = isParent(p) ? Math.min(MAX_PARENT_POINTS, p.points + 1) : p.points + 1;
+                });
+                AudioEngine.playClick();
+            } else if (winnerMember) {
+                winnerMember.points = isParent(winnerMember)
+                    ? Math.min(MAX_PARENT_POINTS, winnerMember.points + pot)
+                    : winnerMember.points + pot;
+                AudioEngine.playSuccess();
+                triggerSpeechBubble(winnerMember, `Won +${pot}⭐ in ${gameTitle}! 🏆`, true);
+            }
+            updateHUD();
+            saveGame();
+
+            const view = document.getElementById('arcade-game-view');
+            view.innerHTML = `
+                <div style="text-align:center; background:#FEF9E7; border:3px solid #F39C12; border-radius:14px; padding:20px;">
+                    <div style="font-size:48px;">${isDraw ? '🤝' : '🏆'}</div>
+                    <h2 style="margin:6px 0; color:#2C3E50;">${isDraw ? 'Hòa Nhau! Hoàn Lại 1⭐ Cược' : `Chúc Mừng ${winnerMember.name} Chiến Thắng!`}</h2>
+                    <p style="font-size:15px; color:#D35400; font-weight:700;">
+                        ${isDraw ? 'Mỗi người chơi được hoàn lại 1⭐!' : `${winnerMember.name} ẵm trọn quỹ thưởng +${pot}⭐!`}
+                    </p>
+                    <div style="display:flex; gap:10px; justify-content:center; margin-top:14px;">
+                        <button class="btn btn-primary" onclick="renderArcadeLobby()">🔄 Chơi Ván Mới</button>
+                        <button class="btn" style="background:#34495E;" onclick="closeArcadeModal()">🚪 Rời Khu Vui Chơi</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- MINIGAME 1: TIC-TAC-TOE (2 PLAYERS) ---
+        function initTicTacToeMatch(players, pot) {
+            activeArcadeMatch = {
+                type: 'tictactoe',
+                players,
+                pot,
+                board: Array(9).fill(null),
+                turnIdx: 0
+            };
+            renderTicTacToeBoard();
+        }
+
+        function renderTicTacToeBoard() {
+            const m = activeArcadeMatch;
+            if (!m) return;
+            const curP = m.players[m.turnIdx];
+            const mark = m.turnIdx === 0 ? '❌' : '⭕';
+            const view = document.getElementById('arcade-game-view');
+
+            view.innerHTML = `
+                <div style="text-align:center;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:#EBF5FB; padding:8px 12px; border-radius:10px; border:2px solid #2C3E50; margin-bottom:12px;">
+                        <span>❌ <b>${m.players[0].name}</b> vs ⭕ <b>${m.players[1].name}</b></span>
+                        <span class="points-pill">🏆 Quỹ thưởng: ${m.pot}⭐</span>
+                    </div>
+                    <div style="font-size:15px; font-weight:700; margin-bottom:10px; color:${ARCADE_PLAYER_THEMES[m.turnIdx].color};">
+                        Lượt của ${curP.name} (${mark})
+                    </div>
+                    <div style="display:grid; grid-template-columns:repeat(3, 86px); gap:8px; justify-content:center; margin:0 auto 14px auto;">
+                        ${m.board.map((cell, i) => `
+                            <button type="button" onclick="playTicTacToeCell(${i})"
+                                style="width:86px; height:86px; font-size:36px; border:3px solid #2C3E50; border-radius:12px; background:#FFF; cursor:pointer; box-shadow:0 3px 0 #2C3E50;">
+                                ${cell || ''}
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function playTicTacToeCell(idx) {
+            const m = activeArcadeMatch;
+            if (!m || m.type !== 'tictactoe' || m.board[idx]) return;
+            AudioEngine.playClick();
+            m.board[idx] = m.turnIdx === 0 ? '❌' : '⭕';
+
+            const wins = [
+                [0,1,2],[3,4,5],[6,7,8],
+                [0,3,6],[1,4,7],[2,5,8],
+                [0,4,8],[2,4,6]
+            ];
+            const hasWon = wins.some(([a,b,c]) => m.board[a] && m.board[a] === m.board[b] && m.board[a] === m.board[c]);
+            if (hasWon) {
+                return finishArcadeMatch(m.players[m.turnIdx], m.pot, 'Cờ Caro XO');
+            }
+            if (m.board.every(Boolean)) {
+                return finishArcadeMatch(null, m.pot, 'Cờ Caro XO', true, m.players);
+            }
+            m.turnIdx = 1 - m.turnIdx;
+            renderTicTacToeBoard();
+        }
+
+        // --- MINIGAME 2: MULTIPLAYER BUZZER QUIZ (2-4 PLAYERS) ---
+        function initBuzzerQuizMatch(players, pot) {
+            const pool = [...GRADE6_ENGLISH_BANK].sort(() => Math.random() - 0.5).slice(0, 5);
+            activeArcadeMatch = {
+                type: 'quiz',
+                players,
+                pot,
+                scores: players.map(() => 0),
+                questions: pool,
+                qIdx: 0,
+                buzzedPlayerIdx: null
+            };
+            renderBuzzerQuizRound();
+        }
+
+        function renderBuzzerQuizRound() {
+            const m = activeArcadeMatch;
+            if (!m) return;
+            if (m.qIdx >= m.questions.length) {
+                const maxScore = Math.max(...m.scores);
+                const topIndices = m.scores.map((s, i) => s === maxScore ? i : -1).filter(i => i !== -1);
+                if (topIndices.length > 1) {
+                    return finishArcadeMatch(null, m.pot, 'Đố Vui Giành Chuông', true, m.players);
+                }
+                return finishArcadeMatch(m.players[topIndices[0]], m.pot, 'Đố Vui Giành Chuông');
+            }
+
+            const qObj = m.questions[m.qIdx];
+            const letters = ['A', 'B', 'C', 'D'];
+            const view = document.getElementById('arcade-game-view');
+
+            const scoreBarHtml = m.players.map((p, i) => `
+                <div style="background:${ARCADE_PLAYER_THEMES[i].color}; color:#FFF; padding:4px 10px; border-radius:8px; font-size:12px; font-weight:700;">
+                    ${p.name}: ${m.scores[i]}đ
+                </div>
+            `).join('');
+
+            const buzzerButtonsHtml = m.buzzedPlayerIdx === null
+                ? `<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; margin-top:12px;">
+                    ${m.players.map((p, i) => `
+                        <button type="button" class="btn" style="background:${ARCADE_PLAYER_THEMES[i].color}; padding:12px; font-size:14px;" onclick="buzzPlayerIn(${i})">
+                            🔔 ${p.name} (${ARCADE_PLAYER_THEMES[i].keyLabel})
+                        </button>
+                    `).join('')}
+                   </div>`
+                : `<div style="margin-top:10px; padding:10px; background:#FEF9E7; border:2px solid #F39C12; border-radius:10px;">
+                    <div style="font-weight:700; color:#D35400; margin-bottom:8px;">⚡ <b>${m.players[m.buzzedPlayerIdx].name}</b> giành quyền trả lời! Hãy chọn đáp án:</div>
+                    <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:8px;">
+                        ${qObj.opts.map((opt, idx) => `
+                            <button type="button" class="btn btn-accent" style="white-space:normal; text-align:left;" onclick="answerBuzzerQuestion(${idx})">
+                                <b>${letters[idx]}.</b>&nbsp;${opt}
+                            </button>
+                        `).join('')}
+                    </div>
+                   </div>`;
+
+            view.innerHTML = `
+                <div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:10px;">
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">${scoreBarHtml}</div>
+                        <span class="points-pill">🏆 Quỹ thưởng: ${m.pot}⭐</span>
+                    </div>
+                    <div style="background:#FFF; border:2.5px solid #2C3E50; border-radius:12px; padding:12px;">
+                        <div class="tag" style="margin-bottom:6px;">Câu ${m.qIdx + 1} / ${m.questions.length}</div>
+                        <div style="font-size:15px; font-weight:700; color:#2C3E50;">${qObj.q}</div>
+                        ${m.buzzedPlayerIdx === null ? `<div style="margin-top:8px; font-size:13px; color:#555;">${qObj.opts.map((o, i) => `<div><b>${letters[i]}.</b> ${o}</div>`).join('')}</div>` : ''}
+                        ${buzzerButtonsHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        function buzzPlayerIn(playerIdx) {
+            const m = activeArcadeMatch;
+            if (!m || m.type !== 'quiz' || m.buzzedPlayerIdx !== null) return;
+            AudioEngine.playTone(880, 'square', 0.12, 0.08);
+            m.buzzedPlayerIdx = playerIdx;
+            renderBuzzerQuizRound();
+        }
+
+        function answerBuzzerQuestion(optIdx) {
+            const m = activeArcadeMatch;
+            if (!m || m.type !== 'quiz' || m.buzzedPlayerIdx === null) return;
+            const qObj = m.questions[m.qIdx];
+            const pIdx = m.buzzedPlayerIdx;
+            if (optIdx === qObj.ans) {
+                m.scores[pIdx] += 1;
+                AudioEngine.playCoin();
+                showToast(`✅ ${m.players[pIdx].name} trả lời đúng (+1 điểm)!`);
+            } else {
+                m.scores[pIdx] = Math.max(0, m.scores[pIdx] - 1);
+                AudioEngine.playError();
+                showToast(`❌ ${m.players[pIdx].name} trả lời sai (-1 điểm)!`);
+            }
+            m.qIdx += 1;
+            m.buzzedPlayerIdx = null;
+            renderBuzzerQuizRound();
+        }
+
+        // --- MINIGAME 3: 1-BUTTON SPACE ARENA SHOOTER (2-4 PLAYERS) ---
+        function initSpaceShooterMatch(players, pot) {
+            const W = 560, H = 340;
+            const spawns = [
+                { x: 90, y: 80, angle: 0.7 },
+                { x: W - 90, y: H - 80, angle: -2.4 },
+                { x: W - 90, y: 80, angle: 2.4 },
+                { x: 90, y: H - 80, angle: -0.7 }
+            ];
+
+            const ships = players.map((p, i) => ({
+                member: p,
+                theme: ARCADE_PLAYER_THEMES[i],
+                x: spawns[i].x,
+                y: spawns[i].y,
+                vx: 0,
+                vy: 0,
+                angle: spawns[i].angle,
+                rotDir: i % 2 === 0 ? 1 : -1,
+                hp: 3,
+                cooldown: 0
+            }));
+
+            activeArcadeMatch = {
+                type: 'shooter',
+                players,
+                pot,
+                W,
+                H,
+                ships,
+                bullets: []
+            };
+
+            const view = document.getElementById('arcade-game-view');
+            view.innerHTML = `
+                <div style="text-align:center;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <span style="font-size:13px; font-weight:700;">🚀 Đấu Trường Vũ Trụ (Mỗi tàu 3 ❤️)</span>
+                        <span class="points-pill">🏆 Quỹ thưởng: ${pot}⭐</span>
+                    </div>
+                    <canvas id="arcade-shooter-canvas" width="${W}" height="${H}" style="width:100%; max-width:${W}px; background:#0B132B; border:3px solid #2C3E50; border-radius:12px;"></canvas>
+                    <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; margin-top:10px;">
+                        ${ships.map((s, i) => `
+                            <button type="button" class="btn" style="background:${s.theme.color}; padding:10px; font-size:13px;"
+                                onmousedown="fireArcadeShip(${i})" ontouchstart="event.preventDefault(); fireArcadeShip(${i});">
+                                🔥 ${s.member.name} (${s.theme.keyLabel})
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+
+            runSpaceShooterLoop();
+        }
+
+        function fireArcadeShip(shipIdx) {
+            const m = activeArcadeMatch;
+            if (!m || m.type !== 'shooter') return;
+            const s = m.ships[shipIdx];
+            if (!s || s.hp <= 0 || s.cooldown > 0) return;
+
+            AudioEngine.playTone(620, 'square', 0.08, 0.06);
+            s.vx = Math.cos(s.angle) * 3.4;
+            s.vy = Math.sin(s.angle) * 3.4;
+            s.rotDir *= -1;
+            s.cooldown = 16;
+
+            m.bullets.push({
+                ownerIdx: shipIdx,
+                color: s.theme.color,
+                x: s.x + Math.cos(s.angle) * 20,
+                y: s.y + Math.sin(s.angle) * 20,
+                vx: Math.cos(s.angle) * 6.5,
+                vy: Math.sin(s.angle) * 6.5,
+                life: 75
+            });
+        }
+
+        function handleArcadeKeyPress(k) {
+            const m = activeArcadeMatch;
+            if (!m) return;
+            const pIdx = ARCADE_PLAYER_THEMES.findIndex(t => t.keyCode === k);
+            if (pIdx === -1 || pIdx >= m.players.length) return;
+
+            if (m.type === 'quiz') {
+                buzzPlayerIn(pIdx);
+            } else if (m.type === 'shooter') {
+                fireArcadeShip(pIdx);
+            }
+        }
+
+        function runSpaceShooterLoop() {
+            const m = activeArcadeMatch;
+            if (!m || m.type !== 'shooter') return;
+            const sc = document.getElementById('arcade-shooter-canvas');
+            if (!sc) return;
+            const sctx = sc.getContext('2d');
+
+            sctx.fillStyle = '#0B132B';
+            sctx.fillRect(0, 0, m.W, m.H);
+
+            // Stars backdrop
+            sctx.fillStyle = 'rgba(255,255,255,0.45)';
+            for (let i = 0; i < 25; i++) {
+                sctx.fillRect((i * 73) % m.W, (i * 41) % m.H, 2, 2);
+            }
+
+            // Update & draw ships
+            m.ships.forEach((s) => {
+                if (s.hp <= 0) return;
+                s.angle += 0.055 * s.rotDir;
+                s.x += s.vx;
+                s.y += s.vy;
+                s.vx *= 0.96;
+                s.vy *= 0.96;
+                if (s.cooldown > 0) s.cooldown--;
+
+                if (s.x < 22) { s.x = 22; s.vx *= -0.8; }
+                if (s.x > m.W - 22) { s.x = m.W - 22; s.vx *= -0.8; }
+                if (s.y < 22) { s.y = 22; s.vy *= -0.8; }
+                if (s.y > m.H - 22) { s.y = m.H - 22; s.vy *= -0.8; }
+
+                sctx.save();
+                sctx.translate(s.x, s.y);
+                sctx.rotate(s.angle);
+                sctx.fillStyle = s.theme.color;
+                sctx.strokeStyle = '#FFF';
+                sctx.lineWidth = 2;
+                sctx.beginPath();
+                sctx.moveTo(18, 0);
+                sctx.lineTo(-12, -12);
+                sctx.lineTo(-7, 0);
+                sctx.lineTo(-12, 12);
+                sctx.closePath();
+                sctx.fill();
+                sctx.stroke();
+                sctx.restore();
+
+                sctx.fillStyle = '#FFF';
+                sctx.font = 'bold 11px Fredoka';
+                sctx.textAlign = 'center';
+                sctx.fillText(`${s.member.name} ${'❤️'.repeat(s.hp)}`, s.x, s.y - 20);
+            });
+
+            // Update & draw bullets
+            for (let i = m.bullets.length - 1; i >= 0; i--) {
+                const b = m.bullets[i];
+                b.x += b.vx;
+                b.y += b.vy;
+                b.life--;
+
+                sctx.fillStyle = b.color;
+                sctx.beginPath();
+                sctx.arc(b.x, b.y, 5, 0, Math.PI * 2);
+                sctx.fill();
+
+                let hit = false;
+                m.ships.forEach((target, tIdx) => {
+                    if (tIdx !== b.ownerIdx && target.hp > 0 && Math.hypot(b.x - target.x, b.y - target.y) < 18) {
+                        target.hp -= 1;
+                        hit = true;
+                        AudioEngine.playError();
+                    }
+                });
+
+                if (hit || b.life <= 0 || b.x < 0 || b.x > m.W || b.y < 0 || b.y > m.H) {
+                    m.bullets.splice(i, 1);
+                }
+            }
+
+            const aliveShips = m.ships.filter(s => s.hp > 0);
+            if (aliveShips.length <= 1) {
+                const winner = aliveShips[0] ? aliveShips[0].member : null;
+                return finishArcadeMatch(winner, m.pot, 'Đấu Trường Vũ Trụ', !winner, m.players);
+            }
+
+            arcadeAnimFrameId = requestAnimationFrame(runSpaceShooterLoop);
+        }
+
+        /* =========================================================================
+           11. MAIN GAME LOOP
+           ========================================================================= */
+        function gameLoop() {
+            const me = getCurrentUser();
+            const lighting = getRealTimeLighting();
+            const speed = 3.6;
+
+            let dx = 0, dy = 0;
+            if (keys['arrowup'] || keys['w']) dy -= 1;
+            if (keys['arrowdown'] || keys['s']) dy += 1;
+            if (keys['arrowleft'] || keys['a']) dx -= 1;
+            if (keys['arrowright'] || keys['d']) dx += 1;
 
             if (joyActive) {
                 dx = joyVector.x;
                 dy = joyVector.y;
-                if (Math.abs(dx) > Math.abs(dy)) me.dir = dx < 0 ? 'left' : 'right';
-                else me.dir = dy < 0 ? 'up' : 'down';
             }
 
             if (dx !== 0 || dy !== 0) {
                 const len = Math.hypot(dx, dy);
                 if (len > 1) { dx /= len; dy /= len; }
-
                 const nextX = me.x + dx * speed;
                 const nextY = me.y + dy * speed;
 
+                if (Math.abs(dx) > Math.abs(dy)) me.dir = dx < 0 ? 'left' : 'right';
+                else me.dir = dy < 0 ? 'up' : 'down';
+
                 if (me.scene === 'neighborhood') {
                     me.x = Math.max(40, Math.min(STREET_WORLD.width - 40, nextX));
-                    me.y = Math.max(260, Math.min(STREET_WORLD.height - 40, nextY));
+                    me.y = Math.max(265, Math.min(STREET_WORLD.height - 40, nextY));
                 } else if (me.scene === 'private_room') {
-                    // Walk straight through the bottom wooden door (x: 335..425, y >= H - 22) to exit to hallway!
-                    if (nextY >= PRIVATE_ROOM_WORLD.height - 18 && nextX >= 332 && nextX <= 428) {
+                    const prX = Math.max(35, Math.min(PRIVATE_ROOM_WORLD.width - 35, nextX));
+                    const prY = Math.max(175, Math.min(PRIVATE_ROOM_WORLD.height - 15, nextY));
+                    me.x = prX;
+                    me.y = prY;
+                    if (prY >= PRIVATE_ROOM_WORLD.height - 18 && Math.abs(prX - 380) <= 45) {
                         exitPrivateRoomToHallway();
-                    } else {
-                        me.x = Math.max(32, Math.min(PRIVATE_ROOM_WORLD.width - 32, nextX));
-                        me.y = Math.max(205, Math.min(PRIVATE_ROOM_WORLD.height - 24, nextY));
                     }
                 } else {
                     const check = canMoveInsideHouse(me, nextX, nextY);
                     if (check.allowed) {
                         me.x = nextX;
                         me.y = nextY;
-                        const enteredRoom = getRoomAtPosition(me.x, me.y);
+                        const enteredRoom = getRoomAtPosition(nextX, nextY);
                         if (enteredRoom && enteredRoom.ownerIds && enteredRoom.ownerIds.length > 0) {
                             enterPrivateRoomScene(enteredRoom);
                         }
-                    } else if (check.blockedRoom && Date.now() - lastDoorToastTime > 2500) {
+                    } else if (check.blockedRoom && Date.now() - lastDoorToastTime > 2200) {
                         lastDoorToastTime = Date.now();
                         AudioEngine.playError();
-                        showToast(`🔒 ${check.blockedRoom.name} đang khóa! Hãy xin phép chủ phòng mở cửa.`);
+                        showToast(`🔒 ${check.blockedRoom.name} đang khóa! Chủ phòng cần mở khóa cửa trước.`);
                     }
                 }
             }
 
-            updateHUD();
-
             const interactables = getWorldInteractables();
-            let nearest = null;
-            let minDist = Infinity;
-
+            let nearest = null, minDist = Infinity;
             interactables.forEach(item => {
-                const dist = Math.hypot(me.x - item.x, me.y - item.y);
-                if (dist <= item.radius && dist < minDist) {
-                    minDist = dist;
-                    nearest = item;
-                }
+                const d = Math.hypot(me.x - item.x, me.y - item.y);
+                if (d < item.radius && d < minDist) { minDist = d; nearest = item; }
             });
 
-            currentInteractTarget = nearest;
             const promptEl = document.getElementById('interact-prompt');
             if (nearest) {
+                currentInteractTarget = nearest;
                 promptEl.style.display = 'block';
                 document.getElementById('interact-btn').innerText = nearest.label;
             } else {
+                currentInteractTarget = null;
                 promptEl.style.display = 'none';
             }
-        }
 
-        function render() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const me = getCurrentUser();
-            const lighting = getRealTimeLighting();
-            const world = me.scene === 'neighborhood'
-                ? STREET_WORLD
-                : (me.scene === 'private_room' ? PRIVATE_ROOM_WORLD : HOUSE_WORLD);
+            const worldW = me.scene === 'neighborhood'
+                ? STREET_WORLD.width
+                : (me.scene === 'private_room' ? PRIVATE_ROOM_WORLD.width : HOUSE_WORLD.width);
+            const worldH = me.scene === 'neighborhood'
+                ? STREET_WORLD.height
+                : (me.scene === 'private_room' ? PRIVATE_ROOM_WORLD.height : HOUSE_WORLD.height);
 
-            // Safe HUD padding so top HUD and bottom joystick/chat bar NEVER cover the house or character!
-            const topHudEl = document.getElementById('top-hud');
-            const topPad = (topHudEl ? topHudEl.offsetHeight : 85) + 18;
-            const bottomPad = 115;
-            const usableHeight = Math.max(200, canvas.height - topPad - bottomPad);
-            const centerScreenY = topPad + usableHeight / 2;
+            const effW = canvas.width / zoomLevel;
+            const effH = canvas.height / zoomLevel;
 
-            let camX = me.x - canvas.width / 2;
-            let camY = me.y - centerScreenY;
+            const topSafePad = 140 / zoomLevel;
+            const botSafePad = 95 / zoomLevel;
+            let camX = me.x - effW / 2;
+            let camY = me.y - effH / 2 - 20;
 
-            if (world.width > canvas.width) {
-                camX = Math.max(-20, Math.min(world.width - canvas.width + 20, camX));
+            if (worldW <= effW) {
+                camX = (worldW - effW) / 2;
             } else {
-                camX = -(canvas.width - world.width) / 2;
+                camX = Math.max(0, Math.min(worldW - effW, camX));
             }
-
-            if (world.height > usableHeight) {
-                const minCamY = -topPad;
-                const maxCamY = world.height - canvas.height + bottomPad;
-                camY = Math.max(minCamY, Math.min(maxCamY, camY));
-            } else {
-                camY = -(topPad + (usableHeight - world.height) / 2);
-            }
-
-            ctx.save();
-            ctx.translate(canvas.width / 2, centerScreenY);
-            ctx.scale(zoomLevel, zoomLevel);
-            ctx.translate(-canvas.width / 2 - camX, -centerScreenY - camY);
-
-            if (me.scene === 'neighborhood') {
-                drawNeighborhoodWorld(lighting);
-            } else if (me.scene === 'private_room') {
-                drawPrivateRoomWorld(lighting);
-            } else {
-                drawHouseInteriorWorld(lighting);
-            }
-
-            if (currentInteractTarget) {
-                ctx.save();
-                ctx.strokeStyle = '#FFE66D';
-                ctx.lineWidth = 4;
-                ctx.setLineDash([8, 6]);
-                ctx.beginPath();
-                ctx.arc(currentInteractTarget.x, currentInteractTarget.y, 34 + Math.sin(Date.now() / 150) * 4, 0, Math.PI * 2);
-                ctx.stroke();
-                ctx.restore();
-            }
-
-            const meRoom = me.scene === 'house' ? getRoomAtPosition(me.x, me.y) : null;
-            const mePrivId = me.scene === 'private_room' ? (me.privateRoomId || activePrivateRoomId) : null;
-            const visibleMembers = state.members
-                .filter(m => {
-                    if (m.scene !== me.scene) return false;
-                    if (me.scene === 'private_room') {
-                        return (m.privateRoomId || activePrivateRoomId) === mePrivId;
-                    }
-                    if (me.scene === 'house' && m.id !== me.id) {
-                        const theirRoom = getRoomAtPosition(m.x, m.y);
-                        if (theirRoom && theirRoom.ownerIds && theirRoom.ownerIds.length > 0) {
-                            if (!meRoom || meRoom.id !== theirRoom.id) return false;
-                        }
-                    }
-                    return true;
-                })
-                .sort((a, b) => a.y - b.y);
-
-            visibleMembers.forEach(m => {
-                drawDetailedChibi(m, m.id === state.currentUserId);
-            });
-
-            ctx.restore();
-
-            // Real-time ambient lighting tint overlay (Dawn / Sunset / Night)
-            if (lighting.overlayAlpha > 0) {
-                ctx.save();
-                ctx.fillStyle = lighting.overlayColor;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.restore();
-            }
-        }
-
-        function gameLoop() {
-            update();
-            render();
-            requestAnimationFrame(gameLoop);
-        }
-
-
-        /* =========================================================================
-           11. GRADE 6 ENGLISH CENTER QUIZ GENERATOR (10 QUESTIONS / SET)
-           ========================================================================= */
-        const GRADE6_ENGLISH_BANK = [
-            { cat: 'grammar', q: 'She ______ to school by bicycle every morning.', opts: ['go', 'goes', 'going', 'is go'], ans: 1, exp: 'Thì Hiện tại đơn với chủ ngữ số ít "She" -> động từ thêm "es" (goes).' },
-            { cat: 'grammar', q: 'Look! The students ______ football in the schoolyard.', opts: ['play', 'plays', 'are playing', 'is playing'], ans: 2, exp: 'Có dấu hiệu "Look!" -> Thì Hiện tại tiếp diễn (are playing).' },
-            { cat: 'grammar', q: 'How ______ classrooms are there in your new school?', opts: ['much', 'many', 'old', 'often'], ans: 1, exp: '"Classrooms" là danh từ đếm được số nhiều -> dùng "How many".' },
-            { cat: 'grammar', q: 'My bedroom is ______ the second floor.', opts: ['in', 'at', 'on', 'under'], ans: 2, exp: 'Dùng giới từ "on" trước số tầng (on the second floor).' },
-            { cat: 'grammar', q: 'There ______ a big sofa and two armchairs in the living room.', opts: ['is', 'are', 'am', 'be'], ans: 0, exp: 'Cấu trúc "There is + danh từ số ít (a big sofa)".' },
-            { cat: 'grammar', q: 'We shouldn’t ______ too much noise in the library.', opts: ['make', 'making', 'to make', 'makes'], ans: 0, exp: 'Sau động từ khuyết thiếu "shouldn’t" dùng động từ nguyên mẫu (make).' },
-            { cat: 'grammar', q: 'Ho Chi Minh City is ______ than Da Nang.', opts: ['large', 'more large', 'larger', 'largest'], ans: 2, exp: 'So sánh hơn của tính từ ngắn "large" là "larger".' },
-            { cat: 'grammar', q: '______ do you usually have English lessons? – On Monday and Thursday.', opts: ['Where', 'What', 'When', 'Who'], ans: 2, exp: 'Câu trả lời chỉ thời gian (thứ Hai và thứ Năm) -> dùng "When".' },
-            { cat: 'grammar', q: 'They ______ a picnic in the park this Sunday.', opts: ['are having', 'has', 'had', 'having'], ans: 0, exp: 'Thì Hiện tại tiếp diễn dùng cho kế hoạch đã định sẵn trong tương lai gần.' },
-            { cat: 'grammar', q: 'You ______ pick flowers in the school garden. It is against the rules.', opts: ['must', 'mustn’t', 'can', 'should'], ans: 1, exp: '"Mustn’t" diễn tả sự cấm đoán (không được phép hái hoa).' },
-            { cat: 'grammar', q: 'Mount Everest is the ______ mountain in the world.', opts: ['high', 'higher', 'highest', 'most high'], ans: 2, exp: 'So sánh nhất với tính từ ngắn "high" -> "the highest".' },
-            { cat: 'grammar', q: 'My father ______ TV in the living room at the moment.', opts: ['watches', 'watch', 'is watching', 'watched'], ans: 2, exp: 'Dấu hiệu "at the moment" -> Thì Hiện tại tiếp diễn (is watching).' },
-            { cat: 'grammar', q: '______ your sister like listening to pop music?', opts: ['Do', 'Does', 'Is', 'Are'], ans: 1, exp: 'Câu hỏi thì Hiện tại đơn với động từ thường "like" và chủ ngữ số ít "your sister" -> dùng "Does".' },
-            { cat: 'grammar', q: 'There are ______ apples in the fridge, so we don’t need to buy more.', opts: ['any', 'some', 'a', 'an'], ans: 1, exp: '"Some" dùng trong câu khẳng định với danh từ đếm được số nhiều (apples).' },
-            { cat: 'grammar', q: 'If we ______ more trees, our neighbourhood will be greener.', opts: ['plant', 'plants', 'will plant', 'planted'], ans: 0, exp: 'Câu điều kiện loại 1: Mệnh đề If chia Hiện tại đơn (plant).' },
-            { cat: 'vocab', q: 'Nam is very ______. He always helps his friends with their homework.', opts: ['shy', 'kind', 'lazy', 'boring'], ans: 1, exp: '"Kind" (tốt bụng) phù hợp với hành động luôn giúp đỡ bạn bè.' },
-            { cat: 'vocab', q: 'Which word has a different sound in the underlined part: "b<u>oo</u>k", "l<u>oo</u>k", "f<u>oo</u>d", "g<u>oo</u>d"?', opts: ['book', 'look', 'food', 'good'], ans: 2, exp: '"Food" phát âm là /uː/, các từ còn lại phát âm là /ʊ/.' },
-            { cat: 'vocab', q: 'We use a ______ to draw straight lines in Maths.', opts: ['compass', 'rubber', 'ruler', 'pencil sharpener'], ans: 2, exp: '"Ruler" là cái thước kẻ dùng để vẽ đường thẳng.' },
-            { cat: 'vocab', q: 'Tet is the biggest traditional ______ in Viet Nam.', opts: ['festival', 'subject', 'building', 'instrument'], ans: 0, exp: '"Festival" nghĩa là lễ hội.' },
-            { cat: 'vocab', q: 'You must ______ your hands before meals.', opts: ['wash', 'brush', 'clean', 'do'], ans: 0, exp: 'Cụm từ cố định: "wash your hands" (rửa tay).' },
-            { cat: 'vocab', q: 'A place where you can borrow and read many books is a ______.', opts: ['stadium', 'post office', 'library', 'supermarket'], ans: 2, exp: '"Library" là thư viện.' },
-            { cat: 'vocab', q: 'Odd one out (Chọn từ khác loại):', opts: ['kitchen', 'bathroom', 'bedroom', 'wardrobe'], ans: 3, exp: '"Wardrobe" (tủ quần áo) là đồ vật, các từ còn lại là các phòng trong nhà.' },
-            { cat: 'vocab', q: 'What is the opposite of "noisy"?', opts: ['crowded', 'quiet', 'exciting', 'modern'], ans: 1, exp: 'Trái nghĩa với "noisy" (ồn ào) là "quiet" (yên tĩnh).' },
-            { cat: 'vocab', q: '"Would you like to go to the cinema tonight?" – "______"', opts: ['Yes, I’d love to.', 'No, I don’t.', 'Yes, I am.', 'You’re welcome.'], ans: 0, exp: 'Cách đáp lại lời mời "Would you like to...?" lịch sự là "Yes, I’d love to."' },
-            { cat: 'vocab', q: 'My best friend has a round face and ______ black hair.', opts: ['tall', 'long', 'heavy', 'high'], ans: 1, exp: 'Dùng tính từ "long" (dài) để miêu tả mái tóc.' },
-            { cat: 'vocab', q: 'Turn ______ at the traffic lights, and the post office is on your right.', opts: ['left', 'straight', 'behind', 'next'], ans: 0, exp: 'Cụm chỉ đường: "Turn left" (rẽ trái).' },
-            { cat: 'vocab', q: 'Ha Long Bay is famous for its beautiful ______ and caves.', opts: ['islands', 'deserts', 'rivers', 'streets'], ans: 0, exp: 'Vịnh Hạ Long nổi tiếng với các hòn đảo (islands) và hang động đẹp.' },
-            { cat: 'vocab', q: 'We use a ______ to look up new English words.', opts: ['calculator', 'dictionary', 'compass', 'schoolbag'], ans: 1, exp: '"Dictionary" là cuốn từ điển dùng để tra từ mới.' },
-            { cat: 'vocab', q: 'People often ______ their houses with peach blossoms and kumquat trees at Tet.', opts: ['decorate', 'celebrate', 'clean', 'visit'], ans: 0, exp: '"Decorate" nghĩa là trang trí nhà cửa.' },
-            { cat: 'vocab', q: 'In the future, robots will help us ______ the housework.', opts: ['do', 'make', 'play', 'go'], ans: 0, exp: 'Cụm từ cố định: "do the housework" (làm việc nhà).' }
-        ];
-
-        let currentEngQuiz = { questions: [], userAnswers: [], submitted: false, category: 'mix', setNumber: 1 };
-
-        function startEnglishGrade6Quiz(cat = 'mix') {
-            let pool = cat === 'mix'
-                ? [...GRADE6_ENGLISH_BANK]
-                : GRADE6_ENGLISH_BANK.filter(item => item.cat === cat);
-            if (pool.length < 10) pool = [...GRADE6_ENGLISH_BANK];
-
-            // Fisher-Yates shuffle for questions & options
-            for (let i = pool.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [pool[i], pool[j]] = [pool[j], pool[i]];
-            }
-            const selected = pool.slice(0, 10).map(item => {
-                const mapped = item.opts.map((text, idx) => ({ text, isCorrect: idx === item.ans }));
-                for (let i = mapped.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [mapped[i], mapped[j]] = [mapped[j], mapped[i]];
-                }
-                return {
-                    q: item.q,
-                    opts: mapped.map(m => m.text),
-                    ans: mapped.findIndex(m => m.isCorrect),
-                    exp: item.exp
-                };
-            });
-
-            currentEngQuiz = {
-                questions: selected,
-                userAnswers: new Array(10).fill(-1),
-                submitted: false,
-                category: cat,
-                setNumber: (currentEngQuiz.setNumber || 0) + 1
-            };
-            renderEnglishQuizBody();
-        }
-
-        function selectEngOption(qIdx, optIdx) {
-            if (currentEngQuiz.submitted) return;
-            currentEngQuiz.userAnswers[qIdx] = optIdx;
-            renderEnglishQuizBody();
-        }
-
-        function submitEnglishGrade6Quiz() {
-            if (currentEngQuiz.submitted) return;
-            const unanswered = currentEngQuiz.userAnswers.filter(a => a === -1).length;
-            if (unanswered > 0) {
-                showToast(`⚠️ Bạn còn ${unanswered} câu chưa chọn đáp án!`);
-                return;
-            }
-            currentEngQuiz.submitted = true;
-            let correctCount = 0;
-            currentEngQuiz.questions.forEach((q, idx) => {
-                if (currentEngQuiz.userAnswers[idx] === q.ans) correctCount++;
-            });
-
-            const bonus = correctCount >= 8 ? 5 : 0;
-            const totalStars = correctCount + bonus;
-            const me = getCurrentUser();
-            me.points += totalStars;
-            AudioEngine.playSuccess();
-            triggerSpeechBubble(me, `I got ${correctCount}/10 in English! (+${totalStars}⭐)`, true);
-            showToast(`🎓 Hoàn thành bài thi: Đúng ${correctCount}/10 câu! Nhận +${totalStars}⭐`);
-            updateHUD();
-            saveGame();
-            renderEnglishQuizBody();
-        }
-
-        function renderEnglishQuizBody() {
-            const box = document.getElementById('eng-quiz-body');
-            if (!box) return;
-            const catNames = { mix: 'Tổng Hợp Lớp 6', grammar: 'Ngữ Pháp Lớp 6', vocab: 'Từ Vựng & Giao Tiếp Lớp 6' };
-            let html = `<div style="font-size:12px; color:#0E6251; font-weight:700; margin-bottom:8px;">📝 Bộ đề #${currentEngQuiz.setNumber} • Chủ đề: ${catNames[currentEngQuiz.category] || 'Tổng Hợp'} (1⭐/câu đúng, thưởng thêm +5⭐ nếu đạt ≥8/10)</div>`;
-
-            if (currentEngQuiz.submitted) {
-                const correctCount = currentEngQuiz.questions.reduce((acc, q, i) => acc + (currentEngQuiz.userAnswers[i] === q.ans ? 1 : 0), 0);
-                const bonus = correctCount >= 8 ? 5 : 0;
-                html += `<div style="background:#FEF9E7; border:2px solid #F39C12; border-radius:10px; padding:12px; margin-bottom:12px; text-align:center;">
-                    <div style="font-size:16px; font-weight:700; color:#D35400;">🏆 Kết quả: ${correctCount}/10 câu đúng (+${correctCount + bonus}⭐)</div>
-                    ${bonus > 0 ? '<div style="font-size:12.5px; color:#27AE60; font-weight:700; margin-top:3px;">🌟 Xuất sắc! Bạn nhận thêm +5⭐ thưởng điểm cao!</div>' : ''}
-                    <button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="startEnglishGrade6Quiz('${currentEngQuiz.category}')">🔄 Tạo bộ đề 10 câu mới</button>
-                </div>`;
-            }
-
-            currentEngQuiz.questions.forEach((item, idx) => {
-                const chosen = currentEngQuiz.userAnswers[idx];
-                html += `<div style="background:#FFF; border:2px solid #D5D8DC; border-radius:10px; padding:10px; margin-bottom:10px;">
-                    <div style="font-weight:700; font-size:13.5px; color:#2C3E50; margin-bottom:8px;">Câu ${idx + 1}/10: ${item.q}</div>
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">`;
-                item.opts.forEach((opt, oIdx) => {
-                    let bg = '#F8F9F9', border = '#BDC3C7', color = '#2C3E50';
-                    if (!currentEngQuiz.submitted && chosen === oIdx) {
-                        bg = '#D6EAF8'; border = '#2980B9';
-                    } else if (currentEngQuiz.submitted) {
-                        if (oIdx === item.ans) { bg = '#D4EFDF'; border = '#27AE60'; color = '#145A32'; }
-                        else if (chosen === oIdx && oIdx !== item.ans) { bg = '#FADBD8'; border = '#E74C3C'; color = '#78281F'; }
-                    }
-                    const letter = ['A', 'B', 'C', 'D'][oIdx];
-                    html += `<button type="button" onclick="selectEngOption(${idx}, ${oIdx})" style="text-align:left; padding:7px 10px; border-radius:8px; border:2px solid ${border}; background:${bg}; color:${color}; font-family:inherit; font-size:12.5px; font-weight:600; cursor:pointer;">
-                        ${letter}. ${opt}
-                    </button>`;
-                });
-                html += `</div>`;
-                if (currentEngQuiz.submitted) {
-                    html += `<div style="margin-top:6px; font-size:12px; color:#1F618D; background:#EBF5FB; padding:5px 8px; border-radius:6px;">💡 ${item.exp}</div>`;
-                }
-                html += `</div>`;
-            });
-
-            if (!currentEngQuiz.submitted) {
-                html += `<button class="btn btn-accent" style="width:100%; padding:10px; font-size:14px;" onclick="submitEnglishGrade6Quiz()">✅ Nộp bài & Nhận Sao Thưởng</button>`;
-            }
-            box.innerHTML = html;
-        }
-
-        loadGame();
-        updateHUD();
-        gameLoop();
-    </script>
-</body>
-</html>
+            if (worldH + topSafePad + botSafePad <= effH) {
+                camY = (worldH - effH) / 2 - (
