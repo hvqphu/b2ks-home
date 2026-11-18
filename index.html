@@ -988,8 +988,8 @@
                 </div>
             </div>
 
-            <!-- ENGLISH PROMPT INPUT -->
-            <div style="background:#0F172A; border:2px solid #334155; border-radius:12px; padding:12px; margin-bottom:12px;">
+            <!-- ENGLISH PROMPT INPUT (HIDDEN IN FUSION MODE) -->
+            <div id="lab-prompt-panel" style="background:#0F172A; border:2px solid #334155; border-radius:12px; padding:12px; margin-bottom:12px;">
                 <label style="display:block; font-size:13px; font-weight:700; color:#7DD3FC; margin-bottom:6px;">
                     ✍️ Nhập dòng lệnh mô tả bằng Tiếng Anh (Bắt buộc Tiếng Anh hợp lệ):
                 </label>
@@ -1003,6 +1003,11 @@
                     <button type="button" class="btn btn-sm" style="background:#334155; font-size:11px; padding:3px 7px;" onclick="fillLabSamplePrompt('a wooden table shaped like a blue swimming fish')">🐟 Fish-shaped table</button>
                     <button type="button" class="btn btn-sm" style="background:#334155; font-size:11px; padding:3px 7px;" onclick="fillLabSamplePrompt('a rocket dragon bookshelf with golden stars')">🚀 Rocket dragon shelf</button>
                 </div>
+            </div>
+
+            <!-- FUSION ACTION BUTTON (VISIBLE IN FUSION MODE WITHOUT ENGLISH PROMPT) -->
+            <div id="lab-fusion-action-bar" style="display:none; margin-bottom:12px; text-align:center;">
+                <button class="btn" style="width:100%; padding:11px 18px; font-size:14.5px; background:linear-gradient(90deg,#0D9488,#0284C7,#6366F1); border:2px solid #7DD3FC; box-shadow:0 4px 14px rgba(14,165,233,0.4);" onclick="runInventionLabSynthesis()" id="lab-fusion-submit-btn">🧬 Hợp nhất 2 Vật Phẩm Ngay (15⭐)</button>
             </div>
 
             <!-- RESULT & RECENT CREATIONS -->
@@ -5933,87 +5938,153 @@
         function buildLabSVGMarkup(spec) {
             const c = spec.color || '#0EA5E9';
             const ac = spec.accent || '#BAE6FD';
+            const uid = 'g_' + Math.random().toString(36).slice(2, 8);
             let parts = [];
 
-            // Aura / Stars
-            if (spec.hasStars) {
-                parts.push(`<circle cx="32" cy="34" r="26" fill="${ac}" opacity="0.35"/>`);
-                parts.push(`<text x="8" y="16" font-size="11">✨</text><text x="48" y="18" font-size="11">⭐</text>`);
+            // Rich SVG Gradients & Glow Definitions
+            if (spec.isRainbow) {
+                parts.push(`<defs>
+                    <linearGradient id="${uid}_body" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#F43F5E"/>
+                        <stop offset="35%" stop-color="#F59E0B"/>
+                        <stop offset="70%" stop-color="#10B981"/>
+                        <stop offset="100%" stop-color="#3B82F6"/>
+                    </linearGradient>
+                    <radialGradient id="${uid}_aura" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stop-color="#FEF08A" stop-opacity="0.7"/>
+                        <stop offset="100%" stop-color="#38BDF8" stop-opacity="0"/>
+                    </radialGradient>
+                </defs>`);
+            } else {
+                parts.push(`<defs>
+                    <linearGradient id="${uid}_body" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="${ac}"/>
+                        <stop offset="45%" stop-color="${c}"/>
+                        <stop offset="100%" stop-color="#1E293B"/>
+                    </linearGradient>
+                    <radialGradient id="${uid}_aura" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stop-color="${ac}" stop-opacity="0.65"/>
+                        <stop offset="100%" stop-color="${c}" stop-opacity="0"/>
+                    </radialGradient>
+                </defs>`);
             }
 
-            // Wings
+            const fillMain = `url(#${uid}_body)`;
+
+            // Pedestal shadow & energy ring
+            parts.push(`<ellipse cx="32" cy="57" rx="20" ry="4" fill="#0F172A" opacity="0.25"/>`);
+            parts.push(`<circle cx="32" cy="33" r="28" fill="url(#${uid}_aura)"/>`);
+
+            // Sparkles & Stars
+            if (spec.hasStars || spec.secondaryTrait) {
+                parts.push(`<polygon points="10,12 11.5,15.5 15,17 11.5,18.5 10,22 8.5,18.5 5,17 8.5,15.5" fill="#FACC15" stroke="#B45309" stroke-width="0.8"/>`);
+                parts.push(`<polygon points="53,13 54.2,15.8 57,17 54.2,18.2 53,21 51.8,18.2 49,17 51.8,15.8" fill="#38BDF8" stroke="#0369A1" stroke-width="0.8"/>`);
+                parts.push(`<circle cx="14" cy="48" r="1.8" fill="#FDE047"/>`);
+                parts.push(`<circle cx="51" cy="46" r="2" fill="#A7F3D0"/>`);
+            }
+
+            // Wings (Detailed feathered/crystal wings)
             if (spec.hasWings) {
-                parts.push(`<path d="M16 30 Q2 14 14 22 Q6 28 18 35 Z" fill="${ac}" stroke="#1E293B" stroke-width="2"/>`);
-                parts.push(`<path d="M48 30 Q62 14 50 22 Q58 28 46 35 Z" fill="${ac}" stroke="#1E293B" stroke-width="2"/>`);
+                parts.push(`<path d="M17 29 Q2 10 11 21 Q3 24 13 29 Q6 33 18 36 Z" fill="${ac}" stroke="#1E293B" stroke-width="1.8" stroke-linejoin="round"/>`);
+                parts.push(`<path d="M15 28 Q7 19 13 25" stroke="#FFF" stroke-width="1.3" fill="none"/>`);
+                parts.push(`<path d="M47 29 Q62 10 53 21 Q61 24 51 29 Q58 33 46 36 Z" fill="${ac}" stroke="#1E293B" stroke-width="1.8" stroke-linejoin="round"/>`);
+                parts.push(`<path d="M49 28 Q57 19 51 25" stroke="#FFF" stroke-width="1.3" fill="none"/>`);
             }
 
             // Table Legs if hybrid table or hasLegs
             if (spec.hasLegs) {
-                parts.push(`<rect x="15" y="38" width="5" height="18" rx="1.5" fill="#78350F" stroke="#1E293B" stroke-width="2"/>`);
-                parts.push(`<rect x="44" y="38" width="5" height="18" rx="1.5" fill="#78350F" stroke="#1E293B" stroke-width="2"/>`);
+                parts.push(`<rect x="14" y="38" width="5.5" height="18" rx="2" fill="#92400E" stroke="#1E293B" stroke-width="1.8"/>`);
+                parts.push(`<rect x="15.5" y="39" width="1.8" height="15" fill="#D97706"/>`);
+                parts.push(`<rect x="44.5" y="38" width="5.5" height="18" rx="2" fill="#92400E" stroke="#1E293B" stroke-width="1.8"/>`);
+                parts.push(`<rect x="46" y="39" width="1.8" height="15" fill="#D97706"/>`);
             }
 
-            // Primary Body Shape
+            // Primary Body Shape with layered highlights & textures
             if (spec.primaryShape === 'table') {
                 if (spec.hasFishTail || spec.secondaryTrait === 'fish') {
-                    // Fish-shaped table!
-                    parts.push(`<ellipse cx="30" cy="34" rx="20" ry="9" fill="${c}" stroke="#1E293B" stroke-width="2.2"/>`);
-                    parts.push(`<polygon points="48,34 59,25 59,43" fill="${ac}" stroke="#1E293B" stroke-width="2"/>`);
-                    parts.push(`<circle cx="18" cy="32" r="2.2" fill="#FFF"/><circle cx="18" cy="32" r="1" fill="#1E293B"/>`);
+                    parts.push(`<ellipse cx="29" cy="34" rx="20" ry="9.5" fill="${fillMain}" stroke="#1E293B" stroke-width="2.1"/>`);
+                    parts.push(`<path d="M15 30 Q29 26 42 30" stroke="#FFF" stroke-width="1.6" fill="none" opacity="0.75"/>`);
+                    parts.push(`<polygon points="47,34 59,23 56,34 59,45" fill="${ac}" stroke="#1E293B" stroke-width="1.9" stroke-linejoin="round"/>`);
+                    parts.push(`<path d="M26 24 Q32 18 36 24" fill="${ac}" stroke="#1E293B" stroke-width="1.6"/>`);
+                    parts.push(`<circle cx="17" cy="32" r="2.8" fill="#FFF" stroke="#1E293B" stroke-width="1"/><circle cx="16.5" cy="32" r="1.3" fill="#0F172A"/>`);
                 } else {
-                    parts.push(`<rect x="9" y="31" width="46" height="8" rx="3" fill="${c}" stroke="#1E293B" stroke-width="2.2"/>`);
-                    parts.push(`<rect x="13" y="32" width="38" height="3" fill="${ac}" opacity="0.7"/>`);
+                    parts.push(`<rect x="8" y="30" width="48" height="9" rx="3.5" fill="${fillMain}" stroke="#1E293B" stroke-width="2.1"/>`);
+                    parts.push(`<rect x="11" y="31.5" width="42" height="2.8" rx="1.2" fill="#FFF" opacity="0.65"/>`);
                 }
             } else if (spec.primaryShape === 'fish') {
-                parts.push(`<ellipse cx="29" cy="33" rx="18" ry="12" fill="${c}" stroke="#1E293B" stroke-width="2.2"/>`);
-                parts.push(`<polygon points="45,33 58,22 58,44" fill="${ac}" stroke="#1E293B" stroke-width="2"/>`);
-                parts.push(`<polygon points="26,21 34,13 36,22" fill="${ac}" stroke="#1E293B" stroke-width="1.8"/>`);
-                parts.push(`<circle cx="18" cy="30" r="2.8" fill="#FFF"/><circle cx="18" cy="30" r="1.3" fill="#1E293B"/>`);
+                parts.push(`<ellipse cx="28" cy="33" rx="18" ry="12.5" fill="${fillMain}" stroke="#1E293B" stroke-width="2.1"/>`);
+                parts.push(`<polygon points="44,33 59,21 55,33 59,45" fill="${ac}" stroke="#1E293B" stroke-width="2" stroke-linejoin="round"/>`);
+                parts.push(`<polygon points="24,20 33,11 36,21" fill="${ac}" stroke="#1E293B" stroke-width="1.8" stroke-linejoin="round"/>`);
+                parts.push(`<path d="M27 35 Q33 31 35 38 Q30 41 27 35 Z" fill="${ac}" stroke="#1E293B" stroke-width="1.4"/>`);
+                parts.push(`<path d="M14 27 Q26 22 38 27" stroke="#FFF" stroke-width="1.8" fill="none" opacity="0.7"/>`);
+                parts.push(`<circle cx="17" cy="30" r="3.4" fill="#FFF" stroke="#1E293B" stroke-width="1.2"/><circle cx="16.2" cy="30" r="1.6" fill="#0F172A"/><circle cx="15.6" cy="29.2" r="0.7" fill="#FFF"/>`);
             } else if (spec.primaryShape === 'cat') {
-                parts.push(`<polygon points="18,24 22,12 29,21" fill="${c}" stroke="#1E293B" stroke-width="2"/>`);
-                parts.push(`<polygon points="46,24 42,12 35,21" fill="${c}" stroke="#1E293B" stroke-width="2"/>`);
-                parts.push(`<circle cx="32" cy="34" r="16" fill="${c}" stroke="#1E293B" stroke-width="2.2"/>`);
-                parts.push(`<circle cx="26" cy="32" r="2.2" fill="#1E293B"/><circle cx="38" cy="32" r="2.2" fill="#1E293B"/>`);
-                parts.push(`<polygon points="30,36 34,36 32,39" fill="#F43F5E"/>`);
+                parts.push(`<polygon points="16,25 20,10 29,20" fill="${fillMain}" stroke="#1E293B" stroke-width="2" stroke-linejoin="round"/>`);
+                parts.push(`<polygon points="19,22 21,14 26,20" fill="#FDA4AF"/>`);
+                parts.push(`<polygon points="48,25 44,10 35,20" fill="${fillMain}" stroke="#1E293B" stroke-width="2" stroke-linejoin="round"/>`);
+                parts.push(`<polygon points="45,22 43,14 38,20" fill="#FDA4AF"/>`);
+                parts.push(`<circle cx="32" cy="35" r="16.5" fill="${fillMain}" stroke="#1E293B" stroke-width="2.1"/>`);
+                parts.push(`<ellipse cx="26" cy="24" rx="5" ry="2.2" transform="rotate(-20 26 24)" fill="#FFF" opacity="0.55"/>`);
+                parts.push(`<ellipse cx="25.5" cy="33" rx="2.6" ry="3" fill="#0F172A"/><circle cx="24.8" cy="32" r="0.9" fill="#FFF"/>`);
+                parts.push(`<ellipse cx="38.5" cy="33" rx="2.6" ry="3" fill="#0F172A"/><circle cx="37.8" cy="32" r="0.9" fill="#FFF"/>`);
+                parts.push(`<ellipse cx="21" cy="37" rx="2.5" ry="1.4" fill="#FB7185" opacity="0.75"/>`);
+                parts.push(`<ellipse cx="43" cy="37" rx="2.5" ry="1.4" fill="#FB7185" opacity="0.75"/>`);
+                parts.push(`<polygon points="30,36.5 34,36.5 32,39.5" fill="#F43F5E"/>`);
+                parts.push(`<path d="M28 40 Q30 42.5 32 39.5 Q34 42.5 36 40" stroke="#1E293B" stroke-width="1.5" fill="none"/>`);
+                parts.push(`<line x1="12" y1="35" x2="18" y2="36" stroke="#1E293B" stroke-width="1.3"/><line x1="12" y1="39" x2="18" y2="38.5" stroke="#1E293B" stroke-width="1.3"/>`);
+                parts.push(`<line x1="52" y1="35" x2="46" y2="36" stroke="#1E293B" stroke-width="1.3"/><line x1="52" y1="39" x2="46" y2="38.5" stroke="#1E293B" stroke-width="1.3"/>`);
             } else if (spec.primaryShape === 'rocket') {
-                parts.push(`<path d="M32 10 Q44 24 42 46 L22 46 Q20 24 32 10 Z" fill="${c}" stroke="#1E293B" stroke-width="2.2"/>`);
-                parts.push(`<polygon points="22,36 13,47 22,46" fill="${ac}" stroke="#1E293B" stroke-width="2"/>`);
-                parts.push(`<polygon points="42,36 51,47 42,46" fill="${ac}" stroke="#1E293B" stroke-width="2"/>`);
-                parts.push(`<circle cx="32" cy="28" r="5" fill="#E0F2FE" stroke="#1E293B" stroke-width="2"/>`);
+                parts.push(`<polygon points="26,46 32,58 38,46" fill="#F97316" stroke="#DC2626" stroke-width="1.2"/>`);
+                parts.push(`<polygon points="29,46 32,54 35,46" fill="#FEF08A"/>`);
+                parts.push(`<path d="M32 9 Q45 23 42 46 L22 46 Q19 23 32 9 Z" fill="${fillMain}" stroke="#1E293B" stroke-width="2.1"/>`);
+                parts.push(`<path d="M27 17 Q24 28 25 42" stroke="#FFF" stroke-width="2" fill="none" opacity="0.6"/>`);
+                parts.push(`<polygon points="22,35 12,47 22,46" fill="${ac}" stroke="#1E293B" stroke-width="1.9" stroke-linejoin="round"/>`);
+                parts.push(`<polygon points="42,35 52,47 42,46" fill="${ac}" stroke="#1E293B" stroke-width="1.9" stroke-linejoin="round"/>`);
+                parts.push(`<circle cx="32" cy="28" r="6" fill="#E0F2FE" stroke="#1E293B" stroke-width="2"/><circle cx="30.5" cy="26.5" r="1.8" fill="#FFF"/>`);
             } else if (spec.primaryShape === 'lamp') {
-                parts.push(`<rect x="24" y="46" width="16" height="8" rx="2" fill="#475569" stroke="#1E293B" stroke-width="2"/>`);
-                parts.push(`<rect x="30" y="36" width="4" height="10" fill="#94A3B8" stroke="#1E293B" stroke-width="1.5"/>`);
-                parts.push(`<polygon points="18,36 46,36 40,16 24,16" fill="${c}" stroke="#1E293B" stroke-width="2.2"/>`);
-                parts.push(`<circle cx="32" cy="26" r="4" fill="${ac}"/>`);
+                parts.push(`<rect x="22" y="47" width="20" height="7" rx="3" fill="#475569" stroke="#1E293B" stroke-width="2"/>`);
+                parts.push(`<rect x="29.5" y="36" width="5" height="11" fill="#CBD5E1" stroke="#1E293B" stroke-width="1.6"/>`);
+                parts.push(`<polygon points="16,36 48,36 41,15 23,15" fill="${fillMain}" stroke="#1E293B" stroke-width="2.1" stroke-linejoin="round"/>`);
+                parts.push(`<line x1="25" y1="18" x2="21" y2="33" stroke="#FFF" stroke-width="2" opacity="0.65"/>`);
+                parts.push(`<circle cx="32" cy="27" r="4.5" fill="#FEF08A" opacity="0.9"/>`);
             } else if (spec.primaryShape === 'dragon') {
-                parts.push(`<ellipse cx="32" cy="36" rx="15" ry="13" fill="${c}" stroke="#1E293B" stroke-width="2.2"/>`);
-                parts.push(`<circle cx="32" cy="21" r="10" fill="${c}" stroke="#1E293B" stroke-width="2.2"/>`);
-                parts.push(`<polygon points="25,13 23,6 29,12" fill="#FACC15" stroke="#1E293B" stroke-width="1.5"/>`);
-                parts.push(`<polygon points="39,13 41,6 35,12" fill="#FACC15" stroke="#1E293B" stroke-width="1.5"/>`);
-                parts.push(`<circle cx="28" cy="20" r="2" fill="#FFF"/><circle cx="36" cy="20" r="2" fill="#FFF"/>`);
+                parts.push(`<ellipse cx="32" cy="37" rx="15" ry="13" fill="${fillMain}" stroke="#1E293B" stroke-width="2.1"/>`);
+                parts.push(`<ellipse cx="32" cy="39" rx="9" ry="8" fill="#FEF08A" opacity="0.8"/>`);
+                parts.push(`<circle cx="32" cy="21" r="10.5" fill="${fillMain}" stroke="#1E293B" stroke-width="2.1"/>`);
+                parts.push(`<polygon points="24,13 21,5 29,11" fill="#FACC15" stroke="#1E293B" stroke-width="1.6" stroke-linejoin="round"/>`);
+                parts.push(`<polygon points="40,13 43,5 35,11" fill="#FACC15" stroke="#1E293B" stroke-width="1.6" stroke-linejoin="round"/>`);
+                parts.push(`<circle cx="28" cy="20" r="2.4" fill="#FFF"/><circle cx="28" cy="20" r="1.2" fill="#0F172A"/>`);
+                parts.push(`<circle cx="36" cy="20" r="2.4" fill="#FFF"/><circle cx="36" cy="20" r="1.2" fill="#0F172A"/>`);
             } else if (spec.primaryShape === 'car') {
-                parts.push(`<rect x="10" y="30" width="44" height="14" rx="5" fill="${c}" stroke="#1E293B" stroke-width="2.2"/>`);
-                parts.push(`<rect x="18" y="21" width="26" height="10" rx="4" fill="${ac}" stroke="#1E293B" stroke-width="2"/>`);
-                parts.push(`<circle cx="20" cy="46" r="5.5" fill="#1E293B"/><circle cx="44" cy="46" r="5.5" fill="#1E293B"/>`);
+                parts.push(`<rect x="9" y="30" width="46" height="14" rx="5.5" fill="${fillMain}" stroke="#1E293B" stroke-width="2.1"/>`);
+                parts.push(`<rect x="17" y="20" width="28" height="11" rx="4.5" fill="${ac}" stroke="#1E293B" stroke-width="1.9"/>`);
+                parts.push(`<rect x="20" y="22" width="10" height="7" rx="2" fill="#E0F2FE"/>`);
+                parts.push(`<rect x="32" y="22" width="10" height="7" rx="2" fill="#E0F2FE"/>`);
+                parts.push(`<circle cx="12" cy="36" r="2.2" fill="#FEF08A"/>`);
+                parts.push(`<circle cx="19" cy="46" r="6" fill="#0F172A" stroke="#CBD5E1" stroke-width="1.5"/><circle cx="19" cy="46" r="2.2" fill="#94A3B8"/>`);
+                parts.push(`<circle cx="45" cy="46" r="6" fill="#0F172A" stroke="#CBD5E1" stroke-width="1.5"/><circle cx="45" cy="46" r="2.2" fill="#94A3B8"/>`);
             } else if (spec.primaryShape === 'castle') {
-                parts.push(`<rect x="16" y="26" width="32" height="26" fill="${c}" stroke="#1E293B" stroke-width="2.2"/>`);
-                parts.push(`<polygon points="14,26 22,13 30,26" fill="${ac}" stroke="#1E293B" stroke-width="2"/>`);
-                parts.push(`<polygon points="34,26 42,13 50,26" fill="${ac}" stroke="#1E293B" stroke-width="2"/>`);
-                parts.push(`<rect x="28" y="38" width="8" height="14" rx="3" fill="#1E293B"/>`);
+                parts.push(`<rect x="15" y="26" width="34" height="27" rx="2" fill="${fillMain}" stroke="#1E293B" stroke-width="2.1"/>`);
+                parts.push(`<polygon points="13,26 21,12 29,26" fill="${ac}" stroke="#1E293B" stroke-width="1.9" stroke-linejoin="round"/>`);
+                parts.push(`<polygon points="35,26 43,12 51,26" fill="${ac}" stroke="#1E293B" stroke-width="1.9" stroke-linejoin="round"/>`);
+                parts.push(`<path d="M27 53 L27 42 A5 5 0 0 1 37 42 L37 53 Z" fill="#1E293B"/>`);
+                parts.push(`<rect x="19" y="31" width="5" height="6" rx="1" fill="#FEF08A"/>`);
+                parts.push(`<rect x="40" y="31" width="5" height="6" rx="1" fill="#FEF08A"/>`);
             } else {
-                // Magic Crystal / Custom Relic
-                parts.push(`<polygon points="32,10 48,28 40,52 24,52 16,28" fill="${c}" stroke="#1E293B" stroke-width="2.2"/>`);
-                parts.push(`<polygon points="32,14 41,28 32,46 23,28" fill="${ac}" opacity="0.75"/>`);
+                parts.push(`<polygon points="32,9 49,27 41,53 23,53 15,27" fill="${fillMain}" stroke="#1E293B" stroke-width="2.1" stroke-linejoin="round"/>`);
+                parts.push(`<polygon points="32,14 42,27 32,47 22,27" fill="${ac}" opacity="0.8"/>`);
+                parts.push(`<polygon points="32,14 37,27 32,34 27,27" fill="#FFF" opacity="0.75"/>`);
             }
 
             // Extra Fish tail overlay if secondary fish trait on non-table
             if (spec.hasFishTail && spec.primaryShape !== 'fish' && spec.primaryShape !== 'table') {
-                parts.push(`<polygon points="46,36 58,28 58,44" fill="${ac}" stroke="#1E293B" stroke-width="1.8"/>`);
+                parts.push(`<polygon points="45,36 59,26 56,36 59,46" fill="${ac}" stroke="#1E293B" stroke-width="1.8" stroke-linejoin="round"/>`);
             }
 
             // Crown overlay
             if (spec.hasCrown) {
-                parts.push(`<polygon points="23,13 26,6 32,11 38,6 41,13" fill="#FACC15" stroke="#1E293B" stroke-width="1.6"/>`);
+                parts.push(`<polygon points="22,13 25,5 32,10 39,5 42,13" fill="#FACC15" stroke="#1E293B" stroke-width="1.6" stroke-linejoin="round"/>`);
+                parts.push(`<circle cx="32" cy="10.5" r="1.3" fill="#EF4444"/>`);
             }
 
             return parts.join('');
@@ -6069,19 +6140,22 @@
             const promptBtn = document.getElementById('lab-tab-prompt-btn');
             const fusionBtn = document.getElementById('lab-tab-fusion-btn');
             const fusionPanel = document.getElementById('lab-fusion-panel');
-            const synthBtn = document.getElementById('lab-synthesize-btn');
+            const promptPanel = document.getElementById('lab-prompt-panel');
+            const fusionActionBar = document.getElementById('lab-fusion-action-bar');
 
             if (mode === 'fusion') {
                 promptBtn.style.background = '#475569';
                 fusionBtn.style.background = '#0D9488';
                 fusionPanel.style.display = 'block';
-                synthBtn.innerText = '🧬 Hợp nhất (15⭐)';
+                if (promptPanel) promptPanel.style.display = 'none';
+                if (fusionActionBar) fusionActionBar.style.display = 'block';
                 refreshLabFusionIngredientsUI();
             } else {
                 promptBtn.style.background = '#0284C7';
                 fusionBtn.style.background = '#475569';
                 fusionPanel.style.display = 'none';
-                synthBtn.innerText = '⚡ Chế tạo (10⭐)';
+                if (promptPanel) promptPanel.style.display = 'block';
+                if (fusionActionBar) fusionActionBar.style.display = 'none';
             }
         }
 
@@ -6138,6 +6212,7 @@
                     source: 'inventory',
                     invIndex,
                     itemId: id,
+                    rawName: catItem.name,
                     label: `${catItem.icon || '📦'} ${catItem.name}`
                 });
             });
@@ -6154,6 +6229,7 @@
                     source: 'customLabItems',
                     labIndex,
                     itemId: labItem.id,
+                    rawName: labItem.name.replace(/^🧪\s*/, ''),
                     label: `${labItem.name}`
                 });
             });
@@ -6161,19 +6237,21 @@
             return items;
         }
 
-        function consumeFusionIngredient(user, uid) {
-            if (!uid) return false;
-            const parts = uid.split(':');
-            const source = parts[0];
-            const itemId = parts.slice(2).join(':');
-            if (source === 'inventory') {
-                const idx = user.inventory.indexOf(itemId);
+        function consumeFusionIngredient(user, ingredientObj) {
+            if (!ingredientObj) return false;
+            if (ingredientObj.source === 'inventory') {
+                // Verify invIndex first, fallback to indexOf
+                if (user.inventory[ingredientObj.invIndex] === ingredientObj.itemId) {
+                    user.inventory.splice(ingredientObj.invIndex, 1);
+                    return true;
+                }
+                const idx = user.inventory.indexOf(ingredientObj.itemId);
                 if (idx !== -1) {
                     user.inventory.splice(idx, 1);
                     return true;
                 }
-            } else if (source === 'customLabItems') {
-                const idx = user.customLabItems.findIndex(x => x && x.id === itemId);
+            } else if (ingredientObj.source === 'customLabItems') {
+                const idx = user.customLabItems.findIndex(x => x && x.id === ingredientObj.itemId);
                 if (idx !== -1) {
                     user.customLabItems.splice(idx, 1);
                     return true;
@@ -6205,12 +6283,17 @@
             const selB = document.getElementById('lab-item-b');
             const emptyMsg = document.getElementById('lab-fusion-empty-msg');
             const selectorsWrap = document.getElementById('lab-fusion-selectors');
+            const fusionSubmitBtn = document.getElementById('lab-fusion-submit-btn');
 
             if (!selA || !selB) return;
 
             if (available.length < 2) {
                 if (emptyMsg) emptyMsg.style.display = 'block';
                 if (selectorsWrap) selectorsWrap.style.display = 'none';
+                if (fusionSubmitBtn) {
+                    fusionSubmitBtn.disabled = true;
+                    fusionSubmitBtn.style.opacity = '0.5';
+                }
                 selA.innerHTML = '';
                 selB.innerHTML = '';
                 return;
@@ -6218,6 +6301,10 @@
 
             if (emptyMsg) emptyMsg.style.display = 'none';
             if (selectorsWrap) selectorsWrap.style.display = 'grid';
+            if (fusionSubmitBtn) {
+                fusionSubmitBtn.disabled = false;
+                fusionSubmitBtn.style.opacity = '1';
+            }
 
             const optsHtml = available.map(it => `<option value="${it.uid}">${it.label}</option>`).join('');
             selA.innerHTML = optsHtml;
@@ -6233,6 +6320,16 @@
             renderLabRecentList();
         }
 
+        function buildAutoFusionTitleAndPrompt(foundA, foundB) {
+            const nameA = (foundA.rawName || 'Item A').trim();
+            const nameB = (foundB.rawName || 'Item B').trim();
+            const shortA = nameA.split(/\s+/).slice(0, 2).join(' ');
+            const shortB = nameB.split(/\s+/).slice(0, 2).join(' ');
+            const autoTitle = `${shortA} × ${shortB}`;
+            const autoEnglishHint = `magical glowing ${foundA.itemId} ${foundB.itemId} ${nameA} ${nameB}`;
+            return { autoTitle, autoEnglishHint };
+        }
+
         function runInventionLabSynthesis() {
             const user = getCurrentUser();
             ensureMemberProps(user);
@@ -6242,55 +6339,73 @@
                 return showToast(`❌ Bạn cần ${cost}⭐ để vận hành máy thí nghiệm!`);
             }
 
-            let uidA = null, uidB = null, itemAId = null, itemBId = null, fusionLabel = '';
+            let foundA = null, foundB = null, itemAId = null, itemBId = null, fusionLabel = '';
+            let cleanTitle = '';
+            let promptForSpec = '';
+            let displayPromptText = '';
+
             if (currentLabMode === 'fusion') {
                 const available = getAvailableFusionIngredients(user);
                 if (available.length < 2) {
                     AudioEngine.playError();
                     return showToast('🎒 Bạn cần có ít nhất 2 vật phẩm khả dụng trong túi đồ để hợp nhất!');
                 }
-                uidA = document.getElementById('lab-item-a').value;
-                uidB = document.getElementById('lab-item-b').value;
+                const uidA = document.getElementById('lab-item-a').value;
+                const uidB = document.getElementById('lab-item-b').value;
                 if (!uidA || !uidB || uidA === uidB) {
                     AudioEngine.playError();
                     return showToast('⚠️ Vui lòng chọn 2 vật phẩm nguyên liệu khác nhau trong túi đồ!');
                 }
-                const foundA = available.find(x => x.uid === uidA);
-                const foundB = available.find(x => x.uid === uidB);
+                foundA = available.find(x => x.uid === uidA);
+                foundB = available.find(x => x.uid === uidB);
                 if (!foundA || !foundB) {
                     refreshLabFusionIngredientsUI();
                     AudioEngine.playError();
                     return showToast('⚠️ Nguyên liệu không còn khả dụng trong túi đồ, vui lòng chọn lại!');
                 }
+
+                // Consume both ingredients (consume higher inventory index first so splicing does not shift the lower index!)
+                const toConsume = [foundA, foundB].sort((x, y) => (y.invIndex ?? -1) - (x.invIndex ?? -1));
+                const ok1 = consumeFusionIngredient(user, toConsume[0]);
+                const ok2 = consumeFusionIngredient(user, toConsume[1]);
+                if (!ok1 || !ok2) {
+                    refreshLabFusionIngredientsUI();
+                    AudioEngine.playError();
+                    return showToast('⚠️ Không thể tiêu hao nguyên liệu trong túi đồ, vui lòng thử lại!');
+                }
+
                 itemAId = foundA.itemId;
                 itemBId = foundB.itemId;
                 fusionLabel = `Hợp nhất từ [${foundA.label}] + [${foundB.label}]`;
-            }
-
-            const promptInput = document.getElementById('lab-english-prompt');
-            const rawPrompt = promptInput ? promptInput.value.trim() : '';
-            const check = isValidEnglishLabPrompt(rawPrompt);
-            if (!check.ok) {
-                AudioEngine.playError();
-                return showToast(check.reason);
-            }
-
-            if (currentLabMode === 'fusion') {
-                consumeFusionIngredient(user, uidA);
-                consumeFusionIngredient(user, uidB);
+                const autoMeta = buildAutoFusionTitleAndPrompt(foundA, foundB);
+                cleanTitle = autoMeta.autoTitle;
+                promptForSpec = autoMeta.autoEnglishHint;
+                displayPromptText = `${foundA.rawName} + ${foundB.rawName}`;
+            } else {
+                const promptInput = document.getElementById('lab-english-prompt');
+                const rawPrompt = promptInput ? promptInput.value.trim() : '';
+                const check = isValidEnglishLabPrompt(rawPrompt);
+                if (!check.ok) {
+                    AudioEngine.playError();
+                    return showToast(check.reason);
+                }
+                cleanTitle = rawPrompt
+                    .replace(/^(a|an|the)\s+/i, '')
+                    .split(/\s+/)
+                    .slice(0, 4)
+                    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+                    .join(' ');
+                promptForSpec = rawPrompt;
+                displayPromptText = rawPrompt;
+                if (promptInput) promptInput.value = '';
             }
 
             user.points -= cost;
-            const spec = parsePromptToLabSpec(rawPrompt, itemAId, itemBId);
+            const spec = parsePromptToLabSpec(promptForSpec, itemAId, itemBId);
+            if (currentLabMode === 'fusion') {
+                spec.hasStars = true;
+            }
             const svgMarkup = buildLabSVGMarkup(spec);
-
-            // Capitalize nice title from prompt
-            const cleanTitle = rawPrompt
-                .replace(/^(a|an|the)\s+/i, '')
-                .split(/\s+/)
-                .slice(0, 4)
-                .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-                .join(' ');
 
             const newItem = {
                 id: 'lab_' + Date.now() + '_' + Math.floor(Math.random() * 999),
@@ -6298,14 +6413,13 @@
                 isLabItem: true,
                 name: `🧪 ${cleanTitle}`,
                 icon: '🧪',
-                prompt: rawPrompt,
-                desc: fusionLabel || `Vật phẩm sáng tạo từ dòng lệnh: "${rawPrompt}"`,
+                prompt: displayPromptText,
+                desc: fusionLabel || `Vật phẩm sáng tạo từ dòng lệnh: "${displayPromptText}"`,
                 labSpec: spec,
                 svgMarkup
             };
 
             user.customLabItems.unshift(newItem);
-            if (promptInput) promptInput.value = '';
 
             if (currentLabMode === 'fusion') {
                 refreshLabFusionIngredientsUI();
@@ -6320,6 +6434,9 @@
             );
             updateHUD();
             saveGame();
+            if (document.getElementById('bag-modal').style.display === 'flex') {
+                renderBagModal('lab');
+            }
             renderLabRecentList(newItem);
         }
 
@@ -6332,15 +6449,20 @@
             let html = '';
             if (highlightedItem) {
                 html += `
-                    <div style="background:linear-gradient(135deg,#064E3B,#0F766E); border:2.5px solid #34D399; border-radius:12px; padding:12px; margin-bottom:12px; display:flex; gap:12px; align-items:center;">
-                        <div style="background:#FFF; border-radius:12px; padding:6px; border:2.5px solid #0F172A; flex-shrink:0;">
-                            ${renderItemIllustrationSVG(highlightedItem.id, 64)}
+                    <div style="background:linear-gradient(135deg,#042F2E 0%,#064E3B 50%,#0C4A6E 100%); border:3px solid #34D399; box-shadow:0 0 24px rgba(52,211,153,0.45), inset 0 0 18px rgba(56,189,248,0.2); border-radius:16px; padding:16px; margin-bottom:14px; display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+                        <div style="background:radial-gradient(circle at 30% 30%, #FFFFFF 0%, #E0F2FE 65%, #BAE6FD 100%); border-radius:16px; padding:10px; border:3px solid #FACC15; box-shadow:0 6px 16px rgba(0,0,0,0.45), 0 0 14px rgba(250,204,21,0.55); flex-shrink:0; display:flex; align-items:center; justify-content:center; width:126px; height:126px;">
+                            ${renderItemIllustrationSVG(highlightedItem.id, 102)}
                         </div>
-                        <div>
-                            <span class="tag" style="background:#10B981; color:#FFF; border-color:#FFF;">✨ VẬT PHẨM MỚI RA LÒ!</span>
-                            <div style="font-size:16px; font-weight:700; color:#FFF; margin-top:4px;">${highlightedItem.name}</div>
-                            <div style="font-size:12px; color:#A7F3D0; font-style:italic;">Prompt: "${highlightedItem.prompt}"</div>
-                            <div style="font-size:12px; color:#ECFDF5; margin-top:3px;">📦 Đã lưu vào <b>🎒 Túi đồ (Vật phẩm chế tạo)</b> — Bạn có thể vào <b>Phòng riêng</b> để trang trí ngay!</div>
+                        <div style="flex:1; min-width:200px;">
+                            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                                <span class="tag" style="background:linear-gradient(90deg,#10B981,#059669); color:#FFF; border-color:#FACC15; font-size:11.5px; padding:3px 9px;">✨ VẬT PHẨM MỚI RA LÒ!</span>
+                                <span class="tag" style="background:#0F172A; color:#FACC15; border-color:#FACC15; font-size:11px;">⭐ ĐỘC BẢN AI LAB</span>
+                            </div>
+                            <div style="font-size:18px; font-weight:700; color:#FFF; margin-top:6px; text-shadow:0 2px 4px rgba(0,0,0,0.4);">${highlightedItem.name}</div>
+                            <div style="font-size:12.5px; color:#6EE7B7; font-weight:600; margin-top:3px;">🔬 ${highlightedItem.desc}</div>
+                            <div style="font-size:12px; color:#E0F2FE; margin-top:6px; background:rgba(15,23,42,0.55); padding:6px 9px; border-radius:8px; border:1px solid rgba(125,211,252,0.35);">
+                                📦 Đã lưu vào <b>🎒 Túi đồ (Vật phẩm chế tạo)</b> — Bạn có thể vào <b>Phòng riêng</b> để trưng bày ngay!
+                            </div>
                         </div>
                     </div>
                 `;
@@ -6348,17 +6470,17 @@
 
             const list = user.customLabItems || [];
             if (list.length > 0) {
-                html += `<div style="font-size:12.5px; font-weight:700; color:#7DD3FC; margin-bottom:6px;">📚 Bộ sưu tập sáng chế của ${user.name} (${list.length} vật phẩm):</div>`;
+                html += `<div style="font-size:13px; font-weight:700; color:#7DD3FC; margin-bottom:8px;">📚 Bộ sưu tập sáng chế của ${user.name} (${list.length} vật phẩm):</div>`;
                 html += `<div class="grid-2">`;
                 list.slice(0, 6).forEach(item => {
                     html += `
-                        <div style="background:#0F172A; border:2px solid #334155; border-radius:10px; padding:8px; display:flex; gap:10px; align-items:center;">
-                            <div style="background:#FFF; border-radius:8px; padding:3px; flex-shrink:0;">
-                                ${renderItemIllustrationSVG(item.id, 46)}
+                        <div style="background:linear-gradient(145deg,#0F172A,#1E293B); border:2px solid #38BDF8; border-radius:12px; padding:10px; display:flex; gap:12px; align-items:center; box-shadow:0 4px 10px rgba(0,0,0,0.25);">
+                            <div style="background:radial-gradient(circle, #FFFFFF 0%, #E0F2FE 100%); border-radius:11px; padding:5px; border:2px solid #7DD3FC; flex-shrink:0; width:68px; height:68px; display:flex; align-items:center; justify-content:center;">
+                                ${renderItemIllustrationSVG(item.id, 56)}
                             </div>
-                            <div style="min-width:0;">
-                                <div style="font-weight:700; font-size:13px; color:#F8FAFC; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${item.name}</div>
-                                <div style="font-size:11px; color:#38BDF8; font-style:italic; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"${item.prompt}"</div>
+                            <div style="min-width:0; flex:1;">
+                                <div style="font-weight:700; font-size:13.5px; color:#F8FAFC; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${item.name}</div>
+                                <div style="font-size:11.5px; color:#38BDF8; font-style:italic; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;">"${item.prompt}"</div>
                             </div>
                         </div>
                     `;
