@@ -1,0 +1,11 @@
+b2ks-home/
+├── index.html
+├── manifest.json          (MỚI - PWA)
+├── service-worker.js      (MỚI - PWA)
+├── data/
+│   └── animals.json       (MỚI - Dữ liệu Sở Thú Ảo)
+├── css/
+│   └── style.css
+└── js/
+    ├── 01-audio-firebase-state.js
+    └── 02-world-draw-street.js

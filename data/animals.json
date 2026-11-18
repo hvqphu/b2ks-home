@@ -1,0 +1,134 @@
+[
+  {
+    "id": "lion",
+    "name": "African Lion",
+    "viName": "Sư Tử Châu Phi",
+    "wikiTitle": "Lion",
+    "biome": "Savanna",
+    "biomeVi": "Thảo Nguyên",
+    "emoji": "🦁",
+    "cost": 30,
+    "description": "The lion is a strong wild cat that lives in grassy plains. Lions live together in family groups called prides. Male lions have thick fur around their heads called a mane."
+  },
+  {
+    "id": "elephant",
+    "name": "African Elephant",
+    "viName": "Voi Châu Phi",
+    "wikiTitle": "African_elephant",
+    "biome": "Savanna",
+    "biomeVi": "Thảo Nguyên",
+    "emoji": "🐘",
+    "cost": 40,
+    "description": "The elephant is the largest land animal on Earth. It uses its long trunk to drink water, grab leaves, and greet friends. Elephants have big ears that help them stay cool."
+  },
+  {
+    "id": "giraffe",
+    "name": "Giraffe",
+    "viName": "Hươu Cao Cổ",
+    "wikiTitle": "Giraffe",
+    "biome": "Savanna",
+    "biomeVi": "Thảo Nguyên",
+    "emoji": "🦒",
+    "cost": 35,
+    "description": "The giraffe is the tallest animal in the world. Its very long neck helps it reach fresh green leaves high up in the trees. Every giraffe has a unique pattern of brown spots."
+  },
+  {
+    "id": "tiger",
+    "name": "Bengal Tiger",
+    "viName": "Hổ Bengal",
+    "wikiTitle": "Bengal_tiger",
+    "biome": "Rainforest",
+    "biomeVi": "Rừng Nhiệt Đới",
+    "emoji": "🐅",
+    "cost": 45,
+    "description": "The tiger is a powerful cat with bright orange fur and black stripes. Unlike most cats, tigers love to swim in rivers to cool off. They hunt quietly through the thick jungle."
+  },
+  {
+    "id": "panda",
+    "name": "Giant Panda",
+    "viName": "Gấu Trúc Khổng Lồ",
+    "wikiTitle": "Giant_panda",
+    "biome": "Rainforest",
+    "biomeVi": "Rừng Nhiệt Đới",
+    "emoji": "🐼",
+    "cost": 50,
+    "description": "The giant panda is a gentle bear with black and white fur. Pandas spend most of their day eating fresh bamboo stems and leaves. They live in misty mountain forests."
+  },
+  {
+    "id": "toucan",
+    "name": "Toco Toucan",
+    "viName": "Chim Toucan Mỏ Lớn",
+    "wikiTitle": "Toco_toucan",
+    "biome": "Rainforest",
+    "biomeVi": "Rừng Nhiệt Đới",
+    "emoji": "🦜",
+    "cost": 25,
+    "description": "The toucan is a colorful tropical bird with a huge bright orange beak. Even though its beak looks heavy, it is hollow and very light. Toucans love eating sweet forest fruits."
+  },
+  {
+    "id": "dolphin",
+    "name": "Bottlenose Dolphin",
+    "viName": "Cá Heo Mũi Chai",
+    "wikiTitle": "Bottlenose_dolphin",
+    "biome": "Ocean",
+    "biomeVi": "Đại Dương",
+    "emoji": "🐬",
+    "cost": 40,
+    "description": "The dolphin is a smart and friendly ocean mammal. Dolphins breathe air through a blowhole on top of their heads. They talk to each other using clicks and whistles under water."
+  },
+  {
+    "id": "sea_turtle",
+    "name": "Green Sea Turtle",
+    "viName": "Rùa Biển Xanh",
+    "wikiTitle": "Green_sea_turtle",
+    "biome": "Ocean",
+    "biomeVi": "Đại Dương",
+    "emoji": "🐢",
+    "cost": 30,
+    "description": "The green sea turtle glides smoothly through warm blue oceans using long flippers. It carries a hard shell on its back for protection. Sea turtles swim thousands of miles to lay eggs."
+  },
+  {
+    "id": "blue_whale",
+    "name": "Blue Whale",
+    "viName": "Cá Voi Xanh",
+    "wikiTitle": "Blue_whale",
+    "biome": "Ocean",
+    "biomeVi": "Đại Dương",
+    "emoji": "🐋",
+    "cost": 65,
+    "description": "The blue whale is the biggest animal that has ever lived on our planet. Its heart is as large as a small car. Blue whales eat tiny ocean creatures called krill."
+  },
+  {
+    "id": "polar_bear",
+    "name": "Polar Bear",
+    "viName": "Gấu Bắc Cực",
+    "wikiTitle": "Polar_bear",
+    "biome": "Arctic",
+    "biomeVi": "Bắc Cực",
+    "emoji": "🐻‍❄️",
+    "cost": 55,
+    "description": "The polar bear lives on the icy Arctic snow near the North Pole. Thick white fur and a warm layer of fat protect it from freezing winds. Polar bears are amazing swimmers in icy water."
+  },
+  {
+    "id": "penguin",
+    "name": "Emperor Penguin",
+    "viName": "Chim Cánh Cụt Hoàng Đế",
+    "wikiTitle": "Emperor_penguin",
+    "biome": "Arctic",
+    "biomeVi": "Bắc Cực",
+    "emoji": "🐧",
+    "cost": 35,
+    "description": "The penguin is a clever bird that cannot fly in the sky, but it flies fast under water. Penguins huddle close together in large groups to stay warm on the ice. They catch fish in the cold sea."
+  },
+  {
+    "id": "arctic_fox",
+    "name": "Arctic Fox",
+    "viName": "Cáo Tuyết Bắc Cực",
+    "wikiTitle": "Arctic_fox",
+    "biome": "Arctic",
+    "biomeVi": "Bắc Cực",
+    "emoji": "🦊",
+    "cost": 30,
+    "description": "The arctic fox has thick snowy white fur in winter to hide in the snow. Its fluffy tail wraps around its body like a warm blanket when it sleeps. It has sharp ears to hear under the snow."
+  }
+]

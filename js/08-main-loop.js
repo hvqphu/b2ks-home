@@ -1,146 +1,265 @@
 /* =========================================================================
-           11. MAIN GAME LOOP
+           13. CẬP NHẬT CHUYỂN ĐỘNG, CAMERA, HUD & VÒNG LẶP CHÍNH
            ========================================================================= */
-        function gameLoop() {
+        let lastHudSignature = '';
+
+        function updateHUD() {
             const me = getCurrentUser();
-            const lighting = getRealTimeLighting();
-            const speed = 3.6;
+            if (!me) return;
 
-            let dx = 0, dy = 0;
-            if (keys['arrowup'] || keys['w']) dy -= 1;
-            if (keys['arrowdown'] || keys['s']) dy += 1;
-            if (keys['arrowleft'] || keys['a']) dx -= 1;
-            if (keys['arrowright'] || keys['d']) dx += 1;
+            const unreadCount = getUnreadFamilyMessagesCount(me.id);
+            const pendingRedemptions = (state.interworldRedemptions || []).filter(r => r.status === 'pending').length;
 
-            if (joyActive) {
-                dx = joyVector.x;
-                dy = joyVector.y;
+            let locLabel = '🌳 Khu Phố B2KS';
+            if (me.scene === 'house') {
+                const r = getRoomAtPosition(me.x, me.y);
+                locLabel = r ? r.name : '🏠 Hành Lang Nhà';
+            } else if (me.scene === 'private_room') {
+                const roomId = me.privateRoomId || activePrivateRoomId;
+                const r = HOUSE_ROOMS.find(x => x.id === roomId);
+                locLabel = r ? r.name : '🛏️ Phòng Riêng';
             }
 
-            if (dx !== 0 || dy !== 0) {
-                const len = Math.hypot(dx, dy);
-                if (len > 1) { dx /= len; dy /= len; }
-                const nextX = me.x + dx * speed;
-                const nextY = me.y + dy * speed;
+            const lighting = getRealTimeLighting();
+            const sig = `${me.id}|${me.points}|${me.outfit}|${locLabel}|${lighting.label}|${unreadCount}|${pendingRedemptions}`;
+            if (sig === lastHudSignature) return;
+            lastHudSignature = sig;
 
-                if (Math.abs(dx) > Math.abs(dy)) me.dir = dx < 0 ? 'left' : 'right';
-                else me.dir = dy < 0 ? 'up' : 'down';
+            document.getElementById('hud-avatar').innerText = me.outfit || getRoleEmoji(me.role);
+            document.getElementById('hud-name').innerText = me.name;
+            document.getElementById('hud-role').innerText = me.role;
+            document.getElementById('hud-points').innerText = `${me.points}⭐`;
+            document.getElementById('hud-location').innerText = locLabel;
+            document.getElementById('hud-time').innerText = lighting.label;
 
-                if (me.scene === 'neighborhood') {
-                    me.x = Math.max(40, Math.min(STREET_WORLD.width - 40, nextX));
-                    me.y = Math.max(265, Math.min(STREET_WORLD.height - 40, nextY));
-                } else if (me.scene === 'private_room') {
-                    const prX = Math.max(35, Math.min(PRIVATE_ROOM_WORLD.width - 35, nextX));
-                    const prY = Math.max(175, Math.min(PRIVATE_ROOM_WORLD.height - 15, nextY));
-                    me.x = prX;
-                    me.y = prY;
-                    if (prY >= PRIVATE_ROOM_WORLD.height - 18 && Math.abs(prX - 380) <= 45) {
-                        exitPrivateRoomToHallway();
-                    }
+            const phoneBadge = document.getElementById('hud-phone-badge');
+            if (phoneBadge) {
+                phoneBadge.style.display = unreadCount > 0 ? 'inline-block' : 'none';
+                phoneBadge.innerText = unreadCount;
+            }
+
+            const parentBadge = document.getElementById('hud-parent-badge');
+            if (parentBadge) {
+                parentBadge.style.display = (isParent(me) && pendingRedemptions > 0) ? 'inline-block' : 'none';
+                parentBadge.innerText = pendingRedemptions;
+            }
+
+            const quickBar = document.getElementById('quick-switch-bar');
+            if (quickBar) {
+                quickBar.innerHTML = state.members.map(m => `
+                    <button type="button" class="switch-char-btn ${m.id === me.id ? 'active' : ''}" onclick="switchMember('${m.id}')">
+                        <span>${m.outfit || getRoleEmoji(m.role)}</span>
+                        <span>${escapeHtml(m.name)}</span>
+                    </button>
+                `).join('');
+            }
+        }
+
+        function updateWorldMovement() {
+            if (!state.sessionLoggedIn) return;
+            const anyModalOpen = Array.from(document.querySelectorAll('.modal-overlay')).some(el => el.style.display === 'flex');
+            if (anyModalOpen) return;
+
+            const me = getCurrentUser();
+            let vx = 0;
+            let vy = 0;
+
+            if (keys['arrowup'] || keys['w']) vy -= 1;
+            if (keys['arrowdown'] || keys['s']) vy += 1;
+            if (keys['arrowleft'] || keys['a']) vx -= 1;
+            if (keys['arrowright'] || keys['d']) vx += 1;
+
+            if (joyActive) {
+                vx += joyVector.x;
+                vy += joyVector.y;
+            }
+
+            const mag = Math.hypot(vx, vy);
+            if (mag > 0.05) {
+                const speed = 3.8;
+                const nx = me.x + (vx / Math.max(1, mag)) * speed;
+                const ny = me.y + (vy / Math.max(1, mag)) * speed;
+
+                if (Math.abs(vx) > Math.abs(vy)) {
+                    me.dir = vx < 0 ? 'left' : 'right';
                 } else {
-                    const check = canMoveInsideHouse(me, nextX, nextY);
+                    me.dir = vy < 0 ? 'up' : 'down';
+                }
+
+                if (me.scene === 'house') {
+                    const check = canMoveInsideHouse(me, nx, ny);
                     if (check.allowed) {
-                        me.x = nextX;
-                        me.y = nextY;
-                        const enteredRoom = getRoomAtPosition(nextX, nextY);
-                        if (enteredRoom && enteredRoom.ownerIds && enteredRoom.ownerIds.length > 0) {
-                            enterPrivateRoomScene(enteredRoom);
+                        me.x = nx;
+                        me.y = ny;
+
+                        // Tự động bước vào không gian phòng ngủ riêng khi chạm đúng bậc cửa
+                        const enteredPrivate = HOUSE_ROOMS.find(r =>
+                            r.ownerIds && r.ownerIds.length > 0 &&
+                            Math.hypot(me.x - r.doorX, me.y - (r.y + 18)) < 26
+                        );
+                        if (enteredPrivate) {
+                            enterPrivateRoomScene(enteredPrivate);
+                            return;
                         }
                     } else if (check.blockedRoom && Date.now() - lastDoorToastTime > 2200) {
                         lastDoorToastTime = Date.now();
                         AudioEngine.playError();
-                        showToast(`🔒 ${check.blockedRoom.name} đang khóa! Chủ phòng cần mở khóa cửa trước.`);
+                        showToast(`🔒 ${check.blockedRoom.name} đang khóa cửa!`);
                     }
+                } else if (me.scene === 'private_room') {
+                    me.x = Math.max(45, Math.min(PRIVATE_ROOM_WORLD.width - 45, nx));
+                    me.y = Math.max(185, Math.min(PRIVATE_ROOM_WORLD.height - 25, ny));
+                } else {
+                    me.x = Math.max(30, Math.min(STREET_WORLD.width - 30, nx));
+                    me.y = Math.max(345, Math.min(STREET_WORLD.height - 25, ny));
                 }
             }
 
+            // Kiểm tra điểm tương tác gần nhất
             const interactables = getWorldInteractables();
-            let nearest = null, minDist = Infinity;
+            let nearest = null;
+            let bestDist = Infinity;
             interactables.forEach(item => {
                 const d = Math.hypot(me.x - item.x, me.y - item.y);
-                if (d < item.radius && d < minDist) { minDist = d; nearest = item; }
+                if (d <= item.radius && d < bestDist) {
+                    bestDist = d;
+                    nearest = item;
+                }
             });
 
+            currentInteractTarget = nearest;
             const promptEl = document.getElementById('interact-prompt');
+            const btnEl = document.getElementById('interact-btn');
             if (nearest) {
-                currentInteractTarget = nearest;
                 promptEl.style.display = 'block';
-                document.getElementById('interact-btn').innerText = nearest.label;
+                btnEl.innerText = nearest.label;
             } else {
-                currentInteractTarget = null;
                 promptEl.style.display = 'none';
             }
+        }
 
-            const worldW = me.scene === 'neighborhood'
-                ? STREET_WORLD.width
-                : (me.scene === 'private_room' ? PRIVATE_ROOM_WORLD.width : HOUSE_WORLD.width);
-            const worldH = me.scene === 'neighborhood'
-                ? STREET_WORLD.height
-                : (me.scene === 'private_room' ? PRIVATE_ROOM_WORLD.height : HOUSE_WORLD.height);
-
-            const effW = canvas.width / zoomLevel;
-            const effH = canvas.height / zoomLevel;
-
-            const topSafePad = 140 / zoomLevel;
-            const botSafePad = 95 / zoomLevel;
-            let camX = me.x - effW / 2;
-            let camY = me.y - effH / 2 - 20;
-
-            if (worldW <= effW) {
-                camX = (worldW - effW) / 2;
-            } else {
-                camX = Math.max(0, Math.min(worldW - effW, camX));
-            }
-            if (worldH + topSafePad + botSafePad <= effH) {
-                camY = (worldH - effH) / 2 - (topSafePad - botSafePad) / 2;
-            } else {
-                camY = Math.max(-topSafePad, Math.min(worldH - effH + botSafePad, camY));
-            }
+        function renderGameWorld() {
+            const me = getCurrentUser();
+            const lighting = getRealTimeLighting();
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.save();
+
+            let worldW = STREET_WORLD.width;
+            let worldH = STREET_WORLD.height;
+            if (me.scene === 'house') {
+                worldW = HOUSE_WORLD.width;
+                worldH = HOUSE_WORLD.height;
+            } else if (me.scene === 'private_room') {
+                worldW = PRIVATE_ROOM_WORLD.width;
+                worldH = PRIVATE_ROOM_WORLD.height;
+            }
+
+            const camX = Math.max(0, Math.min(worldW - canvas.width / zoomLevel, me.x - (canvas.width / zoomLevel) / 2));
+            const camY = Math.max(0, Math.min(worldH - canvas.height / zoomLevel, me.y - (canvas.height / zoomLevel) / 2));
+
             ctx.scale(zoomLevel, zoomLevel);
             ctx.translate(-camX, -camY);
 
-            // 1. Vẽ bản đồ theo khu vực hiện tại
-            if (me.scene === 'neighborhood') {
-                drawNeighborhoodWorld(lighting);
+            if (me.scene === 'house') {
+                drawHouseInteriorWorld(lighting);
             } else if (me.scene === 'private_room') {
                 drawPrivateRoomWorld(lighting);
             } else {
-                drawHouseInteriorWorld(lighting);
+                drawNeighborhoodWorld(lighting);
             }
 
-            // 2. Vẽ các nhân vật đang ở cùng khu vực (sắp xếp theo trục Y để tạo chiều sâu)
-            const visibleMembers = state.members
-                .filter(m => {
-                    if (m.scene !== me.scene) return false;
-                    if (me.scene === 'private_room') {
-                        const myRoomId = me.privateRoomId || activePrivateRoomId;
-                        return (m.privateRoomId || null) === myRoomId;
-                    }
-                    return true;
-                })
-                .sort((a, b) => a.y - b.y);
-
-            visibleMembers.forEach(m => {
-                drawDetailedChibi(m, m.id === me.id);
+            // Vẽ vòng tròn gợi ý tại các điểm tương tác
+            getWorldInteractables().forEach(pt => {
+                const isNear = currentInteractTarget && currentInteractTarget.id === pt.id;
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, isNear ? 24 : 16, 0, Math.PI * 2);
+                ctx.fillStyle = isNear ? 'rgba(241, 196, 15, 0.45)' : 'rgba(255, 255, 255, 0.25)';
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = isNear ? '#F39C12' : 'rgba(44, 62, 80, 0.4)';
+                ctx.stroke();
             });
 
-            ctx.restore();
+            // Vẽ tất cả thành viên đang ở cùng scene
+            const sameSceneMembers = state.members.filter(m => {
+                if (me.scene === 'private_room') {
+                    return m.scene === 'private_room' && m.privateRoomId === me.privateRoomId;
+                }
+                return m.scene === me.scene;
+            });
+            sameSceneMembers.sort((a, b) => a.y - b.y);
+            sameSceneMembers.forEach(m => drawDetailedChibi(m, m.id === me.id));
 
-            // 3. Lớp phủ ánh sáng ban đêm / hoàng hôn
-            if (lighting.overlayAlpha > 0 && me.scene === 'neighborhood') {
+            // Lớp phủ ánh sáng hoàng hôn / ban đêm
+            if (lighting.overlayAlpha > 0) {
                 ctx.fillStyle = lighting.overlayColor;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillRect(0, 0, worldW, worldH);
             }
 
+            ctx.restore();
+        }
+
+        function gameLoop() {
+            updateWorldMovement();
+            renderGameWorld();
             updateHUD();
             requestAnimationFrame(gameLoop);
         }
 
-        // Khởi tạo dữ liệu và bắt đầu vòng lặp game
+        /* =========================================================================
+           14. TIỆN ÍCH CHUNG & KHỞI ĐỘNG HỆ THỐNG
+           ========================================================================= */
+        function closeModal(id) {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+            if (id === 'zoo-modal') hideWordTranslatorTooltip();
+        }
+
+        function getRoleEmoji(role) {
+            if (role === 'Bố') return '👨';
+            if (role === 'Mẹ') return '👩';
+            if (role === 'Con gái') return '👧';
+            return '👦';
+        }
+
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function renderChatLog() {
+            const box = document.getElementById('chat-log');
+            if (!box) return;
+            box.innerHTML = (state.messages || []).map(m => `
+                <div class="chat-msg"><b>[${m.time}] ${escapeHtml(m.sender)}:</b> ${escapeHtml(m.text)}</div>
+            `).join('');
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function sendChat() {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if (!text) return;
+            const me = getCurrentUser();
+            input.value = '';
+            triggerSpeechBubble(me, text, true);
+        }
+
+        // Đóng tooltip dịch từ khi bấm ra ngoài
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.word-token') && !e.target.closest('#word-translator-tooltip')) {
+                hideWordTranslatorTooltip();
+            }
+        });
+
+        // Khởi chạy dữ liệu & vòng lặp game
         loadGame();
-        updateHUD();
         renderChatLog();
+        updateHUD();
         requestAnimationFrame(gameLoop);
