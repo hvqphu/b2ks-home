@@ -1,22 +1,21 @@
 {
-  "name": "B2KS Daily Routines - Family RPG",
-  "short_name": "B2KS RPG",
-  "description": "Thế giới ảo nhập vai học tập, rèn luyện thói quen, sở thú ảo và giao dịch xuyên thế giới cho gia đình.",
+  "name": "B2KS Daily Routines - Ngôi Nhà Gia Đình",
+  "short_name": "B2KS Home",
+  "description": "Thế giới gia đình B2KS: Nhiệm vụ, Tiếng Anh, Phòng Thí Nghiệm, Chợ Trời, Sở Thú Ảo & Trung Tâm Giao Dịch Xuyên Thế Giới",
   "start_url": "./index.html",
-  "scope": "./",
-  "display": "standalone",
-  "orientation": "any",
-  "background_color": "#87CEEB",
-  "theme_color": "#2ECC71",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#74b9ff",
+  "theme_color": "#2C3E50",
   "icons": [
     {
-      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%232ECC71'/%3E%3Ctext x='96' y='125' font-size='100' text-anchor='middle'%3E%F0%9F%8F%A1%3C/text%3E%3C/svg%3E",
+      "src": "./icons/icon-192.svg",
       "sizes": "192x192",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     },
     {
-      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%232ECC71'/%3E%3Ctext x='256' y='330' font-size='260' text-anchor='middle'%3E%F0%9F%8F%A1%3C/text%3E%3C/svg%3E",
+      "src": "./icons/icon-512.svg",
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"

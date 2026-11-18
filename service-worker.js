@@ -1,57 +1,32 @@
-const CACHE_NAME = 'b2ks-rpg-v19-cache';
-const CORE_ASSETS = [
-  './',
-  './index.html',
-  './manifest.json',
-  './css/style.css',
-  './data/animals.json',
-  './js/01-audio-firebase-state.js',
-  './js/02-world-draw-street.js',
-  './js/03-house-and-rooms.js',
-  './js/04-world-interactables.js',
-  './js/05-core-tasks-quizzes.js',
-  './js/06-market-salon-arcade.js',
-  './js/07-phone-dining.js',
-  './js/08-main-loop.js'
+const CACHE_NAME = 'b2ks-home-pwa-v2';
+const ASSETS_TO_CACHE = [
+  './', './index.html', './manifest.json', './css/styles.css', './data/animals.json',
+  './js/01-config-audio-sync.js', './js/02-ui-tasks-shop.js', './js/03-room-tv-custom.js',
+  './js/04-canvas-world.js', './js/05-english-lab.js', './js/06-arcade-online.js',
+  './js/07-phone-dining.js', './js/08-zoo-market-exchange.js', './js/09-main-loop.js',
+  './icons/icon-192.svg', './icons/icon-512.svg'
 ];
-
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS)).then(() => self.skipWaiting())
-  );
+self.addEventListener('install', (e) => {
+  e.waitUntil(caches.open(CACHE_NAME).then((c) => c.addAll(ASSETS_TO_CACHE)).catch(() => {}));
+  self.skipWaiting();
 });
-
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    ).then(() => self.clients.claim())
-  );
+self.addEventListener('activate', (e) => {
+  e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))));
+  self.clients.claim();
 });
-
-self.addEventListener('fetch', (event) => {
-  const url = event.request.url;
-  // Bỏ qua các API động (Firebase, Wikipedia, MyMemory) để luôn lấy dữ liệu mới
-  if (
-    url.includes('firebasedatabase.app') ||
-    url.includes('wikipedia.org') ||
-    url.includes('mymemory.translated.net')
-  ) {
-    return;
-  }
-
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const fetchPromise = fetch(event.request)
-        .then((networkResp) => {
-          if (networkResp && networkResp.status === 200 && event.request.method === 'GET') {
-            const clone = networkResp.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          }
-          return networkResp;
-        })
-        .catch(() => cached);
-      return cached || fetchPromise;
+self.addEventListener('fetch', (e) => {
+  const url = e.request.url;
+  if (url.includes('firebasedatabase.app') || url.includes('wikipedia.org') || url.includes('mymemory.translated.net') || e.request.method !== 'GET') return;
+  e.respondWith(
+    caches.match(e.request).then((cached) => {
+      const net = fetch(e.request).then((res) => {
+        if (res && res.status === 200) {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then((c) => c.put(e.request, copy));
+        }
+        return res;
+      }).catch(() => cached);
+      return cached || net;
     })
   );
 });
