@@ -968,16 +968,22 @@
 
             <!-- FUSION SLOTS (VISIBLE IN FUSION MODE) -->
             <div id="lab-fusion-panel" style="display:none; background:#0F172A; border:2px dashed #38BDF8; border-radius:12px; padding:10px; margin-bottom:12px;">
-                <div style="font-size:12.5px; font-weight:700; color:#38BDF8; margin-bottom:8px;">🔬 Chọn 2 vật phẩm nguyên liệu để lai ghép:</div>
-                <div style="display:grid; grid-template-columns:1fr auto 1fr; gap:8px; align-items:center;">
+                <div style="font-size:12.5px; font-weight:700; color:#38BDF8; margin-bottom:4px;">🔬 Chọn 2 vật phẩm nguyên liệu đang có sẵn trong túi đồ để lai ghép:</div>
+                <div style="font-size:11.5px; color:#FBBF24; background:rgba(245, 158, 11, 0.14); border:1px solid rgba(251, 191, 36, 0.45); border-radius:8px; padding:6px 8px; margin-bottom:8px;">
+                    ⚠️ <b>Lưu ý:</b> Nguyên liệu phải là vật phẩm bạn đang sở hữu và khả dụng trong <b>🎒 Túi đồ</b> (chưa trang bị/đặt trong phòng). Sau khi hợp nhất thành công, <b>2 vật phẩm nguyên liệu này sẽ mất đi</b> để tạo thành vật phẩm mới!
+                </div>
+                <div id="lab-fusion-empty-msg" style="display:none; font-size:12px; color:#FCA5A5; background:rgba(239, 68, 68, 0.14); border:1px solid rgba(248, 113, 113, 0.45); border-radius:8px; padding:8px; margin-bottom:4px;">
+                    🎒 Bạn cần có ít nhất <b>2 vật phẩm khả dụng trong túi đồ</b> để thực hiện hợp nhất! Hãy mua thêm đồ tại <b>🏪 Siêu thị</b>, <b>👗 Cửa hàng thời trang</b> hoặc chế tạo thêm vật phẩm mới.
+                </div>
+                <div id="lab-fusion-selectors" style="display:grid; grid-template-columns:1fr auto 1fr; gap:8px; align-items:center;">
                     <div>
                         <label style="font-size:11.5px; color:#94A3B8; display:block; margin-bottom:4px;">Nguyên liệu A (Dáng chính):</label>
-                        <select id="lab-item-a" style="width:100%; padding:7px; border-radius:8px; border:2px solid #0284C7; background:#1E293B; color:#FFF; font-weight:600;"></select>
+                        <select id="lab-item-a" onchange="syncLabFusionDropdowns('a')" style="width:100%; padding:7px; border-radius:8px; border:2px solid #0284C7; background:#1E293B; color:#FFF; font-weight:600;"></select>
                     </div>
                     <div style="font-size:22px; font-weight:700; color:#38BDF8; padding-top:16px;">➕</div>
                     <div>
                         <label style="font-size:11.5px; color:#94A3B8; display:block; margin-bottom:4px;">Nguyên liệu B (Đặc tính lai):</label>
-                        <select id="lab-item-b" style="width:100%; padding:7px; border-radius:8px; border:2px solid #0D9488; background:#1E293B; color:#FFF; font-weight:600;"></select>
+                        <select id="lab-item-b" onchange="syncLabFusionDropdowns('b')" style="width:100%; padding:7px; border-radius:8px; border:2px solid #0D9488; background:#1E293B; color:#FFF; font-weight:600;"></select>
                     </div>
                 </div>
             </div>
@@ -5869,23 +5875,36 @@
             let primaryShape = 'crystal';
             let secondaryTrait = null;
 
+            const resolveItemShape = (itemId) => {
+                if (!itemId) return null;
+                const base = LAB_BASE_INGREDIENTS.find(b => b.id === itemId);
+                if (base) return base.shape;
+                if (itemId === 'd_pc' || itemId === 'd_bookshelf') return 'table';
+                if (itemId === 'd_aquarium') return 'fish';
+                if (itemId === 'd_bear') return 'cat';
+                if (itemId === 'd_plant' || itemId === 'd_guitar') return 'lamp';
+                const anyIt = findAnyCatalogItem(itemId);
+                if (anyIt) {
+                    if (anyIt.labSpec && anyIt.labSpec.primaryShape) return anyIt.labSpec.primaryShape;
+                    const nm = (anyIt.name || '').toLowerCase();
+                    const hitKw = shapeKeywords.find(s => s.keys.some(k => nm.includes(k)));
+                    if (hitKw) return hitKw.shape;
+                    if (anyIt.sub === 'hat') return 'crown';
+                }
+                return null;
+            };
+
             if (itemAId) {
-                const baseA = LAB_BASE_INGREDIENTS.find(b => b.id === itemAId);
-                if (baseA) primaryShape = baseA.shape;
-                else if (itemAId === 'd_pc' || itemAId === 'd_bookshelf') primaryShape = 'table';
-                else if (itemAId === 'd_aquarium') primaryShape = 'fish';
-                else if (itemAId === 'd_bear') primaryShape = 'cat';
+                const shA = resolveItemShape(itemAId);
+                if (shA) primaryShape = shA;
             } else {
                 const hit = shapeKeywords.find(s => s.keys.some(k => lower.includes(k)));
                 if (hit) primaryShape = hit.shape;
             }
 
             if (itemBId) {
-                const baseB = LAB_BASE_INGREDIENTS.find(b => b.id === itemBId);
-                if (baseB) secondaryTrait = baseB.shape;
-                else if (itemBId === 'd_aquarium') secondaryTrait = 'fish';
-                else if (itemBId === 'd_pc') secondaryTrait = 'table';
-                else if (itemBId === 'd_bear') secondaryTrait = 'cat';
+                const shB = resolveItemShape(itemBId);
+                if (shB) secondaryTrait = shB;
             } else {
                 const secondHit = shapeKeywords.find(s => s.shape !== primaryShape && s.keys.some(k => lower.includes(k)));
                 if (secondHit) secondaryTrait = secondHit.shape;
@@ -6057,6 +6076,7 @@
                 fusionBtn.style.background = '#0D9488';
                 fusionPanel.style.display = 'block';
                 synthBtn.innerText = '🧬 Hợp nhất (15⭐)';
+                refreshLabFusionIngredientsUI();
             } else {
                 promptBtn.style.background = '#0284C7';
                 fusionBtn.style.background = '#475569';
@@ -6074,22 +6094,142 @@
             }
         }
 
+        function getAvailableFusionIngredients(user) {
+            ensureMemberProps(user);
+            const items = [];
+
+            // Count items currently placed in private room slots or free-placed in roomDecor
+            const placedCounts = {};
+            if (user.roomSlots && typeof user.roomSlots === 'object') {
+                Object.values(user.roomSlots).forEach(id => {
+                    if (id) placedCounts[id] = (placedCounts[id] || 0) + 1;
+                });
+            }
+            if (Array.isArray(user.roomDecor)) {
+                user.roomDecor.forEach(d => {
+                    if (d && d.id) placedCounts[d.id] = (placedCounts[d.id] || 0) + 1;
+                });
+            }
+
+            // 1. Owned items from user.inventory (decor, fashion/outfit, tv_card)
+            user.inventory.forEach((id, invIndex) => {
+                const catItem = SHOP_CATALOG.find(i => i.id === id) || FASHION_CATALOG.find(f => f.id === id);
+                if (!catItem) return;
+
+                // Exclude currently equipped hat/accessory
+                if (catItem.icon && user.outfit === catItem.icon) return;
+                // Exclude currently worn fashion set
+                if (
+                    catItem.sub === 'set' &&
+                    user.shirtColor === catItem.shirtColor &&
+                    user.shirtPattern === catItem.shirtPattern &&
+                    user.pantsColor === catItem.pantsColor &&
+                    user.pantsStyle === catItem.pantsStyle
+                ) return;
+
+                // Exclude decor copies currently placed in room
+                if (placedCounts[id] && placedCounts[id] > 0) {
+                    placedCounts[id] -= 1;
+                    return;
+                }
+
+                items.push({
+                    uid: `inv:${invIndex}:${id}`,
+                    source: 'inventory',
+                    invIndex,
+                    itemId: id,
+                    label: `${catItem.icon || '📦'} ${catItem.name}`
+                });
+            });
+
+            // 2. Owned custom lab creations in user.customLabItems
+            user.customLabItems.forEach((labItem, labIndex) => {
+                if (!labItem || !labItem.id) return;
+                if (placedCounts[labItem.id] && placedCounts[labItem.id] > 0) {
+                    placedCounts[labItem.id] -= 1;
+                    return;
+                }
+                items.push({
+                    uid: `lab:${labIndex}:${labItem.id}`,
+                    source: 'customLabItems',
+                    labIndex,
+                    itemId: labItem.id,
+                    label: `${labItem.name}`
+                });
+            });
+
+            return items;
+        }
+
+        function consumeFusionIngredient(user, uid) {
+            if (!uid) return false;
+            const parts = uid.split(':');
+            const source = parts[0];
+            const itemId = parts.slice(2).join(':');
+            if (source === 'inventory') {
+                const idx = user.inventory.indexOf(itemId);
+                if (idx !== -1) {
+                    user.inventory.splice(idx, 1);
+                    return true;
+                }
+            } else if (source === 'customLabItems') {
+                const idx = user.customLabItems.findIndex(x => x && x.id === itemId);
+                if (idx !== -1) {
+                    user.customLabItems.splice(idx, 1);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function syncLabFusionDropdowns(changedSlot) {
+            const selA = document.getElementById('lab-item-a');
+            const selB = document.getElementById('lab-item-b');
+            if (!selA || !selB || selA.options.length < 2) return;
+            if (selA.value === selB.value) {
+                const target = changedSlot === 'a' ? selB : selA;
+                const otherVal = changedSlot === 'a' ? selA.value : selB.value;
+                for (let i = 0; i < target.options.length; i++) {
+                    if (target.options[i].value !== otherVal) {
+                        target.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+        }
+
+        function refreshLabFusionIngredientsUI() {
+            const user = getCurrentUser();
+            const available = getAvailableFusionIngredients(user);
+            const selA = document.getElementById('lab-item-a');
+            const selB = document.getElementById('lab-item-b');
+            const emptyMsg = document.getElementById('lab-fusion-empty-msg');
+            const selectorsWrap = document.getElementById('lab-fusion-selectors');
+
+            if (!selA || !selB) return;
+
+            if (available.length < 2) {
+                if (emptyMsg) emptyMsg.style.display = 'block';
+                if (selectorsWrap) selectorsWrap.style.display = 'none';
+                selA.innerHTML = '';
+                selB.innerHTML = '';
+                return;
+            }
+
+            if (emptyMsg) emptyMsg.style.display = 'none';
+            if (selectorsWrap) selectorsWrap.style.display = 'grid';
+
+            const optsHtml = available.map(it => `<option value="${it.uid}">${it.label}</option>`).join('');
+            selA.innerHTML = optsHtml;
+            selB.innerHTML = optsHtml;
+            selA.selectedIndex = 0;
+            selB.selectedIndex = 1;
+        }
+
         function openInventionLabModal() {
             const user = getCurrentUser();
             ensureMemberProps(user);
-            const selA = document.getElementById('lab-item-a');
-            const selB = document.getElementById('lab-item-b');
-            if (selA && selB) {
-                const ownedDecorOptions = user.inventory
-                    .map(id => SHOP_CATALOG.find(i => i.id === id && i.category === 'decor'))
-                    .filter(Boolean)
-                    .map(i => `<option value="${i.id}">🎒 ${i.name}</option>`);
-                const baseOptions = LAB_BASE_INGREDIENTS.map(b => `<option value="${b.id}">${b.name}</option>`);
-                const allOpts = [...ownedDecorOptions, ...baseOptions].join('');
-                selA.innerHTML = allOpts;
-                selB.innerHTML = allOpts;
-                if (selB.options.length > 1) selB.selectedIndex = 1;
-            }
+            refreshLabFusionIngredientsUI();
             renderLabRecentList();
         }
 
@@ -6102,6 +6242,31 @@
                 return showToast(`❌ Bạn cần ${cost}⭐ để vận hành máy thí nghiệm!`);
             }
 
+            let uidA = null, uidB = null, itemAId = null, itemBId = null, fusionLabel = '';
+            if (currentLabMode === 'fusion') {
+                const available = getAvailableFusionIngredients(user);
+                if (available.length < 2) {
+                    AudioEngine.playError();
+                    return showToast('🎒 Bạn cần có ít nhất 2 vật phẩm khả dụng trong túi đồ để hợp nhất!');
+                }
+                uidA = document.getElementById('lab-item-a').value;
+                uidB = document.getElementById('lab-item-b').value;
+                if (!uidA || !uidB || uidA === uidB) {
+                    AudioEngine.playError();
+                    return showToast('⚠️ Vui lòng chọn 2 vật phẩm nguyên liệu khác nhau trong túi đồ!');
+                }
+                const foundA = available.find(x => x.uid === uidA);
+                const foundB = available.find(x => x.uid === uidB);
+                if (!foundA || !foundB) {
+                    refreshLabFusionIngredientsUI();
+                    AudioEngine.playError();
+                    return showToast('⚠️ Nguyên liệu không còn khả dụng trong túi đồ, vui lòng chọn lại!');
+                }
+                itemAId = foundA.itemId;
+                itemBId = foundB.itemId;
+                fusionLabel = `Hợp nhất từ [${foundA.label}] + [${foundB.label}]`;
+            }
+
             const promptInput = document.getElementById('lab-english-prompt');
             const rawPrompt = promptInput ? promptInput.value.trim() : '';
             const check = isValidEnglishLabPrompt(rawPrompt);
@@ -6110,13 +6275,9 @@
                 return showToast(check.reason);
             }
 
-            let itemAId = null, itemBId = null, fusionLabel = '';
             if (currentLabMode === 'fusion') {
-                itemAId = document.getElementById('lab-item-a').value;
-                itemBId = document.getElementById('lab-item-b').value;
-                const nameA = document.getElementById('lab-item-a').selectedOptions[0]?.text || '';
-                const nameB = document.getElementById('lab-item-b').selectedOptions[0]?.text || '';
-                fusionLabel = `Hợp nhất từ [${nameA}] + [${nameB}]`;
+                consumeFusionIngredient(user, uidA);
+                consumeFusionIngredient(user, uidB);
             }
 
             user.points -= cost;
@@ -6146,9 +6307,17 @@
             user.customLabItems.unshift(newItem);
             if (promptInput) promptInput.value = '';
 
+            if (currentLabMode === 'fusion') {
+                refreshLabFusionIngredientsUI();
+            }
+
             AudioEngine.playSuccess();
             triggerSpeechBubble(user, `Chế tạo thành công: ${cleanTitle}! 🧪✨`, true);
-            showToast(`🎉 Chế tạo thành công "${cleanTitle}" (-${cost}⭐) và đã cất vào 🎒 Túi đồ!`);
+            showToast(
+                currentLabMode === 'fusion'
+                    ? `🧬 Hợp nhất thành công "${cleanTitle}" (-${cost}⭐, đã tiêu hao 2 nguyên liệu) và cất vào 🎒 Túi đồ!`
+                    : `🎉 Chế tạo thành công "${cleanTitle}" (-${cost}⭐) và đã cất vào 🎒 Túi đồ!`
+            );
             updateHUD();
             saveGame();
             renderLabRecentList(newItem);
