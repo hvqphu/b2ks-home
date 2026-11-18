@@ -812,19 +812,22 @@
 
     <!-- 4. SUPERMARKET MODAL -->
     <div class="modal-overlay" id="shop-modal">
-        <div class="modal-content pixel-box">
-            <div class="modal-header">
-                <h2>🏪 Siêu Thị Gia Đình B2KS</h2>
-                <button class="btn btn-primary btn-sm" onclick="closeModal('shop-modal')">Đóng</button>
+        <div class="modal-content pixel-box" style="background:linear-gradient(180deg,#FFFDF2 0%,#FEF5E7 100%); border-color:#D35400;">
+            <div class="modal-header" style="background:linear-gradient(90deg,#E67E22,#D35400); color:#FFF; margin:-16px -16px 12px -16px; padding:12px 16px; border-radius:13px 13px 0 0; border-bottom:3px solid #2C3E50;">
+                <h2 style="color:#FFF; text-shadow:1px 1px 0 #7E5109;">🏪 Siêu Thị Gia Đình B2KS — Khu Mua Sắm</h2>
+                <button class="btn btn-sm" style="background:#FFF; color:#D35400;" onclick="closeModal('shop-modal')">✖ Đóng</button>
             </div>
-            <div id="shop-npc-banner" style="background:#FEF9E7; border:2px solid #F39C12; border-radius:10px; padding:8px 12px; margin-bottom:10px; font-size:13px; display:flex; align-items:center; gap:8px;">
-                <span style="font-size:24px;">👩‍💼</span>
-                <div><b>Cô Thu Ngân Linh:</b> "Chào mừng quý khách tới Siêu Thị B2KS! Quần áo & phụ kiện thời trang đã chuyển sang <b>Cửa Hàng Thời Trang</b> trên phố nhé!"</div>
+            <div id="shop-npc-banner" style="background:#FFF; border:2.5px solid #F39C12; border-radius:12px; padding:10px 12px; margin-bottom:10px; font-size:13px; display:flex; align-items:center; gap:10px; box-shadow:0 3px 0 rgba(243,156,18,0.25);">
+                <span style="font-size:28px; background:#FEF9E7; padding:6px; border-radius:50%; border:2px solid #F39C12;">👩‍💼</span>
+                <div>
+                    <div style="font-weight:700; color:#D35400;">Quầy Thu Ngân • Cô Linh</div>
+                    <div>"Chào mừng quý khách tới Siêu Thị B2KS! Chọn kệ hàng bên dưới để đổi điểm lấy nội thất, thẻ YouTube & phiếu đặc quyền nhé!"</div>
+                </div>
             </div>
-            <div class="room-tabs" style="margin-bottom:12px;">
-                <button class="btn btn-sm btn-accent" onclick="renderShop('decor')">🛋️ Đồ trang trí phòng</button>
-                <button class="btn btn-sm btn-danger" onclick="renderShop('tv_card')">📺 Thẻ xem YouTube (30p)</button>
-                <button class="btn btn-sm btn-primary" onclick="renderShop('voucher')">🎟️ Phiếu quà tặng</button>
+            <div class="room-tabs" style="margin-bottom:12px; background:#FDEBD0; padding:6px; border-radius:10px; border:2px solid #E67E22;">
+                <button class="btn btn-sm btn-accent" onclick="renderShop('decor')">🛋️ Kệ Nội Thất Phòng</button>
+                <button class="btn btn-sm btn-danger" onclick="renderShop('tv_card')">📺 Quầy Thẻ YouTube</button>
+                <button class="btn btn-sm btn-primary" onclick="renderShop('voucher')">🎟️ Quầy Phiếu Đặc Quyền</button>
             </div>
             <div id="shop-items-grid" class="grid-2"></div>
         </div>
@@ -839,9 +842,10 @@
             </div>
             <div class="room-tabs" style="margin-bottom:12px;">
                 <button class="btn btn-sm btn-accent" onclick="renderBagModal('decor')">🛋️ Đồ trang trí</button>
+                <button class="btn btn-sm btn-purple" onclick="renderBagModal('lab')">🧪 Vật phẩm chế tạo</button>
                 <button class="btn btn-sm btn-danger" onclick="renderBagModal('tv_card')">📺 Thẻ YouTube</button>
-                <button class="btn btn-sm btn-purple" onclick="renderBagModal('outfit')">👗 Trang phục (Cất trong tủ đồ)</button>
-                <button class="btn btn-sm btn-primary" onclick="renderBagModal('voucher')">🎟️ Phiếu quà</button>
+                <button class="btn btn-sm btn-primary" onclick="renderBagModal('outfit')">👗 Trang phục</button>
+                <button class="btn btn-sm" style="background:#E67E22;" onclick="renderBagModal('voucher')">🎟️ Phiếu quà</button>
             </div>
             <div id="bag-items-grid" class="grid-2"></div>
         </div>
@@ -849,27 +853,29 @@
 
     <!-- 4C. FASHION BOUTIQUE MODAL -->
     <div class="modal-overlay" id="fashion-modal">
-        <div class="modal-content pixel-box">
-            <div class="modal-header">
-                <h2>👗 Cửa Hàng Thời Trang B2KS</h2>
-                <button class="btn btn-primary btn-sm" onclick="closeFashionModal()">Đóng</button>
+        <div class="modal-content pixel-box" style="background:linear-gradient(180deg,#FFF5F8 0%,#FCE4EC 100%); border-color:#C2185B;">
+            <div class="modal-header" style="background:linear-gradient(90deg,#EC407A,#AD1457); color:#FFF; margin:-16px -16px 12px -16px; padding:12px 16px; border-radius:13px 13px 0 0; border-bottom:3px solid #2C3E50;">
+                <h2 style="color:#FFF;">👗 B2KS Fashion Boutique & Sàn Thử Đồ</h2>
+                <button class="btn btn-sm" style="background:#FFF; color:#AD1457;" onclick="closeFashionModal()">✖ Đóng</button>
             </div>
-            <div style="display:flex; gap:12px; align-items:center; background:#FDEDEC; border:2.5px solid #E91E63; border-radius:12px; padding:10px; margin-bottom:10px; flex-wrap:wrap;">
+            <div style="display:flex; gap:12px; align-items:center; background:#FFF; border:2.5px solid #E91E63; border-radius:14px; padding:10px; margin-bottom:10px; flex-wrap:wrap; box-shadow:0 4px 10px rgba(233,30,99,0.12);">
                 <div style="text-align:center; margin:0 auto;">
-                    <canvas id="fashion-tryon-canvas" width="104" height="120" style="width:104px; height:120px; background:#FFF; border-radius:10px; border:2.5px solid #2C3E50;"></canvas>
-                    <div id="fashion-tryon-status" style="font-size:11px; font-weight:700; color:#C2185B; margin-top:3px;">👀 Phòng thử đồ</div>
+                    <div style="padding:4px; background:linear-gradient(135deg,#F8BBD0,#F48FB1); border-radius:12px;">
+                        <canvas id="fashion-tryon-canvas" width="104" height="120" style="width:104px; height:120px; background:#FFF; border-radius:9px; border:2.5px solid #880E4F;"></canvas>
+                    </div>
+                    <div id="fashion-tryon-status" style="font-size:11px; font-weight:700; color:#AD1457; margin-top:4px;">🪞 Gương Soi Thời Trang</div>
                 </div>
                 <div style="flex:1; min-width:200px; font-size:12.5px; line-height:1.45;">
-                    <div><span style="font-size:20px;">💃</span> <b>Nhà Thiết Kế Vy:</b> "Bấm <b>👀 Try on</b> để mặc thử trực tiếp lên người trước khi đổi điểm nhé! Đồ mua xong sẽ tự động cất vào <b>Tủ quần áo phòng riêng</b>."</div>
+                    <div><span style="font-size:20px;">💃</span> <b style="color:#AD1457;">Nhà Thiết Kế Vy:</b> "Bấm <b>👀 Try on</b> để ướm thử lên gương trước khi đổi điểm nhé! Đồ mua xong sẽ tự động treo trong <b>Tủ quần áo phòng riêng</b>."</div>
                     <div id="fashion-tryon-controls" style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-                        <span class="tag" style="background:#FFF;">Đang mặc trang phục hiện tại</span>
+                        <span class="tag" style="background:#FCE4EC; border-color:#E91E63;">Đang mặc trang phục hiện tại</span>
                     </div>
                 </div>
             </div>
-            <div class="room-tabs" style="margin-bottom:12px;">
-                <button class="btn btn-sm btn-primary" onclick="renderFashionStore('set')">👔 Set Áo & Quần</button>
-                <button class="btn btn-sm btn-accent" onclick="renderFashionStore('hat')">🧢 Mũ & Nón</button>
-                <button class="btn btn-sm btn-purple" onclick="renderFashionStore('acc')">🕶️ Phụ kiện ăn mặc</button>
+            <div class="room-tabs" style="margin-bottom:12px; background:#F8BBD0; padding:6px; border-radius:10px;">
+                <button class="btn btn-sm" style="background:#C2185B;" onclick="renderFashionStore('set')">👔 Bộ Sưu Tập Áo & Quần</button>
+                <button class="btn btn-sm btn-accent" onclick="renderFashionStore('hat')">🧢 Mũ & Vương Miện</button>
+                <button class="btn btn-sm btn-purple" onclick="renderFashionStore('acc')">🕶️ Phụ Kiện Sành Điệu</button>
             </div>
             <div id="fashion-items-grid" class="grid-2"></div>
         </div>
@@ -877,29 +883,29 @@
 
     <!-- 4D. HAIR SALON MODAL -->
     <div class="modal-overlay" id="salon-modal">
-        <div class="modal-content pixel-box">
-            <div class="modal-header">
-                <h2>💇 Salon Tóc Nghệ Thuật B2KS</h2>
-                <button class="btn btn-primary btn-sm" onclick="closeModal('salon-modal')">Đóng</button>
+        <div class="modal-content pixel-box" style="background:linear-gradient(180deg,#FAF5FF 0%,#EDE7F6 100%); border-color:#6C3483;">
+            <div class="modal-header" style="background:linear-gradient(90deg,#8E44AD,#5B2C6F); color:#FFF; margin:-16px -16px 12px -16px; padding:12px 16px; border-radius:13px 13px 0 0; border-bottom:3px solid #2C3E50;">
+                <h2 style="color:#FFF;">💇 B2KS Hair Studio & Nhuộm Nghệ Thuật</h2>
+                <button class="btn btn-sm" style="background:#FFF; color:#6C3483;" onclick="closeModal('salon-modal')">✖ Đóng</button>
             </div>
-            <div style="background:#F5EEF8; border:2px solid #9B59B6; border-radius:10px; padding:8px 12px; margin-bottom:10px; font-size:13px; display:flex; align-items:center; gap:8px;">
-                <span style="font-size:24px;">💇‍♂️</span>
-                <div><b>Stylist Tuấn Anh:</b> "Chào bạn! Đổi kiểu tóc mới (<b>15⭐</b>) hoặc nhuộm màu tóc thời thượng (<b>10⭐</b>) ngay tại Salon nhé!"</div>
+            <div style="background:#FFF; border:2px solid #9B59B6; border-radius:12px; padding:8px 12px; margin-bottom:10px; font-size:13px; display:flex; align-items:center; gap:10px;">
+                <span style="font-size:26px;">💇‍♂️</span>
+                <div><b style="color:#6C3483;">Hair Stylist Tuấn Anh:</b> "Ngồi vào ghế gương tạo kiểu nào! Cắt tạo kiểu mới (<b>15⭐</b>) hoặc nhuộm màu thời trang (<b>10⭐</b>) ngay tại Studio!"</div>
             </div>
-            <div style="display:flex; gap:14px; align-items:center; background:#EBF5FB; padding:10px; border-radius:12px; border:2px solid #2C3E50; margin-bottom:12px; flex-wrap:wrap;">
-                <canvas id="salon-preview-canvas" width="100" height="115" style="width:100px; height:115px; background:#FFF; border-radius:10px; border:2px solid #2C3E50; margin:0 auto;"></canvas>
+            <div style="display:flex; gap:14px; align-items:center; background:#FFF; padding:10px; border-radius:12px; border:2.5px solid #8E44AD; margin-bottom:12px; flex-wrap:wrap;">
+                <canvas id="salon-preview-canvas" width="100" height="115" style="width:100px; height:115px; background:#F5EEF8; border-radius:10px; border:2px solid #6C3483; margin:0 auto;"></canvas>
                 <div style="flex:1; min-width:200px; font-size:13px;">
-                    <div><b>Chi phí dịch vụ hiện tại:</b> <span class="points-pill" id="salon-cost-pill">0⭐</span></div>
-                    <div style="color:#555; margin-top:4px;">• Đổi kiểu tóc khác: <b>15⭐</b><br>• Đổi màu nhuộm khác: <b>10⭐</b></div>
-                    <button class="btn btn-primary" style="margin-top:8px; width:100%;" onclick="confirmSalonChange()">✂️ Thanh toán & Tạo kiểu ngay</button>
+                    <div><b>Hóa đơn dịch vụ ghế cắt:</b> <span class="points-pill" id="salon-cost-pill">0⭐</span></div>
+                    <div style="color:#555; margin-top:4px;">• Cắt & Tạo kiểu tóc mới: <b>15⭐</b><br>• Nhuộm màu tóc mới: <b>10⭐</b></div>
+                    <button class="btn btn-purple" style="margin-top:8px; width:100%;" onclick="confirmSalonChange()">✂️ Thanh toán & Tạo kiểu ngay</button>
                 </div>
             </div>
-            <div class="form-group">
-                <label>1. Chọn kiểu tóc (15⭐ nếu thay đổi):</label>
+            <div class="form-group" style="background:#FFF; padding:10px; border-radius:10px; border:2px solid #D2B4DE;">
+                <label style="color:#6C3483;">1. Bảng Mẫu Kiểu Tóc (15⭐ nếu thay đổi):</label>
                 <div class="visual-grid" id="salon-hair-grid"></div>
             </div>
-            <div class="form-group">
-                <label>2. Chọn màu nhuộm tóc (10⭐ nếu thay đổi):</label>
+            <div class="form-group" style="background:#FFF; padding:10px; border-radius:10px; border:2px solid #D2B4DE;">
+                <label style="color:#6C3483;">2. Bảng Thuốc Nhuộm Thời Thượng (10⭐ nếu thay đổi):</label>
                 <div class="swatch-grid" id="salon-haircolor-grid"></div>
             </div>
         </div>
@@ -907,16 +913,19 @@
 
     <!-- 4F. ENGLISH CENTER GRADE 6 QUIZ MODAL (QUESTIONS APPEAR ONLY AFTER SELECTING CATEGORY) -->
     <div class="modal-overlay" id="english-center-modal">
-        <div class="modal-content pixel-box" style="max-width:640px;">
-            <div class="modal-header">
-                <h2>🎓 Trung Tâm Tiếng Anh B2KS (Lớp 6)</h2>
-                <button class="btn btn-primary btn-sm" onclick="closeModal('english-center-modal')">Đóng</button>
+        <div class="modal-content pixel-box" style="max-width:650px; background:linear-gradient(180deg,#F4FBF9 0%,#E8F6F3 100%); border-color:#117864;">
+            <div class="modal-header" style="background:linear-gradient(90deg,#16A085,#0E6251); color:#FFF; margin:-16px -16px 12px -16px; padding:12px 16px; border-radius:13px 13px 0 0; border-bottom:3px solid #2C3E50;">
+                <h2 style="color:#FFF;">🎓 B2KS English Academy (Chuẩn Lớp 6)</h2>
+                <button class="btn btn-sm" style="background:#FFF; color:#0E6251;" onclick="closeModal('english-center-modal')">✖ Đóng</button>
             </div>
-            <div style="background:#E8F8F5; border:2px solid #16A085; border-radius:10px; padding:10px 12px; margin-bottom:12px; font-size:13px; display:flex; align-items:center; gap:10px;">
-                <span style="font-size:26px;">👩‍🏫</span>
-                <div><b>Cô Giáo Mai:</b> "Chào mừng em đến với <b>B2KS English Center</b>! Hãy chọn chủ đề để tạo bộ đề ngẫu nhiên 10 câu chuẩn Tiếng Anh Lớp 6 và rinh sao thưởng nhé!"</div>
+            <div style="background:#1E4620; color:#ECF0F1; border:4px solid #8D6E63; border-radius:12px; padding:12px 14px; margin-bottom:12px; font-size:13px; display:flex; align-items:center; gap:12px; box-shadow:inset 0 0 12px rgba(0,0,0,0.35);">
+                <span style="font-size:30px;">👩‍🏫</span>
+                <div>
+                    <div style="color:#F9E79F; font-weight:700; margin-bottom:2px;">CHALKBOARD • MS. MAI'S CLASSROOM</div>
+                    <div>"Welcome to <b>B2KS English Academy</b>! Chọn chuyên đề trên bảng để nhận bộ đề 10 câu ngẫu nhiên và tích lũy sao thưởng nhé!"</div>
+                </div>
             </div>
-            <div id="eng-topic-bar" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+            <div id="eng-topic-bar" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; background:#D1F2EB; padding:8px; border-radius:10px; border:2px solid #16A085;">
                 <button class="btn btn-primary btn-sm" onclick="startEnglishGrade6Quiz('mix')">🎲 Đề Tổng Hợp (10 câu)</button>
                 <button class="btn btn-accent btn-sm" onclick="startEnglishGrade6Quiz('grammar')">📘 Ngữ Pháp Lớp 6</button>
                 <button class="btn btn-purple btn-sm" onclick="startEnglishGrade6Quiz('vocab')">🔤 Từ Vựng & Giao Tiếp</button>
@@ -927,12 +936,71 @@
 
     <!-- 4G. MULTIPLAYER ONLINE ARCADE ZONE MODAL (REALTIME MULTI-DEVICE + SPECTATOR MODE) -->
     <div class="modal-overlay" id="arcade-modal">
-        <div class="modal-content pixel-box" style="max-width:720px;">
-            <div class="modal-header">
-                <h2 style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">🕹️ Khu Vui Chơi Online B2KS <span id="arcade-online-badge" class="tag" style="background:#27AE60; color:#FFF; font-size:11px;">🟢 ONLINE</span></h2>
-                <button class="btn btn-primary btn-sm" onclick="closeArcadeModal()">Đóng</button>
+        <div class="modal-content pixel-box" style="max-width:720px; background:linear-gradient(180deg,#1B2631 0%,#212F3D 100%); color:#ECF0F1; border-color:#F39C12;">
+            <div class="modal-header" style="background:linear-gradient(90deg,#C0392B,#D35400); color:#FFF; margin:-16px -16px 12px -16px; padding:12px 16px; border-radius:13px 13px 0 0; border-bottom:3px solid #F1C40F;">
+                <h2 style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; color:#FFF;">🕹️ B2KS eSports & Arcade Arena <span id="arcade-online-badge" class="tag" style="background:#27AE60; color:#FFF; font-size:11px;">🟢 ONLINE</span></h2>
+                <button class="btn btn-sm" style="background:#F1C40F; color:#2C3E50;" onclick="closeArcadeModal()">✖ Đóng</button>
             </div>
-            <div id="arcade-dynamic-container"></div>
+            <div id="arcade-dynamic-container" style="color:#2C3E50; background:#FDFEFE; border-radius:12px; padding:10px;"></div>
+        </div>
+    </div>
+
+    <!-- 4H. B2KS INVENTION & FUSION LAB MODAL -->
+    <div class="modal-overlay" id="invention-lab-modal">
+        <div class="modal-content pixel-box" style="max-width:700px; background:linear-gradient(180deg,#0F172A 0%,#1E293B 100%); color:#F8FAFC; border:3px solid #38BDF8;">
+            <div class="modal-header" style="background:linear-gradient(90deg,#0284C7,#0D9488); color:#FFF; margin:-16px -16px 12px -16px; padding:12px 16px; border-radius:13px 13px 0 0; border-bottom:3px solid #38BDF8;">
+                <h2 style="color:#FFF; display:flex; align-items:center; gap:8px;">🧪 Phòng Thí Nghiệm Sáng Tạo B2KS <span class="tag" style="background:#0F172A; color:#38BDF8; border-color:#38BDF8;">AI LAB</span></h2>
+                <button class="btn btn-sm" style="background:#FFF; color:#0F172A;" onclick="closeModal('invention-lab-modal')">✖ Đóng</button>
+            </div>
+
+            <div style="background:rgba(15,23,42,0.85); border:2px solid #0EA5E9; border-radius:12px; padding:10px 12px; margin-bottom:12px; font-size:13px; display:flex; align-items:center; gap:10px;">
+                <span style="font-size:28px;">🤖</span>
+                <div>
+                    <div style="font-weight:700; color:#38BDF8;">Giáo Sư Robot Neo:</div>
+                    <div style="color:#E2E8F0;">"Chào nhà phát minh! Hãy nhập <b>câu mô tả bằng Tiếng Anh chuẩn</b> để máy tổng hợp tạo ra vật phẩm độc nhất vô nhị. Vật phẩm chế tạo xong sẽ lưu vào <b>🎒 Túi đồ</b> để trưng bày trong <b>Phòng riêng</b>!"</div>
+                </div>
+            </div>
+
+            <div class="room-tabs" style="margin-bottom:12px; background:#0F172A; padding:6px; border-radius:10px; border:1.5px solid #334155;">
+                <button class="btn btn-sm" id="lab-tab-prompt-btn" style="background:#0284C7;" onclick="switchInventionLabMode('prompt')">✨ Chế tạo từ Tiếng Anh (10⭐)</button>
+                <button class="btn btn-sm" id="lab-tab-fusion-btn" style="background:#475569;" onclick="switchInventionLabMode('fusion')">🧬 Hợp nhất 2 Vật Phẩm (15⭐)</button>
+            </div>
+
+            <!-- FUSION SLOTS (VISIBLE IN FUSION MODE) -->
+            <div id="lab-fusion-panel" style="display:none; background:#0F172A; border:2px dashed #38BDF8; border-radius:12px; padding:10px; margin-bottom:12px;">
+                <div style="font-size:12.5px; font-weight:700; color:#38BDF8; margin-bottom:8px;">🔬 Chọn 2 vật phẩm nguyên liệu để lai ghép:</div>
+                <div style="display:grid; grid-template-columns:1fr auto 1fr; gap:8px; align-items:center;">
+                    <div>
+                        <label style="font-size:11.5px; color:#94A3B8; display:block; margin-bottom:4px;">Nguyên liệu A (Dáng chính):</label>
+                        <select id="lab-item-a" style="width:100%; padding:7px; border-radius:8px; border:2px solid #0284C7; background:#1E293B; color:#FFF; font-weight:600;"></select>
+                    </div>
+                    <div style="font-size:22px; font-weight:700; color:#38BDF8; padding-top:16px;">➕</div>
+                    <div>
+                        <label style="font-size:11.5px; color:#94A3B8; display:block; margin-bottom:4px;">Nguyên liệu B (Đặc tính lai):</label>
+                        <select id="lab-item-b" style="width:100%; padding:7px; border-radius:8px; border:2px solid #0D9488; background:#1E293B; color:#FFF; font-weight:600;"></select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ENGLISH PROMPT INPUT -->
+            <div style="background:#0F172A; border:2px solid #334155; border-radius:12px; padding:12px; margin-bottom:12px;">
+                <label style="display:block; font-size:13px; font-weight:700; color:#7DD3FC; margin-bottom:6px;">
+                    ✍️ Nhập dòng lệnh mô tả bằng Tiếng Anh (Bắt buộc Tiếng Anh hợp lệ):
+                </label>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <input type="text" id="lab-english-prompt" placeholder="Ví dụ: a golden flying fish table with glowing wings..." style="flex:1; min-width:220px; padding:9px 12px; border-radius:9px; border:2px solid #38BDF8; background:#1E293B; color:#FFF; font-size:13.5px;" onkeypress="if(event.key==='Enter') runInventionLabSynthesis()">
+                    <button class="btn" style="background:linear-gradient(90deg,#0284C7,#10B981); padding:9px 16px;" onclick="runInventionLabSynthesis()" id="lab-synthesize-btn">⚡ Chế tạo (10⭐)</button>
+                </div>
+                <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                    <span style="font-size:11.5px; color:#94A3B8;">💡 Gợi ý mẫu:</span>
+                    <button type="button" class="btn btn-sm" style="background:#334155; font-size:11px; padding:3px 7px;" onclick="fillLabSamplePrompt('a cute rainbow crystal cat lamp')">🐱 Rainbow cat lamp</button>
+                    <button type="button" class="btn btn-sm" style="background:#334155; font-size:11px; padding:3px 7px;" onclick="fillLabSamplePrompt('a wooden table shaped like a blue swimming fish')">🐟 Fish-shaped table</button>
+                    <button type="button" class="btn btn-sm" style="background:#334155; font-size:11px; padding:3px 7px;" onclick="fillLabSamplePrompt('a rocket dragon bookshelf with golden stars')">🚀 Rocket dragon shelf</button>
+                </div>
+            </div>
+
+            <!-- RESULT & RECENT CREATIONS -->
+            <div id="lab-result-area"></div>
         </div>
     </div>
 
@@ -1430,7 +1498,18 @@
         ];
 
         function findAnyCatalogItem(id) {
-            return SHOP_CATALOG.find(i => i.id === id) || FASHION_CATALOG.find(i => i.id === id) || null;
+            if (!id) return null;
+            const shopHit = SHOP_CATALOG.find(i => i.id === id) || FASHION_CATALOG.find(i => i.id === id);
+            if (shopHit) return shopHit;
+            if (typeof state !== 'undefined' && Array.isArray(state.members)) {
+                for (const m of state.members) {
+                    if (Array.isArray(m.customLabItems)) {
+                        const labHit = m.customLabItems.find(x => x.id === id);
+                        if (labHit) return labHit;
+                    }
+                }
+            }
+            return null;
         }
 
         let zoomLevel = 1.0;
@@ -2014,6 +2093,7 @@
             if (!Array.isArray(m.inventory)) m.inventory = [];
             if (!Array.isArray(m.vouchers)) m.vouchers = [];
             if (!Array.isArray(m.roomDecor)) m.roomDecor = [];
+            if (!Array.isArray(m.customLabItems)) m.customLabItems = [];
             if (typeof m.tvSecondsUsedToday !== 'number') m.tvSecondsUsedToday = 0;
             if (typeof m.tvBonusSecondsToday !== 'number') m.tvBonusSecondsToday = 0;
             if (!m.tvLastDate) m.tvLastDate = new Date().toDateString();
@@ -2329,6 +2409,7 @@
             if (id === 'family-sync-modal') renderFamilySyncModal();
             if (id === 'english-center-modal') openEnglishCenterLobby();
             if (id === 'arcade-modal') { pullArcadeRoomFromFirebase(); renderArcadeLobby(); }
+            if (id === 'invention-lab-modal') openInventionLabModal();
         }
 
         function closeModal(id) {
@@ -2732,6 +2813,9 @@
                 </svg>`;
             }
             const item = findAnyCatalogItem(itemId);
+            if (item && item.svgMarkup) {
+                return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" style="overflow:visible;">${item.svgMarkup}</svg>`;
+            }
             return `<div style="font-size:${Math.round(size * 0.65)}px; line-height:${size}px; text-align:center;">${item ? item.icon : '📦'}</div>`;
         }
 
@@ -2797,9 +2881,13 @@
                 c.beginPath(); c.ellipse(-2, -8, 5, 3, 0, 0, Math.PI * 2); c.fill();
             } else {
                 const item = findAnyCatalogItem(decorId);
-                c.font = '32px Arial';
-                c.textAlign = 'center';
-                c.fillText(item ? item.icon : '📦', 0, 10);
+                if (item && item.labSpec) {
+                    drawProceduralLabItemOnCanvas(c, item.labSpec);
+                } else {
+                    c.font = '32px Arial';
+                    c.textAlign = 'center';
+                    c.fillText(item ? item.icon : '📦', 0, 10);
+                }
             }
             c.restore();
         }
@@ -2917,7 +3005,33 @@
                 return;
             }
 
-            const ownedDecors = user.inventory.map(id => SHOP_CATALOG.find(i => i.id === id && i.category === 'decor')).filter(Boolean);
+            if (tab === 'lab') {
+                const labItems = Array.isArray(user.customLabItems) ? user.customLabItems : [];
+                if (labItems.length === 0) {
+                    grid.innerHTML = '<p style="color:#666; font-size:13px;">Chưa có vật phẩm sáng tạo nào. Hãy ghé <b>🧪 Phòng Thí Nghiệm B2KS</b> trên phố để chế tạo bằng Tiếng Anh nhé!</p>';
+                    return;
+                }
+                labItems.forEach(item => {
+                    grid.innerHTML += `
+                        <div class="card-item" style="background:#F0F9FF; border-color:#0284C7;">
+                            <div style="display:flex; gap:10px; align-items:center;">
+                                <div style="flex-shrink:0;">${renderItemIllustrationSVG(item.id, 52)}</div>
+                                <div>
+                                    <b style="color:#0369A1;">${item.name}</b>
+                                    <div style="font-size:11px; color:#0284C7; font-style:italic;">"${item.prompt}"</div>
+                                    <div style="font-size:11.5px; color:#475569; margin-top:2px;">${item.desc}</div>
+                                </div>
+                            </div>
+                            <div style="font-size:11.5px; color:#0D9488;">✨ Có thể đặt lên <b>Slot trang trí</b> trong Phòng riêng!</div>
+                        </div>
+                    `;
+                });
+                return;
+            }
+
+            const ownedShopDecors = user.inventory.map(id => SHOP_CATALOG.find(i => i.id === id && i.category === 'decor')).filter(Boolean);
+            const ownedLabDecors = Array.isArray(user.customLabItems) ? user.customLabItems : [];
+            const ownedDecors = [...ownedShopDecors, ...ownedLabDecors];
             if (ownedDecors.length === 0) {
                 grid.innerHTML = '<p style="color:#666; font-size:13px;">Chưa có đồ trang trí phòng. Hãy mua tại <b>🏪 Siêu thị</b>!</p>';
                 return;
@@ -3334,7 +3448,9 @@
                 bar.innerHTML += `<button class="btn btn-sm btn-danger" onclick="assignDecorToRoomSlot(null)">❌ Gỡ vật phẩm khỏi vị trí này</button>`;
             }
 
-            const ownedDecors = user.inventory.map(id => SHOP_CATALOG.find(i => i.id === id && i.category === 'decor')).filter(Boolean);
+            const ownedShopDecors = user.inventory.map(id => SHOP_CATALOG.find(i => i.id === id && i.category === 'decor')).filter(Boolean);
+            const ownedLabDecors = Array.isArray(user.customLabItems) ? user.customLabItems : [];
+            const ownedDecors = [...ownedShopDecors, ...ownedLabDecors];
             if (ownedDecors.length === 0) {
                 bar.innerHTML += `<span style="font-size:12.5px; color:#666;">Túi đồ chưa có vật phẩm trang trí. Hãy mua tại <b>🏪 Siêu thị</b>!</span>`;
                 return;
@@ -4192,6 +4308,12 @@
                     label: '🎓 Vào Trung Tâm Tiếng Anh',
                     action: () => openModal('english-center-modal')
                 });
+                // Phòng Thí Nghiệm Sáng Tạo B2KS
+                items.push({
+                    x: 1380, y: 790, radius: 90,
+                    label: '🧪 Vào Phòng Thí Nghiệm (10⭐)',
+                    action: () => openModal('invention-lab-modal')
+                });
                 // Công viên & Luyện Tiếng Anh
                 items.push({
                     x: 175, y: 425, radius: 82,
@@ -4709,40 +4831,234 @@
         }
 
         function drawShopBuilding(x, y, config, lighting) {
+            const type = config.buildingType || 'supermarket';
+            const t = Date.now();
             ctx.save();
-            ctx.fillStyle = 'rgba(0,0,0,0.18)';
+            ctx.lineWidth = 3.2;
+            ctx.strokeStyle = '#2C3E50';
+
+            // Ground shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
             ctx.beginPath();
-            ctx.ellipse(x, y + 66, 102, 14, 0, 0, Math.PI * 2);
+            ctx.ellipse(x, y + 68, 110, 15, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            ctx.fillStyle = config.wallColor;
-            ctx.fillRect(x - 95, y - 70, 190, 130);
-            ctx.lineWidth = 3.5;
-            ctx.strokeStyle = '#2C3E50';
-            ctx.strokeRect(x - 95, y - 70, 190, 130);
+            if (type === 'supermarket') {
+                // 2-tier Supermarket with red/white striped canopy, fruit stand & shopping carts
+                ctx.fillStyle = '#FFF9C4';
+                ctx.beginPath(); ctx.roundRect(x - 104, y - 68, 208, 130, [10, 10, 4, 4]); ctx.fill(); ctx.stroke();
 
-            [-76, 36].forEach(wx => {
-                ctx.fillStyle = lighting.isNight ? '#F9E79F' : '#D6EAF8';
-                ctx.fillRect(x + wx, y - 16, 40, 44);
-                ctx.strokeRect(x + wx, y - 16, 40, 44);
-            });
+                // Upper roof parapet
+                ctx.fillStyle = '#E67E22';
+                ctx.beginPath(); ctx.roundRect(x - 108, y - 92, 216, 30, 8); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#FFF';
+                ctx.font = 'bold 13px Fredoka';
+                ctx.textAlign = 'center';
+                ctx.fillText(config.title, x, y - 72);
 
-            for (let ax = x - 95; ax < x + 95; ax += 19) {
-                ctx.fillStyle = (Math.round((ax - (x - 95)) / 19) % 2 === 0) ? config.awningColor : '#FFFFFF';
-                ctx.fillRect(ax, y - 52, 19, 16);
-                ctx.strokeRect(ax, y - 52, 19, 16);
+                // Scalloped red-white awning
+                for (let i = 0; i < 10; i++) {
+                    const ax = x - 100 + i * 20;
+                    ctx.fillStyle = i % 2 === 0 ? '#E74C3C' : '#FFFFFF';
+                    ctx.beginPath();
+                    ctx.roundRect(ax, y - 62, 20, 18, [0, 0, 6, 6]);
+                    ctx.fill(); ctx.stroke();
+                }
+
+                // Sliding glass doors & display windows
+                ctx.fillStyle = lighting.isNight ? '#F9E79F' : '#AED6F1';
+                ctx.fillRect(x - 32, y - 24, 64, 86); ctx.strokeRect(x - 32, y - 24, 64, 86);
+                ctx.beginPath(); ctx.moveTo(x, y - 24); ctx.lineTo(x, y + 62); ctx.stroke();
+
+                // Side produce/gift display boxes
+                [-72, 42].forEach((wx, idx) => {
+                    ctx.fillStyle = lighting.isNight ? '#FCF3CF' : '#D6EAF8';
+                    ctx.fillRect(x + wx, y - 34, 34, 42); ctx.strokeRect(x + wx, y - 34, 34, 42);
+                    ctx.font = '18px Arial';
+                    ctx.fillText(idx === 0 ? '🍎🍌' : '🧸🎁', x + wx + 17, y - 8);
+                });
+                // Shopping cart prop
+                ctx.font = '20px Arial';
+                ctx.fillText('🛒', x - 86, y + 54);
+                ctx.fillText('🛒', x + 86, y + 54);
+
+            } else if (type === 'arcade') {
+                // Giant Retro Arcade Cabinet & Neon eSports Arena
+                ctx.fillStyle = '#1B2631';
+                ctx.beginPath();
+                ctx.moveTo(x - 102, y + 62);
+                ctx.lineTo(x - 102, y - 48);
+                ctx.lineTo(x - 84, y - 88);
+                ctx.lineTo(x + 84, y - 88);
+                ctx.lineTo(x + 102, y - 48);
+                ctx.lineTo(x + 102, y + 62);
+                ctx.closePath();
+                ctx.fill(); ctx.stroke();
+
+                // Glowing neon marquee
+                const pulse = Math.sin(t / 220) > 0;
+                ctx.fillStyle = pulse ? '#E74C3C' : '#F39C12';
+                ctx.beginPath(); ctx.roundRect(x - 94, y - 84, 188, 28, 8); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#FFF';
+                ctx.font = 'bold 12.5px Fredoka';
+                ctx.textAlign = 'center';
+                ctx.fillText(config.title, x, y - 65);
+
+                // Giant CRT Screen facade
+                ctx.fillStyle = '#0B5345';
+                ctx.beginPath(); ctx.roundRect(x - 76, y - 48, 152, 54, 10); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#1ABC9C';
+                ctx.font = '22px Arial';
+                ctx.fillText('🕹️ ❌⭕ 🚀 ⚡', x, y - 14);
+
+                // Arcade joystick & buttons ledge
+                ctx.fillStyle = '#F1C40F';
+                ctx.fillRect(x - 96, y + 8, 192, 14); ctx.strokeRect(x - 96, y + 8, 192, 14);
+                ['#E74C3C', '#3498DB', '#2ECC71'].forEach((bc, bi) => {
+                    ctx.fillStyle = bc;
+                    ctx.beginPath(); ctx.arc(x - 65 + bi * 18, y + 15, 5, 0, Math.PI * 2); ctx.fill();
+                });
+                // Entrance portal
+                ctx.fillStyle = '#2C3E50';
+                ctx.fillRect(x - 28, y + 22, 56, 40); ctx.strokeRect(x - 28, y + 22, 56, 40);
+
+            } else if (type === 'english') {
+                // Classic Brick & Cream Academy with Clock Tower
+                ctx.fillStyle = '#E8F8F5';
+                ctx.fillRect(x - 98, y - 62, 196, 124); ctx.strokeRect(x - 98, y - 62, 196, 124);
+
+                // Pitched roof + central clock tower
+                ctx.fillStyle = '#117864';
+                ctx.beginPath();
+                ctx.moveTo(x - 108, y - 62);
+                ctx.lineTo(x, y - 102);
+                ctx.lineTo(x + 108, y - 62);
+                ctx.closePath();
+                ctx.fill(); ctx.stroke();
+
+                // Clock face in gable
+                ctx.fillStyle = '#FFF';
+                ctx.beginPath(); ctx.arc(x, y - 76, 15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(x, y - 76); ctx.lineTo(x, y - 85); ctx.moveTo(x, y - 76); ctx.lineTo(x + 7, y - 76); ctx.stroke();
+
+                // White classical pillars
+                [-84, -42, 42, 84].forEach(px => {
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(x + px - 6, y - 56, 12, 118); ctx.strokeRect(x + px - 6, y - 56, 12, 118);
+                });
+
+                // Signboard
+                ctx.fillStyle = '#0E6251';
+                ctx.beginPath(); ctx.roundRect(x - 96, y - 54, 192, 24, 6); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#FFF';
+                ctx.font = 'bold 12px Fredoka';
+                ctx.textAlign = 'center';
+                ctx.fillText(config.title, x, y - 38);
+                ctx.font = '20px Arial';
+                ctx.fillText('🇬🇧  ABC  📘', x, y - 6);
+
+            } else if (type === 'fashion') {
+                // Luxury Pink Glass Boutique with Crown Roof & Runway Windows
+                ctx.fillStyle = '#FDEDEC';
+                ctx.beginPath(); ctx.roundRect(x - 98, y - 66, 196, 128, [16, 16, 4, 4]); ctx.fill(); ctx.stroke();
+
+                // Crown & Boutique Header
+                ctx.font = '24px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('👑', x, y - 92);
+                ctx.fillStyle = '#C2185B';
+                ctx.beginPath(); ctx.roundRect(x - 100, y - 86, 200, 28, 12); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#FFF';
+                ctx.font = 'bold 12.5px Fredoka';
+                ctx.fillText(config.title, x, y - 67);
+
+                // Panoramic showcase glass windows with dresses
+                [-64, 30].forEach((wx, wi) => {
+                    ctx.fillStyle = lighting.isNight ? '#FADBD8' : '#FFF0F5';
+                    ctx.beginPath(); ctx.roundRect(x + wx, y - 46, 36, 68, [18, 18, 4, 4]); ctx.fill(); ctx.stroke();
+                    ctx.font = '22px Arial';
+                    ctx.fillText(wi === 0 ? '👗' : '🤵', x + wx + 18, y - 4);
+                });
+                // Pink heart banner center
+                ctx.font = '22px Arial';
+                ctx.fillText('🎀 👜 👠', x, y - 16);
+
+            } else if (type === 'salon') {
+                // Modern Hair Studio with Animated Spinning Barber Pole & Golden Scissors
+                ctx.fillStyle = '#F5EEF8';
+                ctx.fillRect(x - 96, y - 66, 192, 128); ctx.strokeRect(x - 96, y - 66, 192, 128);
+
+                ctx.fillStyle = '#6C3483';
+                ctx.beginPath(); ctx.roundRect(x - 100, y - 88, 200, 28, 8); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#FFF';
+                ctx.font = 'bold 12.5px Fredoka';
+                ctx.textAlign = 'center';
+                ctx.fillText(config.title, x, y - 69);
+
+                // Studio mirrors
+                [-68, 32].forEach(wx => {
+                    ctx.fillStyle = lighting.isNight ? '#F9E79F' : '#EBF5FB';
+                    ctx.beginPath(); ctx.roundRect(x + wx, y - 46, 36, 64, 16); ctx.fill(); ctx.stroke();
+                });
+
+                // Animated spinning Barber Pole on the left!
+                const poleX = x - 106;
+                ctx.fillStyle = '#FFF';
+                ctx.beginPath(); ctx.roundRect(poleX - 7, y - 34, 14, 68, 7); ctx.fill(); ctx.stroke();
+                const stripeOffset = Math.floor((t / 90) % 18);
+                for (let sy = y - 28 + stripeOffset; sy < y + 26; sy += 18) {
+                    ctx.fillStyle = (Math.floor(sy / 18) % 2 === 0) ? '#E74C3C' : '#2980B9';
+                    ctx.fillRect(poleX - 5, sy, 10, 7);
+                }
+                ctx.font = '24px Arial';
+                ctx.fillText('✂️ 💇‍♀️ 🎨', x, y - 12);
+
+            } else if (type === 'lab') {
+                // Sci-Fi B2KS Invention Lab with Glass Bio-Dome, Antenna & Bubbling Flasks
+                ctx.fillStyle = '#1E293B';
+                ctx.beginPath(); ctx.roundRect(x - 102, y - 60, 204, 122, [14, 14, 4, 4]); ctx.fill(); ctx.stroke();
+
+                // Glowing Cyan Glass Dome on roof
+                ctx.fillStyle = 'rgba(56, 189, 248, 0.45)';
+                ctx.beginPath();
+                ctx.arc(x, y - 60, 56, Math.PI, 0);
+                ctx.fill(); ctx.stroke();
+
+                // Radar antenna
+                ctx.beginPath(); ctx.moveTo(x, y - 116); ctx.lineTo(x, y - 134); ctx.stroke();
+                ctx.fillStyle = (Math.sin(t / 180) > 0) ? '#38BDF8' : '#10B981';
+                ctx.beginPath(); ctx.arc(x, y - 136, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+                // Floating energy bubbles inside dome
+                const bShift = Math.sin(t / 250) * 5;
+                ctx.fillStyle = '#7DD3FC';
+                ctx.beginPath(); ctx.arc(x - 20, y - 78 + bShift, 5, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(x + 18, y - 84 - bShift, 6, 0, Math.PI * 2); ctx.fill();
+
+                // Neon Lab Signboard
+                ctx.fillStyle = '#0284C7';
+                ctx.beginPath(); ctx.roundRect(x - 104, y - 64, 208, 28, 8); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#FFF';
+                ctx.font = 'bold 12px Fredoka';
+                ctx.textAlign = 'center';
+                ctx.fillText(config.title, x, y - 45);
+
+                // Tech windows
+                [-76, 36].forEach(wx => {
+                    ctx.fillStyle = '#0F172A';
+                    ctx.fillRect(x + wx, y - 24, 40, 46); ctx.strokeRect(x + wx, y - 24, 40, 46);
+                    ctx.strokeStyle = '#38BDF8';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(x + wx + 4, y); ctx.lineTo(x + wx + 14, y - 10); ctx.lineTo(x + wx + 24, y + 8); ctx.lineTo(x + wx + 36, y - 4);
+                    ctx.stroke();
+                    ctx.strokeStyle = '#2C3E50';
+                    ctx.lineWidth = 3.2;
+                });
+                ctx.font = '22px Arial';
+                ctx.fillText('🧪 🧬 ⚡', x, y - 4);
             }
 
-            ctx.fillStyle = config.signColor;
-            ctx.fillRect(x - 98, y - 82, 196, 28);
-            ctx.strokeRect(x - 98, y - 82, 196, 28);
-            ctx.fillStyle = '#FFF';
-            ctx.font = 'bold 13px Fredoka';
-            ctx.textAlign = 'center';
-            ctx.fillText(config.title, x, y - 63);
-
-            ctx.font = '26px Arial';
-            ctx.fillText(config.icons, x, y + 6);
             ctx.restore();
 
             drawDetailedChibiOnContext(ctx, {
@@ -4985,16 +5301,16 @@
 
             // 5. Siêu Thị Gia Đình
             drawShopBuilding(1680, 345, {
-                wallColor: '#FFF9C4', awningColor: '#E74C3C', signColor: '#D35400',
-                title: '🏪 SIÊU THỊ GIA ĐÌNH B2KS', icons: '🛋️  🍦  🎬  🧸',
+                buildingType: 'supermarket',
+                title: '🏪 SIÊU THỊ GIA ĐÌNH B2KS',
                 npcName: 'Thu Ngân Linh', npcHairStyle: 'long', npcHairColor: '#4E342E',
                 npcShirtColor: '#E67E22', npcShirtPattern: 'collar', npcPantsColor: '#2C3E50', npcPantsStyle: 'skirt', npcOutfit: ''
             }, lighting);
 
             // 6. KHU VUI CHƠI ĐỐI KHÁNG B2KS (Trung tâm bản đồ - Dưới Đại lộ Bắc)
             drawShopBuilding(885, 725, {
-                wallColor: '#FEF9E7', awningColor: '#F39C12', signColor: '#C0392B',
-                title: '🕹️ KHU VUI CHƠI ONLINE (1⭐)', icons: '❌⭕  ⚡  🚀  🏆',
+                buildingType: 'arcade',
+                title: '🕹️ KHU VUI CHƠI ONLINE (1⭐)',
                 npcName: 'Quản Trò Bin', npcHairStyle: 'spiky', npcHairColor: '#2C3E50',
                 npcShirtColor: '#E74C3C', npcShirtPattern: 'star', npcPantsColor: '#2980B9', npcPantsStyle: 'shorts', npcOutfit: '🎮'
             }, lighting);
@@ -5020,26 +5336,34 @@
                 ctx.restore();
             }
 
+            // 6B. PHÒNG THÍ NGHIỆM SÁNG TẠO B2KS (Đông Trung Tâm - Dưới Đại lộ Bắc)
+            drawShopBuilding(1380, 725, {
+                buildingType: 'lab',
+                title: '🧪 PHÒNG THÍ NGHIỆM B2KS',
+                npcName: 'Giáo Sư Neo', npcHairStyle: 'spiky', npcHairColor: '#38BDF8',
+                npcShirtColor: '#0284C7', npcShirtPattern: 'star', npcPantsColor: '#1E293B', npcPantsStyle: 'pants', npcOutfit: '🥽'
+            }, lighting);
+
             // 7. Trung Tâm Tiếng Anh B2KS
             drawShopBuilding(340, 865, {
-                wallColor: '#E8F8F5', awningColor: '#16A085', signColor: '#117864',
-                title: '🎓 TRUNG TÂM TIẾNG ANH B2KS', icons: '📘  🔤  🇬🇧  🏆',
+                buildingType: 'english',
+                title: '🎓 TRUNG TÂM TIẾNG ANH B2KS',
                 npcName: 'Cô Giáo Mai', npcHairStyle: 'long', npcHairColor: '#4E342E',
                 npcShirtColor: '#16A085', npcShirtPattern: 'collar', npcPantsColor: '#2C3E50', npcPantsStyle: 'skirt', npcOutfit: '🎓'
             }, lighting);
 
             // 8. Cửa Hàng Thời Trang
             drawShopBuilding(820, 865, {
-                wallColor: '#FDEDEC', awningColor: '#E91E63', signColor: '#C2185B',
-                title: '👗 CỬA HÀNG THỜI TRANG', icons: '👔  👗  👑  🕶️',
+                buildingType: 'fashion',
+                title: '👗 CỬA HÀNG THỜI TRANG',
                 npcName: 'Nhà Thiết Kế Vy', npcHairStyle: 'pigtails', npcHairColor: '#8E44AD',
                 npcShirtColor: '#E91E63', npcShirtPattern: 'heart', npcPantsColor: '#8E44AD', npcPantsStyle: 'skirt', npcOutfit: '🎀'
             }, lighting);
 
             // 9. Salon Tóc Nghệ Thuật
             drawShopBuilding(1740, 865, {
-                wallColor: '#F5EEF8', awningColor: '#9B59B6', signColor: '#6C3483',
-                title: '💇 SALON TÓC NGHỆ THUẬT', icons: '✂️  💇‍♀️  🎨  ✨',
+                buildingType: 'salon',
+                title: '💇 SALON TÓC NGHỆ THUẬT',
                 npcName: 'Stylist Tuấn Anh', npcHairStyle: 'spiky', npcHairColor: '#2980B9',
                 npcShirtColor: '#8E44AD', npcShirtPattern: 'vest', npcPantsColor: '#2C3E50', npcPantsStyle: 'pants', npcOutfit: ''
             }, lighting);
@@ -5465,6 +5789,414 @@
             engQuizSession.currentIndex += 1;
             engQuizSession.answered = false;
             renderEnglishQuizQuestion();
+        }
+
+        /* =========================================================================
+           10C. B2KS INVENTION & FUSION LAB ENGINE (ENGLISH PROMPT -> PROCEDURAL ITEM)
+           ========================================================================= */
+        let currentLabMode = 'prompt'; // 'prompt' | 'fusion'
+
+        const LAB_BASE_INGREDIENTS = [
+            { id: 'base_table', name: '🪵 Cái bàn gỗ (Wooden Table)', shape: 'table', color: '#A04000' },
+            { id: 'base_fish', name: '🐟 Con cá đại dương (Ocean Fish)', shape: 'fish', color: '#2980B9' },
+            { id: 'base_cat', name: '🐱 Chú mèo dễ thương (Cute Cat)', shape: 'cat', color: '#F39C12' },
+            { id: 'base_rocket', name: '🚀 Tên lửa vũ trụ (Space Rocket)', shape: 'rocket', color: '#E74C3C' },
+            { id: 'base_lamp', name: '💡 Đèn ngủ pha lê (Crystal Lamp)', shape: 'lamp', color: '#9B59B6' },
+            { id: 'base_dragon', name: '🐉 Rồng lửa tí hon (Mini Dragon)', shape: 'dragon', color: '#27AE60' },
+            { id: 'base_car', name: '🏎️ Siêu xe tốc độ (Speed Car)', shape: 'car', color: '#E67E22' },
+            { id: 'base_castle', name: '🏰 Lâu đài mini (Mini Castle)', shape: 'castle', color: '#8E44AD' }
+        ];
+
+        const ENGLISH_COMMON_LEXICON = new Set([
+            'a','an','the','with','and','of','in','on','for','to','shaped','like','made','from','that','can','has','have',
+            'big','small','tiny','giant','cute','cool','super','magic','magical','flying','swimming','glowing','shiny','rainbow',
+            'golden','gold','silver','crystal','wooden','wood','metal','robot','cyber','space','star','stars','moon','sun','fire','ice','water',
+            'red','blue','green','yellow','pink','purple','orange','black','white','brown','colorful',
+            'table','desk','chair','bed','lamp','clock','book','bookshelf','box','house','castle','car','boat','ship','plane','rocket','train',
+            'fish','shark','whale','dolphin','cat','dog','bear','rabbit','bird','owl','dragon','unicorn','butterfly','turtle','frog','lion','tiger',
+            'wings','wing','tail','legs','four','two','eyes','crown','hat','wheels','wheel','flowers','flower','tree','heart','hearts','cloud','clouds'
+        ]);
+
+        function isValidEnglishLabPrompt(raw) {
+            const cleaned = (raw || '').trim();
+            if (!cleaned) return { ok: false, reason: '⚠️ Bạn chưa nhập dòng lệnh mô tả Tiếng Anh!' };
+            // Reject Vietnamese diacritics
+            if (/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(cleaned)) {
+                return { ok: false, reason: '🇬🇧 Vui lòng nhập mô tả hoàn toàn bằng Tiếng Anh (không dùng dấu tiếng Việt)!' };
+            }
+            const words = cleaned.toLowerCase().match(/[a-z]{2,}/g) || [];
+            if (words.length < 2) {
+                return { ok: false, reason: '✍️ Hãy viết ít nhất 2 từ Tiếng Anh mô tả vật phẩm (ví dụ: "a flying blue fish table")!' };
+            }
+            const hasVowelWords = words.filter(w => /[aeiouy]/.test(w));
+            if (hasVowelWords.length < 2) {
+                return { ok: false, reason: '🔤 Dòng lệnh chưa đúng từ vựng Tiếng Anh hợp lệ. Hãy thử lại nhé!' };
+            }
+            const knownCount = words.filter(w => ENGLISH_COMMON_LEXICON.has(w)).length;
+            if (knownCount === 0 && words.length < 3) {
+                return { ok: false, reason: '💡 Hãy dùng các từ Tiếng Anh mô tả hình dáng, màu sắc hoặc đồ vật (ví dụ: golden fish, rainbow cat lamp...)' };
+            }
+            return { ok: true, words };
+        }
+
+        function parsePromptToLabSpec(promptText, itemAId = null, itemBId = null) {
+            const lower = promptText.toLowerCase();
+            const colorMap = [
+                { keys: ['rainbow', 'colorful'], hex: '#EC4899', accent: '#FACC15', isRainbow: true },
+                { keys: ['gold', 'golden', 'yellow'], hex: '#F59E0B', accent: '#FEF08A' },
+                { keys: ['blue', 'ocean', 'water', 'ice', 'crystal'], hex: '#0284C7', accent: '#BAE6FD' },
+                { keys: ['red', 'fire', 'ruby'], hex: '#DC2626', accent: '#FCA5A5' },
+                { keys: ['green', 'emerald', 'forest', 'wood', 'wooden'], hex: '#16A34A', accent: '#BBF7D0' },
+                { keys: ['purple', 'magic', 'magical', 'violet'], hex: '#7C3AED', accent: '#DDD6FE' },
+                { keys: ['pink', 'cute', 'heart'], hex: '#DB2777', accent: '#FBCFE8' },
+                { keys: ['orange', 'tiger'], hex: '#EA580C', accent: '#FED7AA' },
+                { keys: ['silver', 'robot', 'cyber', 'metal', 'white'], hex: '#64748B', accent: '#E2E8F0' }
+            ];
+            let pickedColor = colorMap.find(c => c.keys.some(k => lower.includes(k))) || { hex: '#0EA5E9', accent: '#BAE6FD', isRainbow: false };
+
+            const shapeKeywords = [
+                { keys: ['table', 'desk'], shape: 'table', label: 'Table' },
+                { keys: ['fish', 'shark', 'whale', 'dolphin', 'swimming'], shape: 'fish', label: 'Fish' },
+                { keys: ['cat', 'kitten', 'dog', 'bear', 'rabbit'], shape: 'cat', label: 'Kitty' },
+                { keys: ['rocket', 'ship', 'plane', 'space'], shape: 'rocket', label: 'Rocket' },
+                { keys: ['lamp', 'light', 'glowing'], shape: 'lamp', label: 'Lamp' },
+                { keys: ['dragon', 'unicorn', 'dino'], shape: 'dragon', label: 'Dragon' },
+                { keys: ['car', 'train', 'wheel'], shape: 'car', label: 'Cruiser' },
+                { keys: ['castle', 'house', 'tower'], shape: 'castle', label: 'Castle' },
+                { keys: ['bookshelf', 'shelf', 'book'], shape: 'shelf', label: 'Shelf' }
+            ];
+
+            let primaryShape = 'crystal';
+            let secondaryTrait = null;
+
+            if (itemAId) {
+                const baseA = LAB_BASE_INGREDIENTS.find(b => b.id === itemAId);
+                if (baseA) primaryShape = baseA.shape;
+                else if (itemAId === 'd_pc' || itemAId === 'd_bookshelf') primaryShape = 'table';
+                else if (itemAId === 'd_aquarium') primaryShape = 'fish';
+                else if (itemAId === 'd_bear') primaryShape = 'cat';
+            } else {
+                const hit = shapeKeywords.find(s => s.keys.some(k => lower.includes(k)));
+                if (hit) primaryShape = hit.shape;
+            }
+
+            if (itemBId) {
+                const baseB = LAB_BASE_INGREDIENTS.find(b => b.id === itemBId);
+                if (baseB) secondaryTrait = baseB.shape;
+                else if (itemBId === 'd_aquarium') secondaryTrait = 'fish';
+                else if (itemBId === 'd_pc') secondaryTrait = 'table';
+                else if (itemBId === 'd_bear') secondaryTrait = 'cat';
+            } else {
+                const secondHit = shapeKeywords.find(s => s.shape !== primaryShape && s.keys.some(k => lower.includes(k)));
+                if (secondHit) secondaryTrait = secondHit.shape;
+            }
+
+            const hasWings = /wing|fly|flying|bird|butterfly|angel/.test(lower);
+            const hasLegs = /leg|table|desk|stand|walk/.test(lower) || secondaryTrait === 'table';
+            const hasFishTail = /fish|swim|swimming|tail|mermaid|ocean/.test(lower) || secondaryTrait === 'fish';
+            const hasCrown = /crown|royal|king|queen|princess|prince/.test(lower);
+            const hasStars = /star|magic|magical|glow|glowing|crystal|rainbow/.test(lower);
+
+            return {
+                primaryShape,
+                secondaryTrait,
+                color: pickedColor.hex,
+                accent: pickedColor.accent,
+                isRainbow: !!pickedColor.isRainbow,
+                hasWings,
+                hasLegs,
+                hasFishTail,
+                hasCrown,
+                hasStars
+            };
+        }
+
+        function buildLabSVGMarkup(spec) {
+            const c = spec.color || '#0EA5E9';
+            const ac = spec.accent || '#BAE6FD';
+            let parts = [];
+
+            // Aura / Stars
+            if (spec.hasStars) {
+                parts.push(`<circle cx="32" cy="34" r="26" fill="${ac}" opacity="0.35"/>`);
+                parts.push(`<text x="8" y="16" font-size="11">✨</text><text x="48" y="18" font-size="11">⭐</text>`);
+            }
+
+            // Wings
+            if (spec.hasWings) {
+                parts.push(`<path d="M16 30 Q2 14 14 22 Q6 28 18 35 Z" fill="${ac}" stroke="#1E293B" stroke-width="2"/>`);
+                parts.push(`<path d="M48 30 Q62 14 50 22 Q58 28 46 35 Z" fill="${ac}" stroke="#1E293B" stroke-width="2"/>`);
+            }
+
+            // Table Legs if hybrid table or hasLegs
+            if (spec.hasLegs) {
+                parts.push(`<rect x="15" y="38" width="5" height="18" rx="1.5" fill="#78350F" stroke="#1E293B" stroke-width="2"/>`);
+                parts.push(`<rect x="44" y="38" width="5" height="18" rx="1.5" fill="#78350F" stroke="#1E293B" stroke-width="2"/>`);
+            }
+
+            // Primary Body Shape
+            if (spec.primaryShape === 'table') {
+                if (spec.hasFishTail || spec.secondaryTrait === 'fish') {
+                    // Fish-shaped table!
+                    parts.push(`<ellipse cx="30" cy="34" rx="20" ry="9" fill="${c}" stroke="#1E293B" stroke-width="2.2"/>`);
+                    parts.push(`<polygon points="48,34 59,25 59,43" fill="${ac}" stroke="#1E293B" stroke-width="2"/>`);
+                    parts.push(`<circle cx="18" cy="32" r="2.2" fill="#FFF"/><circle cx="18" cy="32" r="1" fill="#1E293B"/>`);
+                } else {
+                    parts.push(`<rect x="9" y="31" width="46" height="8" rx="3" fill="${c}" stroke="#1E293B" stroke-width="2.2"/>`);
+                    parts.push(`<rect x="13" y="32" width="38" height="3" fill="${ac}" opacity="0.7"/>`);
+                }
+            } else if (spec.primaryShape === 'fish') {
+                parts.push(`<ellipse cx="29" cy="33" rx="18" ry="12" fill="${c}" stroke="#1E293B" stroke-width="2.2"/>`);
+                parts.push(`<polygon points="45,33 58,22 58,44" fill="${ac}" stroke="#1E293B" stroke-width="2"/>`);
+                parts.push(`<polygon points="26,21 34,13 36,22" fill="${ac}" stroke="#1E293B" stroke-width="1.8"/>`);
+                parts.push(`<circle cx="18" cy="30" r="2.8" fill="#FFF"/><circle cx="18" cy="30" r="1.3" fill="#1E293B"/>`);
+            } else if (spec.primaryShape === 'cat') {
+                parts.push(`<polygon points="18,24 22,12 29,21" fill="${c}" stroke="#1E293B" stroke-width="2"/>`);
+                parts.push(`<polygon points="46,24 42,12 35,21" fill="${c}" stroke="#1E293B" stroke-width="2"/>`);
+                parts.push(`<circle cx="32" cy="34" r="16" fill="${c}" stroke="#1E293B" stroke-width="2.2"/>`);
+                parts.push(`<circle cx="26" cy="32" r="2.2" fill="#1E293B"/><circle cx="38" cy="32" r="2.2" fill="#1E293B"/>`);
+                parts.push(`<polygon points="30,36 34,36 32,39" fill="#F43F5E"/>`);
+            } else if (spec.primaryShape === 'rocket') {
+                parts.push(`<path d="M32 10 Q44 24 42 46 L22 46 Q20 24 32 10 Z" fill="${c}" stroke="#1E293B" stroke-width="2.2"/>`);
+                parts.push(`<polygon points="22,36 13,47 22,46" fill="${ac}" stroke="#1E293B" stroke-width="2"/>`);
+                parts.push(`<polygon points="42,36 51,47 42,46" fill="${ac}" stroke="#1E293B" stroke-width="2"/>`);
+                parts.push(`<circle cx="32" cy="28" r="5" fill="#E0F2FE" stroke="#1E293B" stroke-width="2"/>`);
+            } else if (spec.primaryShape === 'lamp') {
+                parts.push(`<rect x="24" y="46" width="16" height="8" rx="2" fill="#475569" stroke="#1E293B" stroke-width="2"/>`);
+                parts.push(`<rect x="30" y="36" width="4" height="10" fill="#94A3B8" stroke="#1E293B" stroke-width="1.5"/>`);
+                parts.push(`<polygon points="18,36 46,36 40,16 24,16" fill="${c}" stroke="#1E293B" stroke-width="2.2"/>`);
+                parts.push(`<circle cx="32" cy="26" r="4" fill="${ac}"/>`);
+            } else if (spec.primaryShape === 'dragon') {
+                parts.push(`<ellipse cx="32" cy="36" rx="15" ry="13" fill="${c}" stroke="#1E293B" stroke-width="2.2"/>`);
+                parts.push(`<circle cx="32" cy="21" r="10" fill="${c}" stroke="#1E293B" stroke-width="2.2"/>`);
+                parts.push(`<polygon points="25,13 23,6 29,12" fill="#FACC15" stroke="#1E293B" stroke-width="1.5"/>`);
+                parts.push(`<polygon points="39,13 41,6 35,12" fill="#FACC15" stroke="#1E293B" stroke-width="1.5"/>`);
+                parts.push(`<circle cx="28" cy="20" r="2" fill="#FFF"/><circle cx="36" cy="20" r="2" fill="#FFF"/>`);
+            } else if (spec.primaryShape === 'car') {
+                parts.push(`<rect x="10" y="30" width="44" height="14" rx="5" fill="${c}" stroke="#1E293B" stroke-width="2.2"/>`);
+                parts.push(`<rect x="18" y="21" width="26" height="10" rx="4" fill="${ac}" stroke="#1E293B" stroke-width="2"/>`);
+                parts.push(`<circle cx="20" cy="46" r="5.5" fill="#1E293B"/><circle cx="44" cy="46" r="5.5" fill="#1E293B"/>`);
+            } else if (spec.primaryShape === 'castle') {
+                parts.push(`<rect x="16" y="26" width="32" height="26" fill="${c}" stroke="#1E293B" stroke-width="2.2"/>`);
+                parts.push(`<polygon points="14,26 22,13 30,26" fill="${ac}" stroke="#1E293B" stroke-width="2"/>`);
+                parts.push(`<polygon points="34,26 42,13 50,26" fill="${ac}" stroke="#1E293B" stroke-width="2"/>`);
+                parts.push(`<rect x="28" y="38" width="8" height="14" rx="3" fill="#1E293B"/>`);
+            } else {
+                // Magic Crystal / Custom Relic
+                parts.push(`<polygon points="32,10 48,28 40,52 24,52 16,28" fill="${c}" stroke="#1E293B" stroke-width="2.2"/>`);
+                parts.push(`<polygon points="32,14 41,28 32,46 23,28" fill="${ac}" opacity="0.75"/>`);
+            }
+
+            // Extra Fish tail overlay if secondary fish trait on non-table
+            if (spec.hasFishTail && spec.primaryShape !== 'fish' && spec.primaryShape !== 'table') {
+                parts.push(`<polygon points="46,36 58,28 58,44" fill="${ac}" stroke="#1E293B" stroke-width="1.8"/>`);
+            }
+
+            // Crown overlay
+            if (spec.hasCrown) {
+                parts.push(`<polygon points="23,13 26,6 32,11 38,6 41,13" fill="#FACC15" stroke="#1E293B" stroke-width="1.6"/>`);
+            }
+
+            return parts.join('');
+        }
+
+        function drawProceduralLabItemOnCanvas(c, spec) {
+            if (!spec) return;
+            c.save();
+            c.strokeStyle = '#1E293B';
+            c.lineWidth = 2;
+
+            if (spec.hasStars) {
+                c.fillStyle = spec.accent || '#BAE6FD';
+                c.globalAlpha = 0.35;
+                c.beginPath(); c.arc(0, -2, 22, 0, Math.PI * 2); c.fill();
+                c.globalAlpha = 1;
+            }
+            if (spec.hasLegs) {
+                c.fillStyle = '#78350F';
+                c.fillRect(-16, 4, 5, 15);
+                c.fillRect(11, 4, 5, 15);
+            }
+            c.fillStyle = spec.color || '#0EA5E9';
+            if (spec.primaryShape === 'table' && (spec.hasFishTail || spec.secondaryTrait === 'fish')) {
+                c.beginPath(); c.ellipse(-2, 0, 18, 8, 0, 0, Math.PI * 2); c.fill(); c.stroke();
+                c.fillStyle = spec.accent || '#BAE6FD';
+                c.beginPath(); c.moveTo(15, 0); c.lineTo(25, -8); c.lineTo(25, 8); c.closePath(); c.fill(); c.stroke();
+            } else if (spec.primaryShape === 'table') {
+                c.fillRect(-22, -4, 44, 8); c.strokeRect(-22, -4, 44, 8);
+            } else if (spec.primaryShape === 'fish') {
+                c.beginPath(); c.ellipse(-2, -2, 16, 10, 0, 0, Math.PI * 2); c.fill(); c.stroke();
+                c.fillStyle = spec.accent || '#BAE6FD';
+                c.beginPath(); c.moveTo(13, -2); c.lineTo(23, -10); c.lineTo(23, 6); c.closePath(); c.fill(); c.stroke();
+            } else if (spec.primaryShape === 'cat') {
+                c.beginPath(); c.arc(0, 0, 14, 0, Math.PI * 2); c.fill(); c.stroke();
+                c.beginPath(); c.moveTo(-12, -8); c.lineTo(-8, -20); c.lineTo(-2, -12); c.fill(); c.stroke();
+                c.beginPath(); c.moveTo(12, -8); c.lineTo(8, -20); c.lineTo(2, -12); c.fill(); c.stroke();
+            } else if (spec.primaryShape === 'rocket') {
+                c.beginPath(); c.moveTo(0, -22); c.lineTo(11, 12); c.lineTo(-11, 12); c.closePath(); c.fill(); c.stroke();
+            } else {
+                c.beginPath(); c.moveTo(0, -20); c.lineTo(15, -4); c.lineTo(9, 16); c.lineTo(-9, 16); c.lineTo(-15, -4); c.closePath(); c.fill(); c.stroke();
+            }
+            if (spec.hasCrown) {
+                c.fillStyle = '#FACC15';
+                c.beginPath(); c.moveTo(-8, -16); c.lineTo(-4, -24); c.lineTo(0, -18); c.lineTo(4, -24); c.lineTo(8, -16); c.closePath(); c.fill();
+            }
+            c.restore();
+        }
+
+        function switchInventionLabMode(mode) {
+            currentLabMode = mode;
+            AudioEngine.playClick();
+            const promptBtn = document.getElementById('lab-tab-prompt-btn');
+            const fusionBtn = document.getElementById('lab-tab-fusion-btn');
+            const fusionPanel = document.getElementById('lab-fusion-panel');
+            const synthBtn = document.getElementById('lab-synthesize-btn');
+
+            if (mode === 'fusion') {
+                promptBtn.style.background = '#475569';
+                fusionBtn.style.background = '#0D9488';
+                fusionPanel.style.display = 'block';
+                synthBtn.innerText = '🧬 Hợp nhất (15⭐)';
+            } else {
+                promptBtn.style.background = '#0284C7';
+                fusionBtn.style.background = '#475569';
+                fusionPanel.style.display = 'none';
+                synthBtn.innerText = '⚡ Chế tạo (10⭐)';
+            }
+        }
+
+        function fillLabSamplePrompt(sample) {
+            AudioEngine.playClick();
+            const inp = document.getElementById('lab-english-prompt');
+            if (inp) {
+                inp.value = sample;
+                inp.focus();
+            }
+        }
+
+        function openInventionLabModal() {
+            const user = getCurrentUser();
+            ensureMemberProps(user);
+            const selA = document.getElementById('lab-item-a');
+            const selB = document.getElementById('lab-item-b');
+            if (selA && selB) {
+                const ownedDecorOptions = user.inventory
+                    .map(id => SHOP_CATALOG.find(i => i.id === id && i.category === 'decor'))
+                    .filter(Boolean)
+                    .map(i => `<option value="${i.id}">🎒 ${i.name}</option>`);
+                const baseOptions = LAB_BASE_INGREDIENTS.map(b => `<option value="${b.id}">${b.name}</option>`);
+                const allOpts = [...ownedDecorOptions, ...baseOptions].join('');
+                selA.innerHTML = allOpts;
+                selB.innerHTML = allOpts;
+                if (selB.options.length > 1) selB.selectedIndex = 1;
+            }
+            renderLabRecentList();
+        }
+
+        function runInventionLabSynthesis() {
+            const user = getCurrentUser();
+            ensureMemberProps(user);
+            const cost = currentLabMode === 'fusion' ? 15 : 10;
+            if (user.points < cost) {
+                AudioEngine.playError();
+                return showToast(`❌ Bạn cần ${cost}⭐ để vận hành máy thí nghiệm!`);
+            }
+
+            const promptInput = document.getElementById('lab-english-prompt');
+            const rawPrompt = promptInput ? promptInput.value.trim() : '';
+            const check = isValidEnglishLabPrompt(rawPrompt);
+            if (!check.ok) {
+                AudioEngine.playError();
+                return showToast(check.reason);
+            }
+
+            let itemAId = null, itemBId = null, fusionLabel = '';
+            if (currentLabMode === 'fusion') {
+                itemAId = document.getElementById('lab-item-a').value;
+                itemBId = document.getElementById('lab-item-b').value;
+                const nameA = document.getElementById('lab-item-a').selectedOptions[0]?.text || '';
+                const nameB = document.getElementById('lab-item-b').selectedOptions[0]?.text || '';
+                fusionLabel = `Hợp nhất từ [${nameA}] + [${nameB}]`;
+            }
+
+            user.points -= cost;
+            const spec = parsePromptToLabSpec(rawPrompt, itemAId, itemBId);
+            const svgMarkup = buildLabSVGMarkup(spec);
+
+            // Capitalize nice title from prompt
+            const cleanTitle = rawPrompt
+                .replace(/^(a|an|the)\s+/i, '')
+                .split(/\s+/)
+                .slice(0, 4)
+                .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+                .join(' ');
+
+            const newItem = {
+                id: 'lab_' + Date.now() + '_' + Math.floor(Math.random() * 999),
+                category: 'decor',
+                isLabItem: true,
+                name: `🧪 ${cleanTitle}`,
+                icon: '🧪',
+                prompt: rawPrompt,
+                desc: fusionLabel || `Vật phẩm sáng tạo từ dòng lệnh: "${rawPrompt}"`,
+                labSpec: spec,
+                svgMarkup
+            };
+
+            user.customLabItems.unshift(newItem);
+            if (promptInput) promptInput.value = '';
+
+            AudioEngine.playSuccess();
+            triggerSpeechBubble(user, `Chế tạo thành công: ${cleanTitle}! 🧪✨`, true);
+            showToast(`🎉 Chế tạo thành công "${cleanTitle}" (-${cost}⭐) và đã cất vào 🎒 Túi đồ!`);
+            updateHUD();
+            saveGame();
+            renderLabRecentList(newItem);
+        }
+
+        function renderLabRecentList(highlightedItem = null) {
+            const user = getCurrentUser();
+            ensureMemberProps(user);
+            const area = document.getElementById('lab-result-area');
+            if (!area) return;
+
+            let html = '';
+            if (highlightedItem) {
+                html += `
+                    <div style="background:linear-gradient(135deg,#064E3B,#0F766E); border:2.5px solid #34D399; border-radius:12px; padding:12px; margin-bottom:12px; display:flex; gap:12px; align-items:center;">
+                        <div style="background:#FFF; border-radius:12px; padding:6px; border:2.5px solid #0F172A; flex-shrink:0;">
+                            ${renderItemIllustrationSVG(highlightedItem.id, 64)}
+                        </div>
+                        <div>
+                            <span class="tag" style="background:#10B981; color:#FFF; border-color:#FFF;">✨ VẬT PHẨM MỚI RA LÒ!</span>
+                            <div style="font-size:16px; font-weight:700; color:#FFF; margin-top:4px;">${highlightedItem.name}</div>
+                            <div style="font-size:12px; color:#A7F3D0; font-style:italic;">Prompt: "${highlightedItem.prompt}"</div>
+                            <div style="font-size:12px; color:#ECFDF5; margin-top:3px;">📦 Đã lưu vào <b>🎒 Túi đồ (Vật phẩm chế tạo)</b> — Bạn có thể vào <b>Phòng riêng</b> để trang trí ngay!</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const list = user.customLabItems || [];
+            if (list.length > 0) {
+                html += `<div style="font-size:12.5px; font-weight:700; color:#7DD3FC; margin-bottom:6px;">📚 Bộ sưu tập sáng chế của ${user.name} (${list.length} vật phẩm):</div>`;
+                html += `<div class="grid-2">`;
+                list.slice(0, 6).forEach(item => {
+                    html += `
+                        <div style="background:#0F172A; border:2px solid #334155; border-radius:10px; padding:8px; display:flex; gap:10px; align-items:center;">
+                            <div style="background:#FFF; border-radius:8px; padding:3px; flex-shrink:0;">
+                                ${renderItemIllustrationSVG(item.id, 46)}
+                            </div>
+                            <div style="min-width:0;">
+                                <div style="font-weight:700; font-size:13px; color:#F8FAFC; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${item.name}</div>
+                                <div style="font-size:11px; color:#38BDF8; font-style:italic; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"${item.prompt}"</div>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+            area.innerHTML = html;
         }
 
         /* =========================================================================
