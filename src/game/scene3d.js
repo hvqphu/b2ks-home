@@ -11,6 +11,9 @@
  * - Thú cưng 3D đồng hành (10 loài + trứng + tiến hóa + phụ kiện)
  */
 
+import { buildCatalogItem3D, buildProceduralLabItem3D } from './itemModels3d';
+
+export { buildCatalogItem3D, buildProceduralLabItem3D };
 export const WORLD_SCALE = 0.05; // 100px (2D) = 5 đơn vị 3D
 
 export const PASTEL_PALETTE = {
@@ -56,7 +59,7 @@ function createSeededRandom(seed) {
 /**
  * Phát hiện GPU phần mềm (SwiftShader/llvmpipe) để tự động tối ưu shadow & pixelRatio
  */
-function detectSoftwareWebGL() {
+export function detectSoftwareWebGL() {
   try {
     const probe = document.createElement('canvas');
     const gl = probe.getContext('webgl2') || probe.getContext('webgl');
@@ -74,7 +77,7 @@ function detectSoftwareWebGL() {
 /**
  * Tạo texture cỏ pastel, vỉa hè lát gạch, mặt đường, sân bóng & bóng tròn mềm
  */
-function createProceduralTextures(THREE, maxAnisotropy) {
+export function createProceduralTextures(THREE, maxAnisotropy = 1) {
   // 1. Grass subtle checkerboard / blades texture
   const grassCanvas = document.createElement('canvas');
   grassCanvas.width = 256;
@@ -178,7 +181,7 @@ function createProceduralTextures(THREE, maxAnisotropy) {
 /**
  * Helper tạo vật liệu PBR chuẩn Low-Poly (không viền đen, chia roughness rõ khối)
  */
-function createMaterialCache(THREE) {
+export function createMaterialCache(THREE) {
   const cache = new Map();
   return {
     get(color, opts = {}) {
@@ -2565,7 +2568,7 @@ function attachWingPair(THREE, actor, root, {
 /**
  * Dựng Thú Cưng 3D Low-poly (10 loài đúng nguyên mẫu + trứng + tiến hóa cấp 1-4 + 6 phụ kiện)
  */
-function buildPet3D(THREE, mats, shadowTex, pet, species, resolvedColors) {
+export function buildPet3D(THREE, mats, shadowTex, pet, species, resolvedColors) {
   const root = new THREE.Group();
   const stageDef = species.stages.find((s) => s.stage === pet.stage) || species.stages[0];
   const scale = (stageDef.scale || 0.85) * 0.78;
@@ -3939,101 +3942,7 @@ function buildHouseInterior3D(THREE, mats, textures, rooms, state, wardrobeOpene
  * Dựng 1 món đồ trang trí 3D cho phòng riêng / phòng khách
  */
 function buildDecorProp3D(THREE, mats, decorId, findAnyCatalogItem) {
-  const g = new THREE.Group();
-  if (decorId === 'd_pc') {
-    const desk = makeBox(THREE, 2.9, 0.16, 1.35, mats.get('#B47B48', { roughness: 0.68 }));
-    desk.position.y = 0.88;
-    const legL = makeBox(THREE, 0.2, 0.88, 1.15, mats.get('#78350F', { roughness: 0.78 }));
-    legL.position.set(-1.2, 0.44, 0);
-    const legR = makeBox(THREE, 0.2, 0.88, 1.15, mats.get('#78350F', { roughness: 0.78 }));
-    legR.position.set(1.2, 0.44, 0);
-    const monitor = makeBox(THREE, 1.38, 0.88, 0.14, mats.get('#1E293B', { roughness: 0.3 }));
-    monitor.position.set(-0.2, 1.5, -0.22);
-    const screen = makeBox(THREE, 1.22, 0.74, 0.17, mats.get('#38BDF8', { emissive: '#0EA5E9', emissiveIntensity: 0.48 }));
-    screen.position.set(-0.2, 1.5, -0.22);
-    const kb = makeBox(THREE, 0.9, 0.06, 0.35, mats.get('#E2E8F0', { roughness: 0.4 }));
-    kb.position.set(-0.2, 0.99, 0.2);
-    const chair = makeBox(THREE, 0.95, 0.95, 0.95, mats.get('#EF4444', { roughness: 0.62 }));
-    chair.position.set(0, 0.48, 0.9);
-    g.add(desk, legL, legR, monitor, screen, kb, chair);
-  } else if (decorId === 'd_plant') {
-    const pot = makeCyl(THREE, 0.56, 0.4, 0.82, 10, mats.get('#EA580C', { roughness: 0.72 }));
-    pot.position.y = 0.41;
-    const soil = makeCyl(THREE, 0.5, 0.5, 0.08, 10, mats.get('#78350F', { roughness: 0.9 }));
-    soil.position.y = 0.82;
-    const foliage1 = makeSphere(THREE, 0.68, 9, 8, mats.get('#16A34A', { roughness: 0.75, flatShading: true }));
-    foliage1.position.y = 1.28;
-    const foliage2 = makeSphere(THREE, 0.48, 8, 7, mats.get('#22C55E', { roughness: 0.75, flatShading: true }));
-    foliage2.position.set(0.22, 1.62, 0.12);
-    g.add(pot, soil, foliage1, foliage2);
-  } else if (decorId === 'd_aquarium') {
-    const stand = makeBox(THREE, 1.9, 0.85, 1.05, mats.get('#78350F', { roughness: 0.78 }));
-    stand.position.y = 0.425;
-    const tank = makeBox(
-      THREE,
-      1.75,
-      1.05,
-      0.9,
-      mats.get('#7DD3FC', { roughness: 0.1, transparent: true, opacity: 0.65, emissive: '#0284C7', emissiveIntensity: 0.25 })
-    );
-    tank.position.y = 1.38;
-    const cap = makeBox(THREE, 1.82, 0.12, 0.96, mats.get('#1E293B', { roughness: 0.4 }));
-    cap.position.y = 1.94;
-    const fish = makeSphere(THREE, 0.18, 8, 6, mats.get('#FB923C', { roughness: 0.4 }));
-    fish.scale.set(1.5, 0.8, 0.7);
-    fish.position.set(-0.2, 1.38, 0);
-    g.add(stand, tank, cap, fish);
-  } else if (decorId === 'd_bear') {
-    const furMat = mats.get('#D97706', { roughness: 0.85 });
-    const muzzleMat = mats.get('#FEF3C7', { roughness: 0.8 });
-    const body = makeSphere(THREE, 0.64, 10, 8, furMat);
-    body.position.y = 0.62;
-    const belly = makeSphere(THREE, 0.42, 8, 8, muzzleMat);
-    belly.position.set(0, 0.6, 0.32);
-    const head = makeSphere(THREE, 0.52, 10, 8, furMat);
-    head.position.y = 1.38;
-    const snout = makeSphere(THREE, 0.2, 8, 6, muzzleMat);
-    snout.position.set(0, 1.32, 0.42);
-    [-0.38, 0.38].forEach((ex) => {
-      const ear = makeSphere(THREE, 0.18, 8, 6, furMat);
-      ear.position.set(ex, 1.78, 0);
-      g.add(ear);
-    });
-    g.add(body, belly, head, snout);
-  } else if (decorId === 'd_guitar') {
-    const stand = makeBox(THREE, 0.6, 0.08, 0.6, mats.get('#334155', { roughness: 0.5 }));
-    stand.position.y = 0.04;
-    const body = makeSphere(THREE, 0.52, 10, 8, mats.get('#EA580C', { roughness: 0.42 }));
-    body.scale.set(0.9, 1.2, 0.35);
-    body.position.y = 0.76;
-    const hole = makeCyl(THREE, 0.16, 0.16, 0.06, 12, mats.get('#1E293B', { roughness: 0.5 }));
-    hole.rotation.x = Math.PI / 2;
-    hole.position.set(0, 0.78, 0.18);
-    const neck = makeBox(THREE, 0.18, 1.25, 0.14, mats.get('#78350F', { roughness: 0.6 }));
-    neck.position.y = 1.65;
-    g.add(stand, body, hole, neck);
-  } else {
-    const item = findAnyCatalogItem ? findAnyCatalogItem(decorId) : null;
-    const spec = item?.labSpec;
-    const col = spec?.color || '#38BDF8';
-    const acc = spec?.accent || '#FACC15';
-    const ped = makeCyl(THREE, 0.58, 0.68, 0.28, 12, mats.get('#E2E8F0', { roughness: 0.45 }));
-    ped.position.y = 0.14;
-    let core;
-    if (spec?.primaryShape === 'cube' || spec?.primaryShape === 'robot') {
-      core = makeBox(THREE, 0.88, 0.98, 0.88, mats.get(col, { roughness: 0.45 }));
-    } else if (spec?.primaryShape === 'rocket' || spec?.primaryShape === 'cone') {
-      core = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.28, 8), mats.get(col, { roughness: 0.4 }));
-    } else {
-      core = makeSphere(THREE, 0.52, 12, 10, mats.get(col, { roughness: 0.4 }));
-    }
-    core.position.y = 0.84;
-    core.castShadow = true;
-    const top = makeSphere(THREE, 0.22, 8, 8, mats.get(acc, { roughness: 0.3, emissive: acc, emissiveIntensity: 0.38 }));
-    top.position.y = 1.5;
-    g.add(ped, core, top);
-  }
-  return g;
+  return buildCatalogItem3D(THREE, mats, decorId, findAnyCatalogItem);
 }
 
 /**

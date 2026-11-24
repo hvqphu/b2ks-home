@@ -11,6 +11,7 @@ import {
   BgmThemeId,
   BuildingLayoutOverride,
   CrossWorldRequest,
+  CustomLabItem,
   EnglishGradeProgress,
   EnglishQuestion,
   FleaMarketListing,
@@ -372,6 +373,8 @@ export function initB2KSGameEngine() {
   let currentWeather: WeatherInfo | null = getCachedWeatherInfo();
   const livePosTimestamps = new Map<string, number>();
   let lastSavedPointsMap: Record<string, number> = {};
+  const dirtyMemberIds = new Set<string>();
+  let lastZoneExitCheckAt = 0;
 
   let deviceConfig: { currentMemberId: string; isLockedToMember: boolean; firebaseUrl: string; lastFamilyName?: string } = (() => {
     try {
@@ -717,9 +720,12 @@ export function initB2KSGameEngine() {
       buildingLayouts: {},
       buildingLayoutsUpdatedAt: 0,
       dailyParentAllowance: DAILY_PARENT_ALLOWANCE,
+      maxParentPoints: MAX_PARENT_POINTS,
+      maxParentPointsUpdatedAt: 0,
       updatedAt: parentsOnly ? Date.now() : 0,
       familyMessages: [],
       house: { plotIndex: 1, style: 'modern' },
+      houseUpdatedAt: 0,
       members,
       tasks,
       crossWorldItems: DEFAULT_CROSS_WORLD_ITEMS.map((x) => ({ ...x })),
@@ -798,6 +804,7 @@ export function initB2KSGameEngine() {
       m.age = DEFAULT_MEMBER_AGES[m.id] || (m.role === 'Bố' ? 38 : m.role === 'Mẹ' ? 36 : 10);
     }
     if (typeof m.memberUpdatedAt !== 'number') m.memberUpdatedAt = 0;
+    if (typeof m.nameUpdatedAt !== 'number') m.nameUpdatedAt = 0;
     if (typeof m.adminPointsUpdatedAt !== 'number') m.adminPointsUpdatedAt = 0;
     if (typeof m.pointsUpdatedAt !== 'number') m.pointsUpdatedAt = m.adminPointsUpdatedAt || 0;
     if (typeof m.tvSecondsUsedToday !== 'number') m.tvSecondsUsedToday = 0;
@@ -832,6 +839,9 @@ export function initB2KSGameEngine() {
     if (!Array.isArray(m.comicReadStats.completedIds)) {
       m.comicReadStats.completedIds = [];
     }
+    if (!m.roomSlots || typeof m.roomSlots !== 'object') m.roomSlots = {};
+    if (!m.roomSlotSpecs || typeof m.roomSlotSpecs !== 'object') m.roomSlotSpecs = {};
+    if (!m.roomDecorSpecs || typeof m.roomDecorSpecs !== 'object') m.roomDecorSpecs = {};
     m.roomDecor = m.roomDecor.filter((d) => {
       if (d.id === 'd_bookshelf') return false;
       if (d.id === 'd_pc' && d.x === 650 && d.y === 470) return false;
@@ -843,9 +853,42 @@ export function initB2KSGameEngine() {
       Object.keys(m.roomSlots).forEach((slotKey) => {
         if (m.roomSlots && m.roomSlots[slotKey] === 'd_bookshelf') {
           delete m.roomSlots[slotKey];
+          if (m.roomSlotSpecs) delete m.roomSlotSpecs[slotKey];
         }
       });
     }
+    if (!m.inventoryConsumedMigrated) {
+      Object.entries(m.roomSlots).forEach(([slotKey, placedId]) => {
+        if (!placedId) return;
+        const labIdx = m.customLabItems!.findIndex((x) => x && x.id === placedId);
+        if (labIdx !== -1) {
+          if (!m.roomSlotSpecs![slotKey]) {
+            m.roomSlotSpecs![slotKey] = { ...m.customLabItems![labIdx] };
+          }
+          m.customLabItems!.splice(labIdx, 1);
+        } else {
+          const invIdx = m.inventory.indexOf(placedId);
+          if (invIdx !== -1) m.inventory.splice(invIdx, 1);
+        }
+      });
+      m.roomDecor.forEach((d) => {
+        if (!d || !d.id) return;
+        const labIdx = m.customLabItems!.findIndex((x) => x && x.id === d.id);
+        if (labIdx !== -1) {
+          if (!m.roomDecorSpecs![d.id]) {
+            m.roomDecorSpecs![d.id] = { ...m.customLabItems![labIdx] };
+          }
+          m.customLabItems!.splice(labIdx, 1);
+        } else {
+          const invIdx = m.inventory.indexOf(d.id);
+          if (invIdx !== -1) m.inventory.splice(invIdx, 1);
+        }
+      });
+      m.inventoryConsumedMigrated = true;
+    }
+    Object.keys(m.roomSlotSpecs).forEach((slotKey) => {
+      if (!m.roomSlots![slotKey]) delete m.roomSlotSpecs![slotKey];
+    });
     if (!Array.isArray(m.unlockedAchievements)) m.unlockedAchievements = [];
     if (!Array.isArray(m.englishWordsUsed)) m.englishWordsUsed = [];
     if (typeof m.completedTaskCount !== 'number' || Number.isNaN(m.completedTaskCount)) {
@@ -943,9 +986,14 @@ export function initB2KSGameEngine() {
     if (!state.bgmTheme) state.bgmTheme = AudioEngine.themeId || 'sunny_town';
     if (!state.buildingLayouts || typeof state.buildingLayouts !== 'object') state.buildingLayouts = {};
     if (typeof state.buildingLayoutsUpdatedAt !== 'number') state.buildingLayoutsUpdatedAt = 0;
+    if (typeof state.houseUpdatedAt !== 'number') state.houseUpdatedAt = 0;
     if (typeof state.dailyParentAllowance !== 'number' || Number.isNaN(state.dailyParentAllowance)) {
       state.dailyParentAllowance = DAILY_PARENT_ALLOWANCE;
     }
+    if (typeof state.maxParentPoints !== 'number' || Number.isNaN(state.maxParentPoints) || state.maxParentPoints < 0) {
+      state.maxParentPoints = MAX_PARENT_POINTS;
+    }
+    if (typeof state.maxParentPointsUpdatedAt !== 'number') state.maxParentPointsUpdatedAt = 0;
 
     if (!Array.isArray(state.crossWorldItems)) {
       state.crossWorldItems = DEFAULT_CROSS_WORLD_ITEMS.map((x) => ({ ...x }));
@@ -1089,6 +1137,7 @@ export function initB2KSGameEngine() {
           pointsUpdatedAt: m.pointsUpdatedAt || 0,
           adminPointsUpdatedAt: m.adminPointsUpdatedAt || 0,
           memberUpdatedAt: m.memberUpdatedAt || Date.now(),
+          nameUpdatedAt: m.nameUpdatedAt || 0,
           hairStyle: m.hairStyle,
           hairColor: m.hairColor,
           shirtColor: m.shirtColor,
@@ -1100,9 +1149,12 @@ export function initB2KSGameEngine() {
           roomWall: m.roomWall,
           inventory: m.inventory || [],
           vouchers: m.vouchers || [],
-          customLabItems: mergeCustomLabItems(prev?.customLabItems || [], m.customLabItems || []),
+          customLabItems: m.customLabItems || [],
           roomSlots: m.roomSlots || {},
+          roomSlotSpecs: m.roomSlotSpecs || {},
           roomDecor: m.roomDecor || [],
+          roomDecorSpecs: m.roomDecorSpecs || {},
+          inventoryConsumedMigrated: Boolean(m.inventoryConsumedMigrated),
           unlockedZooAnimals: unionStringLists(prev?.unlockedZooAnimals || [], m.unlockedZooAnimals || []),
           englishQuizHistory: mergeQuizHistory(prev?.englishQuizHistory || [], m.englishQuizHistory || []),
           englishProgress: mergeEnglishProgressMaps(prev?.englishProgress, m.englishProgress),
@@ -1188,11 +1240,15 @@ export function initB2KSGameEngine() {
             m.comicReadStats.lastReadAt = entry.comicReadStats.lastReadAt;
           }
         }
-        if (Array.isArray(entry.customLabItems)) {
-          m.customLabItems = mergeCustomLabItems(m.customLabItems, entry.customLabItems);
+        if ((entry.nameUpdatedAt || 0) > (m.nameUpdatedAt || 0) && entry.name) {
+          m.name = entry.name;
+          m.nameUpdatedAt = entry.nameUpdatedAt;
         }
         if ((entry.memberUpdatedAt || 0) > (m.memberUpdatedAt || 0)) {
-          if (entry.name) m.name = entry.name;
+          if (entry.name && (entry.nameUpdatedAt || 0) >= (m.nameUpdatedAt || 0)) {
+            m.name = entry.name;
+            if (typeof entry.nameUpdatedAt === 'number') m.nameUpdatedAt = entry.nameUpdatedAt;
+          }
           if (entry.role) m.role = entry.role;
           if (typeof entry.age === 'number') m.age = entry.age;
           if (entry.outfit !== undefined) m.outfit = entry.outfit;
@@ -1204,18 +1260,14 @@ export function initB2KSGameEngine() {
           if (entry.pantsStyle) m.pantsStyle = entry.pantsStyle;
           if (typeof entry.roomUnlocked === 'boolean') m.roomUnlocked = entry.roomUnlocked;
           if (entry.roomWall) m.roomWall = entry.roomWall;
-          if (Array.isArray(entry.inventory) && entry.inventory.length >= (m.inventory || []).length) {
-            m.inventory = unionStringLists(m.inventory, entry.inventory);
-          }
-          if (Array.isArray(entry.vouchers) && entry.vouchers.length >= (m.vouchers || []).length) {
-            m.vouchers = entry.vouchers;
-          }
-          if (entry.roomSlots && Object.keys(entry.roomSlots).length >= Object.keys(m.roomSlots || {}).length) {
-            m.roomSlots = { ...(m.roomSlots || {}), ...entry.roomSlots };
-          }
-          if (Array.isArray(entry.roomDecor) && entry.roomDecor.length > (m.roomDecor || []).length) {
-            m.roomDecor = entry.roomDecor;
-          }
+          if (Array.isArray(entry.inventory)) m.inventory = [...entry.inventory];
+          if (Array.isArray(entry.vouchers)) m.vouchers = [...entry.vouchers];
+          if (Array.isArray(entry.customLabItems)) m.customLabItems = [...entry.customLabItems];
+          if (entry.roomSlots && typeof entry.roomSlots === 'object') m.roomSlots = { ...entry.roomSlots };
+          if (entry.roomSlotSpecs && typeof entry.roomSlotSpecs === 'object') m.roomSlotSpecs = { ...entry.roomSlotSpecs };
+          if (Array.isArray(entry.roomDecor)) m.roomDecor = [...entry.roomDecor];
+          if (entry.roomDecorSpecs && typeof entry.roomDecorSpecs === 'object') m.roomDecorSpecs = { ...entry.roomDecorSpecs };
+          if (typeof entry.inventoryConsumedMigrated === 'boolean') m.inventoryConsumedMigrated = entry.inventoryConsumedMigrated;
           if (entry.petFoodInventory && Object.keys(entry.petFoodInventory).length > 0) {
             m.petFoodInventory = { ...(entry.petFoodInventory || {}), ...(m.petFoodInventory || {}) };
           }
@@ -1238,20 +1290,73 @@ export function initB2KSGameEngine() {
     setTimeout(() => el.remove(), 3200);
   }
 
-  function findAnyCatalogItem(id: string): any {
+  function findCustomLabSpecEverywhere(id: string): CustomLabItem | null {
     if (!id) return null;
-    const shopHit =
-      SHOP_CATALOG.find((i) => i.id === id) ||
-      FASHION_CATALOG.find((f) => f.id === id) ||
-      LEGACY_VOUCHERS.find((v) => v.id === id);
-    if (shopHit) return shopHit;
     for (const m of state.members) {
       if (Array.isArray(m.customLabItems)) {
-        const labHit = m.customLabItems.find((x) => x.id === id);
-        if (labHit) return labHit;
+        const hit = m.customLabItems.find((x) => x && x.id === id);
+        if (hit) return hit;
+      }
+      if (m.roomSlotSpecs) {
+        const slotSpecHit = Object.values(m.roomSlotSpecs).find((x) => x && x.id === id);
+        if (slotSpecHit) return slotSpecHit;
+      }
+      if (m.roomDecorSpecs) {
+        const decorSpecHit = Object.values(m.roomDecorSpecs).find((x) => x && x.id === id);
+        if (decorSpecHit) return decorSpecHit;
       }
     }
     return null;
+  }
+
+  function findAnyCatalogItem(id: string): any {
+    if (!id) return null;
+    if (id === 'd_bookshelf') {
+      return {
+        id: 'd_bookshelf',
+        category: 'decor',
+        name: 'Tủ Sách Gỗ Gia Đình',
+        icon: '📚',
+        desc: 'Tủ sách gỗ nhiều tầng đầy sách màu sắc'
+      };
+    }
+    const shopHit =
+      SHOP_CATALOG.find((i) => i.id === id) ||
+      FASHION_CATALOG.find((f) => f.id === id) ||
+      LEGACY_VOUCHERS.find((v) => v.id === id) ||
+      PET_FOOD_CATALOG.find((p) => p.id === id) ||
+      PET_ACCESSORY_CATALOG.find((a) => a.id === id);
+    if (shopHit) return shopHit;
+    return findCustomLabSpecEverywhere(id);
+  }
+
+  function consumeItemFromBag(member: Member, itemId: string): { ok: boolean; kind: 'inventory' | 'lab'; labItem?: CustomLabItem } {
+    ensureMemberProps(member);
+    const labIdx = (member.customLabItems || []).findIndex((x) => x && x.id === itemId);
+    if (labIdx !== -1) {
+      const [labItem] = member.customLabItems!.splice(labIdx, 1);
+      return { ok: true, kind: 'lab', labItem };
+    }
+    const invIdx = member.inventory.indexOf(itemId);
+    if (invIdx !== -1) {
+      member.inventory.splice(invIdx, 1);
+      return { ok: true, kind: 'inventory' };
+    }
+    return { ok: false, kind: 'inventory' };
+  }
+
+  function returnItemToBag(member: Member, itemId: string, labSpecFallback?: CustomLabItem | null) {
+    ensureMemberProps(member);
+    if (!itemId) return;
+    const isLab = itemId.startsWith('lab_') || Boolean(labSpecFallback?.isLabItem);
+    if (isLab) {
+      const resolved = labSpecFallback || findCustomLabSpecEverywhere(itemId);
+      if (resolved) {
+        member.customLabItems!.unshift({ ...resolved });
+      }
+    } else {
+      member.inventory.push(itemId);
+    }
   }
 
   /* ==================== 4. FIREBASE REALTIME DB SYNC ==================== */
@@ -1318,6 +1423,7 @@ export function initB2KSGameEngine() {
       familyName: state.familyName || 'B2KS',
       updatedAt: Date.now(),
       dailyParentAllowance: state.dailyParentAllowance ?? DAILY_PARENT_ALLOWANCE,
+      maxParentPoints: getMaxParentPoints(),
       deleted: false,
       members: state.members.map((m) => ({
         id: m.id,
@@ -1406,8 +1512,10 @@ export function initB2KSGameEngine() {
       persistDurableSecrets();
       persistDurableMemberArchive();
 
+      const extraToSync = Array.from(new Set([...changedPointMembers, ...Array.from(dirtyMemberIds)]));
+      dirtyMemberIds.clear();
       if (pushCloud && deviceConfig.firebaseUrl) {
-        syncToFirebase(changedPointMembers);
+        syncToFirebase(extraToSync);
       }
       notifySubscribers();
     } catch {
@@ -1913,14 +2021,21 @@ export function initB2KSGameEngine() {
       : DAILY_PARENT_ALLOWANCE;
   }
 
-  function addParentPointsWithAllowanceCap(parent: Member, gain: number) {
-    if (gain <= 0) return;
-    const cap = Math.max(MAX_PARENT_POINTS, getDailyParentAllowance() * 4);
-    if (parent.points < cap) {
-      parent.points = Math.min(cap, parent.points + gain);
-    } else {
-      parent.points += gain;
-    }
+  function getMaxParentPoints(): number {
+    return typeof state.maxParentPoints === 'number' && !Number.isNaN(state.maxParentPoints) && state.maxParentPoints >= 0
+      ? Math.round(state.maxParentPoints)
+      : MAX_PARENT_POINTS;
+  }
+
+  function addParentPointsWithAllowanceCap(parent: Member, gain: number): number {
+    if (gain <= 0) return 0;
+    const cap = getMaxParentPoints();
+    if (parent.points >= cap) return 0;
+    const prev = parent.points;
+    parent.points = Math.min(cap, parent.points + gain);
+    const actual = Math.max(0, parent.points - prev);
+    if (actual > 0) parent.pointsUpdatedAt = Date.now();
+    return actual;
   }
 
   function checkDailyAllowance(pushCloud = true) {
@@ -1928,19 +2043,18 @@ export function initB2KSGameEngine() {
     ensureStateArrays();
     if (state.lastDailyReset !== today) {
       const allowance = getDailyParentAllowance();
-      const cap = Math.max(MAX_PARENT_POINTS, allowance * 4);
+      let totalGiven = 0;
       state.members.forEach((m) => {
-        if (isParent(m) && allowance > 0 && m.points < cap) {
-          m.points = Math.min(cap, m.points + allowance);
-          m.pointsUpdatedAt = Date.now();
+        if (isParent(m) && allowance > 0) {
+          totalGiven += addParentPointsWithAllowanceCap(m, allowance);
         }
         m.tvSecondsUsedToday = 0;
         m.tvBonusSecondsToday = 0;
         m.tvLastDate = today;
       });
       state.lastDailyReset = today;
-      if (allowance > 0) {
-        showToast(`🌅 Ngày mới! Bố và Mẹ nhận thêm +${allowance}⭐ ngân sách!`);
+      if (allowance > 0 && totalGiven > 0) {
+        showToast(`🌅 Ngày mới! Bố và Mẹ nhận thêm ngân sách ngày (tối đa ${getMaxParentPoints()}⭐)!`);
       }
       saveGame(pushCloud);
     }
@@ -2072,8 +2186,9 @@ export function initB2KSGameEngine() {
     saveGame,
     triggerSpeechBubble,
     closeModal,
+    openModal,
     maxParentPoints: MAX_PARENT_POINTS,
-    getMaxParentPoints: () => Math.max(MAX_PARENT_POINTS, getDailyParentAllowance() * 4)
+    getMaxParentPoints
   });
 
   const soccerGame = createSoccerMiniGame({
@@ -2086,7 +2201,9 @@ export function initB2KSGameEngine() {
     playError: () => AudioEngine.playError(),
     triggerConfetti,
     triggerSpeechBubble,
-    showToast
+    showToast,
+    openModal,
+    closeModal
   });
 
   /* ==================== 11. PRIVATE ROOM & MODAL ACTIONS ==================== */
@@ -2111,6 +2228,7 @@ export function initB2KSGameEngine() {
 
     const privacyBtn = document.getElementById('pr-privacy-btn') as HTMLButtonElement | null;
     const wallSelect = document.getElementById('pr-wall-select') as HTMLSelectElement | null;
+    const decorManageBtn = document.getElementById('pr-decor-manage-btn') as HTMLButtonElement | null;
     if (isOwner) {
       const unlocked = room.isUnlocked;
       if (privacyBtn) {
@@ -2124,9 +2242,16 @@ export function initB2KSGameEngine() {
         wallSelect.style.display = 'inline-block';
         wallSelect.value = user.roomWall || room.wall;
       }
+      if (decorManageBtn) {
+        const owner = (room.ownerIds && state.members.find((m) => m.id === room.ownerIds![0])) || user;
+        const placedCount = Object.values(owner.roomSlots || {}).filter(Boolean).length;
+        decorManageBtn.style.display = 'inline-flex';
+        decorManageBtn.textContent = `📌 Slot (${placedCount}/${ROOM_DECOR_SLOTS.length})`;
+      }
     } else {
       if (privacyBtn) privacyBtn.style.display = 'none';
       if (wallSelect) wallSelect.style.display = 'none';
+      if (decorManageBtn) decorManageBtn.style.display = 'none';
     }
   }
 
@@ -2633,20 +2758,23 @@ export function initB2KSGameEngine() {
     const user = getCurrentUser();
     grid.innerHTML = SHOP_CATALOG.filter((i) => i.category === tab)
       .map((item) => {
-        const owned = user.inventory.includes(item.id);
-        const canBuyMultiple = item.category === 'voucher' || item.category === 'tv_card';
+        const ownedCount = user.inventory.filter((id) => id === item.id).length;
+        const canBuyMultiple = item.category === 'voucher' || item.category === 'tv_card' || item.category === 'decor';
         return `
           <div class="card-item">
             <div style="display:flex; gap:10px; align-items:center;">
               <div style="flex-shrink:0;">${renderItemIllustrationSVG(item.id, 52, findAnyCatalogItem)}</div>
               <div>
-                <b style="font-size:14px;">${item.name}</b>
+                <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                  <b style="font-size:14px;">${item.name}</b>
+                  ${ownedCount > 0 ? `<span class="tag" style="background:#D4EDDA; font-size:10.5px;">Trong túi: ${ownedCount}</span>` : ''}
+                </div>
                 <div style="font-size:12px; color:#555; margin-top:2px;">${item.desc}</div>
               </div>
             </div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
               <span class="points-pill">⭐ ${item.price}</span>
-              ${owned && !canBuyMultiple
+              ${ownedCount > 0 && !canBuyMultiple
                 ? `<span class="tag" style="background:#D4EDDA;">Đã có trong túi</span>`
                 : `<button class="btn btn-sm btn-accent" onclick="buySupermarketItem('${item.id}')">Mua bằng điểm</button>`}
             </div>
@@ -2666,6 +2794,8 @@ export function initB2KSGameEngine() {
     user.points -= item.price;
     if (item.category === 'voucher') user.vouchers.push(item.id);
     else user.inventory.push(item.id);
+    user.memberUpdatedAt = Date.now();
+    dirtyMemberIds.add(user.id);
     AudioEngine.playCoin();
     showToast(`🛍️ Đã mua ${item.name} và cất vào 🎒 Túi đồ!`);
     updateHUD();
@@ -2788,7 +2918,7 @@ export function initB2KSGameEngine() {
               </div>
             </div>
             <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap;">
-              <span style="font-size:11px; color:#0D9488;">✨ Có thể đặt lên 8 Slot phòng riêng</span>
+              <span style="font-size:11px; color:#0D9488;">✨ Có thể đặt lên ${ROOM_DECOR_SLOTS.length} Slot phòng riêng</span>
               ${renderBagDeleteBtn(`lab:${item.id}`, 'lab', item.id, -1)}
             </div>
           </div>
@@ -2798,28 +2928,48 @@ export function initB2KSGameEngine() {
       return;
     }
 
-    const ownedShopDecors = user.inventory
-      .map((id, invIndex) => ({ item: SHOP_CATALOG.find((i) => i.id === id && i.category === 'decor'), invIndex, kind: 'inventory' as const }))
-      .filter((x) => Boolean(x.item));
-    const ownedLabDecors = (user.customLabItems || []).map((item) => ({ item, invIndex: -1, kind: 'lab' as const }));
+    const shopCounts = new Map<string, { item: any; count: number; firstIndex: number }>();
+    user.inventory.forEach((id, invIndex) => {
+      const cat = SHOP_CATALOG.find((i) => i.id === id && i.category === 'decor');
+      if (!cat) return;
+      const existing = shopCounts.get(id);
+      if (existing) existing.count += 1;
+      else shopCounts.set(id, { item: cat, count: 1, firstIndex: invIndex });
+    });
+
+    const ownedShopDecors = Array.from(shopCounts.values()).map(({ item, count, firstIndex }) => ({
+      item,
+      count,
+      invIndex: firstIndex,
+      kind: 'inventory' as const
+    }));
+    const ownedLabDecors = (user.customLabItems || []).map((item) => ({
+      item,
+      count: 1,
+      invIndex: -1,
+      kind: 'lab' as const
+    }));
     const ownedDecors = [...ownedShopDecors, ...ownedLabDecors];
 
     if (ownedDecors.length === 0) {
-      grid.innerHTML = '<p style="color:#666; font-size:13px;">Chưa có đồ trang trí phòng. Hãy mua tại <b>🏪 Siêu thị</b>!</p>';
+      grid.innerHTML = '<p style="color:#666; font-size:13px;">Chưa có đồ trang trí nào trong túi đồ (các món đã đặt đang nằm trong phòng riêng — bạn có thể cất lại vào túi bất cứ lúc nào!).</p>';
       return;
     }
     grid.innerHTML = ownedDecors
-      .map(({ item, invIndex, kind }) => `
+      .map(({ item, count, invIndex, kind }) => `
         <div class="card-item">
           <div style="display:flex; gap:10px; align-items:center;">
             ${renderItemIllustrationSVG(item!.id, 48, findAnyCatalogItem)}
             <div>
-              <b>${escapeHtml(item!.name)}</b>
+              <div style="display:flex; gap:5px; align-items:center; flex-wrap:wrap;">
+                <b>${escapeHtml(item!.name)}</b>
+                ${count > 1 ? `<span class="tag" style="background:#DBEAFE; color:#1E40AF; border-color:#60A5FA;">x${count} trong túi</span>` : ''}
+              </div>
               <div style="font-size:11.5px; color:#555;">${escapeHtml(item!.desc)}</div>
             </div>
           </div>
           <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap;">
-            <span style="font-size:11px; color:#2980B9;">💡 Đặt tại Slot phòng riêng</span>
+            <span style="font-size:11px; color:#2980B9;">💡 Đặt tại ${ROOM_DECOR_SLOTS.length} Slot phòng riêng</span>
             ${renderBagDeleteBtn(`${kind}:${invIndex}:${item!.id}`, kind, item!.id, invIndex)}
           </div>
         </div>
@@ -2859,19 +3009,8 @@ export function initB2KSGameEngine() {
       }
     }
 
-    // Also clean up placed room slots / decor if no copies remain
-    const remainingCopies =
-      user.inventory.filter((id) => id === targetId).length +
-      (user.customLabItems || []).filter((x) => x.id === targetId).length;
-    if (remainingCopies === 0) {
-      if (user.roomSlots) {
-        Object.keys(user.roomSlots).forEach((slotKey) => {
-          if (user.roomSlots![slotKey] === targetId) delete user.roomSlots![slotKey];
-        });
-      }
-      user.roomDecor = user.roomDecor.filter((d) => d.id !== targetId);
-    }
-
+    user.memberUpdatedAt = Date.now();
+    dirtyMemberIds.add(user.id);
     pendingBagDeleteKey = null;
     AudioEngine.playClick();
     showToast(`🗑️ Đã xóa bỏ "${removedName}" khỏi túi đồ.`);
@@ -3026,7 +3165,7 @@ export function initB2KSGameEngine() {
       if (gotHighBonus) starsEarned += highBonusCfg.reward;
 
       if (isParent(user)) {
-        addParentPointsWithAllowanceCap(user, starsEarned);
+        starsEarned = addParentPointsWithAllowanceCap(user, starsEarned);
       } else {
         user.points += starsEarned;
       }
@@ -3154,17 +3293,6 @@ export function initB2KSGameEngine() {
   function getAvailableFusionIngredients(user: Member) {
     ensureMemberProps(user);
     const items: any[] = [];
-    const placedCounts: Record<string, number> = {};
-    if (user.roomSlots) {
-      Object.values(user.roomSlots).forEach((id) => {
-        if (id) placedCounts[id] = (placedCounts[id] || 0) + 1;
-      });
-    }
-    if (Array.isArray(user.roomDecor)) {
-      user.roomDecor.forEach((d) => {
-        if (d && d.id) placedCounts[d.id] = (placedCounts[d.id] || 0) + 1;
-      });
-    }
 
     user.inventory.forEach((id, invIndex) => {
       const catItem: any = SHOP_CATALOG.find((i) => i.id === id) || FASHION_CATALOG.find((f) => f.id === id);
@@ -3177,10 +3305,6 @@ export function initB2KSGameEngine() {
         user.pantsColor === catItem.pantsColor &&
         user.pantsStyle === catItem.pantsStyle
       ) return;
-      if (placedCounts[id] && placedCounts[id] > 0) {
-        placedCounts[id] -= 1;
-        return;
-      }
       items.push({
         uid: `inv:${invIndex}:${id}`,
         source: 'inventory',
@@ -3193,10 +3317,6 @@ export function initB2KSGameEngine() {
 
     (user.customLabItems || []).forEach((labItem, labIndex) => {
       if (!labItem || !labItem.id) return;
-      if (placedCounts[labItem.id] && placedCounts[labItem.id] > 0) {
-        placedCounts[labItem.id] -= 1;
-        return;
-      }
       items.push({
         uid: `lab:${labIndex}:${labItem.id}`,
         source: 'customLabItems',
@@ -3573,15 +3693,80 @@ export function initB2KSGameEngine() {
 
     const decorInv = document.getElementById('room-decor-inventory');
     if (decorInv) {
-      const ownedDecors = user.inventory.map((id) => SHOP_CATALOG.find((i) => i.id === id && i.category === 'decor')).filter(Boolean);
-      decorInv.innerHTML =
-        ownedDecors.length === 0
-          ? '<p style="font-size:12px; color:#666;">Hãy mua đồ nội thất ở Cửa hàng trước nhé!</p>'
-          : ownedDecors
-              .map(
-                (d: any) => `<div class="card-item" style="flex-direction:row; align-items:center;"><span>${d.icon} <b>${d.name}</b></span><button class="btn btn-sm btn-accent" onclick="placeDecorInRoom('${d.id}')">Đặt tại chỗ đứng</button></div>`
-              )
-              .join('');
+      ensureMemberProps(user);
+      const bagCounts = new Map<string, { item: any; count: number }>();
+      user.inventory.forEach((id) => {
+        const cat = SHOP_CATALOG.find((i) => i.id === id && i.category === 'decor');
+        if (!cat) return;
+        const prev = bagCounts.get(id);
+        if (prev) prev.count += 1;
+        else bagCounts.set(id, { item: cat, count: 1 });
+      });
+      (user.customLabItems || []).forEach((lab) => {
+        if (!lab) return;
+        bagCounts.set(lab.id, { item: lab, count: 1 });
+      });
+      const bagDecors = Array.from(bagCounts.values());
+
+      const slotEntries = Object.entries(user.roomSlots || {}).filter(([, id]) => Boolean(id));
+      const legacyEntries = user.roomDecor || [];
+
+      let html = '';
+      if (bagDecors.length === 0) {
+        html += '<p style="font-size:12px; color:#666; grid-column:1/-1;">Túi đồ chưa có vật phẩm trang trí. Hãy mua tại <b>🏪 Siêu thị</b> hoặc chế tạo ở <b>🧪 Phòng Thí Nghiệm</b>!</p>';
+      } else {
+        html += bagDecors
+          .map(
+            ({ item, count }) => `
+              <div class="card-item" style="flex-direction:row; align-items:center; justify-content:space-between; gap:8px;">
+                <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+                  <div style="flex-shrink:0;">${renderItemIllustrationSVG(item.id, 36, findAnyCatalogItem)}</div>
+                  <div style="min-width:0;">
+                    <div style="font-weight:700; font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(item.name)}${count > 1 ? ` <span class="tag" style="font-size:10px;">x${count}</span>` : ''}</div>
+                  </div>
+                </div>
+                <button class="btn btn-sm btn-accent" style="flex-shrink:0;" onclick="placeDecorInRoom('${item.id}')">Đặt tại chỗ đứng</button>
+              </div>
+            `
+          )
+          .join('');
+      }
+
+      if (slotEntries.length > 0 || legacyEntries.length > 0) {
+        html += `<div style="grid-column:1/-1; margin-top:8px; padding-top:8px; border-top:2px dashed #CBD5E1; font-weight:700; font-size:12.5px; color:#0F766E;">🎒 Đồ đang đặt trong phòng (${slotEntries.length + legacyEntries.length}) — Bấm để cất lại vào túi:</div>`;
+        slotEntries.forEach(([slotId, placedId]) => {
+          const cat = findAnyCatalogItem(placedId);
+          const slotDef = ROOM_DECOR_SLOTS.find((s) => s.id === slotId);
+          html += `
+            <div class="card-item" style="flex-direction:row; align-items:center; justify-content:space-between; gap:8px; background:#F0FDFA; border-color:#0D9488;">
+              <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+                <div style="flex-shrink:0;">${renderItemIllustrationSVG(placedId, 34, findAnyCatalogItem)}</div>
+                <div style="min-width:0;">
+                  <div style="font-weight:700; font-size:12px;">${escapeHtml(cat?.name || placedId)}</div>
+                  <div style="font-size:10.5px; color:#0F766E;">📌 ${escapeHtml(slotDef?.label || slotId)}</div>
+                </div>
+              </div>
+              <button class="btn btn-sm btn-danger" style="flex-shrink:0;" onclick="pickupDecorFromRoomSlot('${slotId}')">🎒 Cất vào túi</button>
+            </div>
+          `;
+        });
+        legacyEntries.forEach((d, idx) => {
+          const cat = findAnyCatalogItem(d.id);
+          html += `
+            <div class="card-item" style="flex-direction:row; align-items:center; justify-content:space-between; gap:8px; background:#FFFBEB; border-color:#D97706;">
+              <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+                <div style="flex-shrink:0;">${renderItemIllustrationSVG(d.id, 34, findAnyCatalogItem)}</div>
+                <div style="min-width:0;">
+                  <div style="font-weight:700; font-size:12px;">${escapeHtml(cat?.name || d.id)}</div>
+                  <div style="font-size:10.5px; color:#B45309;">📍 Đặt tự do (${Math.round(d.x)}, ${Math.round(d.y)})</div>
+                </div>
+              </div>
+              <button class="btn btn-sm btn-danger" style="flex-shrink:0;" onclick="pickupLegacyRoomDecor(${idx})">🎒 Cất vào túi</button>
+            </div>
+          `;
+        });
+      }
+      decorInv.innerHTML = html;
     }
 
     const lockH = document.getElementById('house-builder-locked');
@@ -4445,40 +4630,106 @@ export function initB2KSGameEngine() {
     saveGame();
   }
 
-  function renderPrivateRoomSlotBar() {
+  function renderPrivateRoomSlotBar(overviewMode = false) {
     const user = getCurrentUser();
     const room = getActivePrivateRoom();
     if (!room) return;
     const owner = (room.ownerIds && state.members.find((m) => m.id === room.ownerIds[0])) || user;
+    ensureMemberProps(owner);
     if (!owner.roomSlots) owner.roomSlots = {};
-    const slotDef = ROOM_DECOR_SLOTS.find((s) => s.id === selectedRoomSlotId) || ROOM_DECOR_SLOTS[0];
-    const currentAssignedId = owner.roomSlots[slotDef.id] || null;
+    if (!owner.roomSlotSpecs) owner.roomSlotSpecs = {};
     const titleEl = document.getElementById('slot-picker-title');
     const instrEl = document.getElementById('pr-slot-instruction');
     const bar = document.getElementById('pr-slot-items-bar');
-    if (titleEl) titleEl.innerText = `📌 ${slotDef.label}`;
-    if (instrEl) instrEl.innerHTML = `Chọn vật phẩm từ túi đồ để đặt tại <b style="color:#E67E22;">${slotDef.label}</b> (hiển thị đúng hình &amp; kích thước trong phòng):`;
     if (!bar) return;
 
-    let html = currentAssignedId ? `<button class="btn btn-sm btn-danger" style="width:100%;" onclick="assignDecorToRoomSlot(null)">❌ Gỡ vật phẩm khỏi vị trí này</button>` : '';
-    const ownedShopDecors = user.inventory.map((id) => SHOP_CATALOG.find((i) => i.id === id && i.category === 'decor')).filter(Boolean);
-    const ownedDecors = [...ownedShopDecors, ...(user.customLabItems || [])];
+    if (overviewMode) {
+      const placedTotal = ROOM_DECOR_SLOTS.filter((s) => Boolean(owner.roomSlots![s.id])).length;
+      if (titleEl) titleEl.innerText = `📌 ${ROOM_DECOR_SLOTS.length} Vị Trí Trang Trí (${placedTotal}/${ROOM_DECOR_SLOTS.length})`;
+      if (instrEl) {
+        instrEl.innerHTML = `Chọn vị trí để trang trí hoặc bấm <b>🎒 Cất vào túi</b> để thu hồi vật phẩm về Túi đồ:`;
+      }
+      bar.innerHTML = ROOM_DECOR_SLOTS.map((slot) => {
+        const placedId = owner.roomSlots![slot.id];
+        const placedCat = placedId ? findAnyCatalogItem(placedId) : null;
+        return `
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; padding:7px 10px; border-radius:10px; border:2px solid ${placedId ? '#0D9488' : '#CBD5E1'}; background:${placedId ? '#F0FDFA' : '#F8FAFC'};">
+            <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1;">
+              ${placedId
+                ? `<div style="flex-shrink:0; width:34px; height:34px; display:flex; align-items:center; justify-content:center; background:#FFF; border-radius:8px; border:1px solid #99F6E4;">${renderItemIllustrationSVG(placedId, 30, findAnyCatalogItem)}</div>`
+                : `<div style="flex-shrink:0; width:34px; height:34px; display:flex; align-items:center; justify-content:center; background:#E2E8F0; border-radius:8px; font-size:16px;">📍</div>`}
+              <div style="min-width:0;">
+                <div style="font-weight:700; font-size:12px; color:#0F172A;">${escapeHtml(slot.label)}</div>
+                <div style="font-size:11px; color:${placedId ? '#0F766E' : '#64748B'}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                  ${placedId ? escapeHtml(placedCat?.name || placedId) : 'Còn trống'}
+                </div>
+              </div>
+            </div>
+            <div style="display:flex; gap:4px; flex-shrink:0;">
+              ${placedId ? `<button type="button" class="btn btn-sm btn-danger" onclick="pickupDecorFromRoomSlot('${slot.id}', true)">🎒 Cất vào túi</button>` : ''}
+              <button type="button" class="btn btn-sm btn-accent" onclick="selectRoomSlotAndOpenPicker('${slot.id}')">${placedId ? 'Đổi' : 'Đặt đồ'}</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+      return;
+    }
+
+    const slotDef = ROOM_DECOR_SLOTS.find((s) => s.id === selectedRoomSlotId) || ROOM_DECOR_SLOTS[0];
+    const currentAssignedId = owner.roomSlots[slotDef.id] || null;
+    const currentAssignedCat = currentAssignedId ? findAnyCatalogItem(currentAssignedId) : null;
+    if (titleEl) titleEl.innerText = `📌 ${slotDef.label}`;
+    if (instrEl) {
+      instrEl.innerHTML = `Chọn vật phẩm từ túi đồ để đặt tại <b style="color:#E67E22;">${slotDef.label}</b> (số lượng trong túi sẽ giảm 1 khi đặt):`;
+    }
+
+    let html = '';
+    if (currentAssignedId) {
+      html += `
+        <div style="width:100%; background:#F0FDFA; border:2px solid #0D9488; border-radius:10px; padding:8px 10px; display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:4px;">
+          <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+            <div style="flex-shrink:0;">${renderItemIllustrationSVG(currentAssignedId, 34, findAnyCatalogItem)}</div>
+            <div style="min-width:0;">
+              <div style="font-size:10.5px; color:#0F766E; font-weight:700;">Đang đặt tại đây:</div>
+              <div style="font-weight:700; font-size:12.5px; color:#0F172A; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(currentAssignedCat?.name || currentAssignedId)}</div>
+            </div>
+          </div>
+          <button type="button" class="btn btn-sm btn-danger" style="flex-shrink:0;" onclick="pickupDecorFromRoomSlot('${slotDef.id}', false)">🎒 Cất lại vào túi</button>
+        </div>
+      `;
+    }
+
+    const groupedShop = new Map<string, { item: any; count: number }>();
+    owner.inventory.forEach((id) => {
+      const cat = SHOP_CATALOG.find((i) => i.id === id && i.category === 'decor');
+      if (!cat) return;
+      const prev = groupedShop.get(id);
+      if (prev) prev.count += 1;
+      else groupedShop.set(id, { item: cat, count: 1 });
+    });
+    const ownedDecors: Array<{ item: any; count: number }> = [
+      ...Array.from(groupedShop.values()),
+      ...(owner.customLabItems || []).map((lab) => ({ item: lab, count: 1 }))
+    ];
+
     if (ownedDecors.length === 0) {
       html += `<span style="font-size:12.5px; color:#666;">Túi đồ chưa có vật phẩm trang trí. Hãy mua tại <b>🏪 Siêu thị</b> hoặc chế tạo ở <b>🧪 Phòng Thí Nghiệm</b>!</span>`;
     } else {
       html += ownedDecors
-        .map((d: any) => {
-          const isCur = currentAssignedId === d.id;
+        .map(({ item: d, count }) => {
           const sizeTag = d.labSpec?.sizeTier ? LAB_SIZE_TIERS[d.labSpec.sizeTier as LabSizeTier]?.label : '';
           return `
-            <button type="button" onclick="assignDecorToRoomSlot('${d.id}')" style="display:flex; align-items:center; gap:8px; width:100%; text-align:left; padding:7px 10px; border-radius:10px; border:2px solid ${isCur ? '#16A34A' : '#2C3E50'}; background:${isCur ? '#DCFCE7' : '#FFFFFF'}; cursor:pointer;">
+            <button type="button" onclick="assignDecorToRoomSlot('${d.id}')" style="display:flex; align-items:center; gap:8px; width:100%; text-align:left; padding:7px 10px; border-radius:10px; border:2px solid #2C3E50; background:#FFFFFF; cursor:pointer;">
               <div style="flex-shrink:0; width:38px; height:38px; display:flex; align-items:center; justify-content:center; background:#F8FAFC; border-radius:8px; border:1px solid #CBD5E1;">
                 ${renderItemIllustrationSVG(d.id, 34, findAnyCatalogItem)}
               </div>
               <div style="flex:1; min-width:0;">
-                <div style="font-weight:700; font-size:12.5px; color:#1E293B; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(d.name)} ${isCur ? '✓' : ''}</div>
+                <div style="font-weight:700; font-size:12.5px; color:#1E293B; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                  ${escapeHtml(d.name)} ${count > 1 ? `<span style="color:#0284C7;">(x${count})</span>` : ''}
+                </div>
                 ${sizeTag ? `<div style="font-size:10.5px; color:#0284C7; font-weight:700;">📏 Cỡ: ${sizeTag}</div>` : ''}
               </div>
+              <span style="font-size:11px; font-weight:700; color:#0D9488; flex-shrink:0;">+ Đặt</span>
             </button>
           `;
         })
@@ -5204,14 +5455,19 @@ export function initB2KSGameEngine() {
       assignee.pointsUpdatedAt = now;
       assignee.memberUpdatedAt = now;
     }
-    if (creator && parentBonus > 0) addParentPointsWithAllowanceCap(creator, parentBonus);
+    let actualParentBonus = 0;
+    if (creator && parentBonus > 0) {
+      actualParentBonus = isParent(creator)
+        ? addParentPointsWithAllowanceCap(creator, parentBonus)
+        : ((creator.points += parentBonus), parentBonus);
+    }
     closeModal('hw-action-modal');
     AudioEngine.playCoin();
     showToast(
       isLate && assignee
         ? `⏰ Nộp quá hạn! Chấm ${grade}/10 — ${assignee.name} nhận 1/3 thưởng: +${earned}⭐!`
         : parentBonus > 0 && assignee
-          ? `🌟 Điểm cao ${grade}/10! ${assignee.name} +${earned}⭐ & ${creator?.name} +${parentBonus}⭐!`
+          ? `🌟 Điểm cao ${grade}/10! ${assignee.name} +${earned}⭐${actualParentBonus > 0 ? ` & ${creator?.name} +${actualParentBonus}⭐` : ` (${creator?.name} đã đạt giới hạn tối đa ${getMaxParentPoints()}⭐)`}!`
           : `📝 Đã chấm ${grade}/10!`
     );
     if (assignee) {
@@ -5260,6 +5516,8 @@ export function initB2KSGameEngine() {
     const user = getCurrentUser();
     const item = findAnyCatalogItem(user.vouchers[idx]);
     user.vouchers.splice(idx, 1);
+    user.memberUpdatedAt = Date.now();
+    dirtyMemberIds.add(user.id);
     AudioEngine.playSuccess();
     if (item) triggerSpeechBubble(user, `Dùng phiếu: ${item.name}! 🎉`, false);
     showToast(`🎉 Đã kích hoạt: ${item ? item.name : 'Phiếu'}!`);
@@ -5273,6 +5531,8 @@ export function initB2KSGameEngine() {
     if (idx === -1) return showToast('⚠️ Bạn không còn Thẻ xem YouTube nào!');
     user.inventory.splice(idx, 1);
     user.tvBonusSecondsToday = (user.tvBonusSecondsToday || 0) + 1800;
+    user.memberUpdatedAt = Date.now();
+    dirtyMemberIds.add(user.id);
     AudioEngine.playSuccess();
     showToast('📺 Đã nạp thêm +30 phút xem YouTube hôm nay!');
     saveGame();
@@ -5324,6 +5584,8 @@ export function initB2KSGameEngine() {
     if (user.inventory.includes(item.id)) return;
     user.points -= item.price;
     user.inventory.push(item.id);
+    user.memberUpdatedAt = Date.now();
+    dirtyMemberIds.add(user.id);
     AudioEngine.playCoin();
     showToast(`👗 Đã mua ${item.name}! Mở tủ quần áo ở phòng riêng để mặc nhé!`);
     updateHUD();
@@ -5535,6 +5797,8 @@ export function initB2KSGameEngine() {
     };
     getLabItemCanvasImage(newItem);
     user.customLabItems!.unshift(newItem);
+    user.memberUpdatedAt = Date.now();
+    dirtyMemberIds.add(user.id);
     if (currentLabMode === 'fusion') refreshLabFusionIngredientsUI();
 
     AudioEngine.playSuccess();
@@ -5565,15 +5829,128 @@ export function initB2KSGameEngine() {
     saveGame(true);
   };
   w.exitPrivateRoomToHallway = exitPrivateRoomToHallway;
-  w.assignDecorToRoomSlot = (decorId: string | null) => {
+  w.openPrivateRoomSlotOverview = () => {
     const room = getActivePrivateRoom();
-    const owner = (room && room.ownerIds && state.members.find((m) => m.id === room.ownerIds[0])) || getCurrentUser();
+    const user = getCurrentUser();
+    if (!room || !room.ownerIds?.includes(user.id)) return;
+    openModal('slot-picker-modal');
+    renderPrivateRoomSlotBar(true);
+  };
+  w.selectRoomSlotAndOpenPicker = (slotId: string) => {
+    selectedRoomSlotId = slotId;
+    openModal('slot-picker-modal');
+    renderPrivateRoomSlotBar(false);
+  };
+  w.pickupDecorFromRoomSlot = (slotId: string, stayOverview = false) => {
+    const user = getCurrentUser();
+    const room = getActivePrivateRoom() || getMemberPrivateRoom(user);
+    const owner = (room && room.ownerIds && state.members.find((m) => m.id === room.ownerIds![0])) || user;
+    if (owner.id !== user.id) {
+      AudioEngine.playError();
+      return showToast('🔒 Chỉ chủ phòng mới được cất vật phẩm!');
+    }
+    ensureMemberProps(owner);
+    const placedId = owner.roomSlots?.[slotId];
+    if (!placedId) return;
+    const specFallback = owner.roomSlotSpecs?.[slotId] || null;
+    const itemCat = findAnyCatalogItem(placedId);
+    returnItemToBag(owner, placedId, specFallback);
+    delete owner.roomSlots![slotId];
+    delete owner.roomSlotSpecs![slotId];
+    owner.memberUpdatedAt = Date.now();
+    dirtyMemberIds.add(owner.id);
+    AudioEngine.playCoin();
+    showToast(`🎒 Đã cất "${itemCat?.name || 'vật phẩm'}" lại vào Túi đồ!`);
+    syncPrivateRoomToolbar();
+    updateHUD();
+    const slotModal = document.getElementById('slot-picker-modal');
+    if (slotModal && slotModal.style.display === 'flex') {
+      if (stayOverview) renderPrivateRoomSlotBar(true);
+      else closeModal('slot-picker-modal');
+    }
+    const customModal = document.getElementById('custom-modal');
+    if (customModal && customModal.style.display === 'flex') renderCustomModal();
+    saveGame(true);
+  };
+  w.pickupLegacyRoomDecor = (index: number) => {
+    const user = getCurrentUser();
+    ensureMemberProps(user);
+    const entry = user.roomDecor[index];
+    if (!entry) return;
+    const specFallback = user.roomDecorSpecs?.[entry.id] || null;
+    const itemCat = findAnyCatalogItem(entry.id);
+    returnItemToBag(user, entry.id, specFallback);
+    user.roomDecor.splice(index, 1);
+    if (!user.roomDecor.some((d) => d.id === entry.id) && user.roomDecorSpecs) {
+      delete user.roomDecorSpecs[entry.id];
+    }
+    user.memberUpdatedAt = Date.now();
+    dirtyMemberIds.add(user.id);
+    AudioEngine.playCoin();
+    showToast(`🎒 Đã cất "${itemCat?.name || 'vật phẩm'}" lại vào Túi đồ!`);
+    updateHUD();
+    const customModal = document.getElementById('custom-modal');
+    if (customModal && customModal.style.display === 'flex') renderCustomModal();
+    saveGame(true);
+  };
+  w.assignDecorToRoomSlot = (decorId: string | null) => {
+    const user = getCurrentUser();
+    const room = getActivePrivateRoom();
+    const owner = (room && room.ownerIds && state.members.find((m) => m.id === room.ownerIds[0])) || user;
+    if (owner.id !== user.id) {
+      AudioEngine.playError();
+      return showToast('🔒 Chỉ chủ phòng mới được trang trí phòng này!');
+    }
+    ensureMemberProps(owner);
     if (!owner.roomSlots) owner.roomSlots = {};
+    if (!owner.roomSlotSpecs) owner.roomSlotSpecs = {};
     if (!selectedRoomSlotId) selectedRoomSlotId = ROOM_DECOR_SLOTS[0].id;
-    if (decorId) { owner.roomSlots[selectedRoomSlotId] = decorId; AudioEngine.playSuccess(); showToast('✨ Đã đặt vật phẩm trang trí vào phòng!'); }
-    else { delete owner.roomSlots[selectedRoomSlotId]; AudioEngine.playClick(); showToast('🗑️ Đã gỡ vật phẩm trang trí.'); }
+    const prevId = owner.roomSlots[selectedRoomSlotId] || null;
+    const prevSpec = owner.roomSlotSpecs[selectedRoomSlotId] || null;
+
+    if (!decorId) {
+      if (prevId) {
+        returnItemToBag(owner, prevId, prevSpec);
+        const prevCat = findAnyCatalogItem(prevId);
+        delete owner.roomSlots[selectedRoomSlotId];
+        delete owner.roomSlotSpecs[selectedRoomSlotId];
+        owner.memberUpdatedAt = Date.now();
+        dirtyMemberIds.add(owner.id);
+        AudioEngine.playCoin();
+        showToast(`🎒 Đã cất "${prevCat?.name || 'vật phẩm'}" lại vào Túi đồ!`);
+      }
+      closeModal('slot-picker-modal');
+      syncPrivateRoomToolbar();
+      updateHUD();
+      saveGame(true);
+      return;
+    }
+
+    const consumed = consumeItemFromBag(owner, decorId);
+    if (!consumed.ok) {
+      AudioEngine.playError();
+      showToast('❌ Vật phẩm này không còn trong túi đồ!');
+      renderPrivateRoomSlotBar(false);
+      return;
+    }
+    if (prevId) {
+      returnItemToBag(owner, prevId, prevSpec);
+    }
+    owner.roomSlots[selectedRoomSlotId] = decorId;
+    if (consumed.kind === 'lab' && consumed.labItem) {
+      owner.roomSlotSpecs[selectedRoomSlotId] = { ...consumed.labItem };
+    } else {
+      delete owner.roomSlotSpecs[selectedRoomSlotId];
+    }
+    owner.memberUpdatedAt = Date.now();
+    dirtyMemberIds.add(owner.id);
+    const placedCat = findAnyCatalogItem(decorId);
+    AudioEngine.playSuccess();
+    showToast(`✨ Đã đặt "${placedCat?.name || 'vật phẩm'}" vào phòng (số lượng trong túi -1)!`);
     closeModal('slot-picker-modal');
-    saveGame();
+    syncPrivateRoomToolbar();
+    updateHUD();
+    saveGame(true);
   };
 
   w.closeTvModal = () => {
@@ -5622,10 +5999,15 @@ export function initB2KSGameEngine() {
       AudioEngine.playError();
       return showToast('🔒 Bạn chỉ có thể đổi trang phục khi mở tủ quần áo ở phòng riêng!');
     }
+    const now = Date.now();
     const newName = (document.getElementById('custom-char-name') as HTMLInputElement)?.value.trim();
-    if (newName) user.name = newName;
+    if (newName && newName !== user.name) {
+      user.name = newName;
+      user.nameUpdatedAt = now;
+    }
     Object.assign(user, draftChar);
-    user.memberUpdatedAt = Date.now();
+    user.memberUpdatedAt = now;
+    dirtyMemberIds.add(user.id);
     AudioEngine.playSuccess();
     showToast('✨ Đã lưu ngoại hình & trang phục!');
     updateHUD();
@@ -5650,21 +6032,52 @@ export function initB2KSGameEngine() {
   };
   w.placeDecorInRoom = (decorId: string) => {
     const user = getCurrentUser();
-    const item = SHOP_CATALOG.find((i) => i.id === decorId);
-    if (!item || user.scene !== 'house') return showToast('⚠️ Hãy bước vào trong phòng riêng của bạn trước!');
-    const curRoom = getRoomAtPosition(user.x, user.y);
+    ensureMemberProps(user);
+    const item = findAnyCatalogItem(decorId);
+    if (!item || (user.scene !== 'house' && user.scene !== 'private_room')) {
+      return showToast('⚠️ Hãy bước vào trong phòng riêng của bạn trước!');
+    }
+    const curRoom = user.scene === 'private_room' ? getActivePrivateRoom() : getRoomAtPosition(user.x, user.y);
     if (!curRoom || !curRoom.ownerIds?.includes(user.id)) return showToast('⚠️ Chỉ đặt đồ trong phòng riêng của mình!');
-    user.roomDecor.push({ id: item.id, icon: item.icon, x: user.x, y: user.y - 10 });
+    const consumed = consumeItemFromBag(user, decorId);
+    if (!consumed.ok) {
+      AudioEngine.playError();
+      return showToast('❌ Không còn vật phẩm này trong túi đồ!');
+    }
+    if (user.scene === 'private_room') {
+      const emptySlot = ROOM_DECOR_SLOTS.find((s) => !user.roomSlots?.[s.id]);
+      if (emptySlot) {
+        user.roomSlots![emptySlot.id] = item.id;
+        if (consumed.kind === 'lab' && consumed.labItem) {
+          user.roomSlotSpecs![emptySlot.id] = { ...consumed.labItem };
+        }
+        user.memberUpdatedAt = Date.now();
+        dirtyMemberIds.add(user.id);
+        closeModal('custom-modal');
+        syncPrivateRoomToolbar();
+        AudioEngine.playSuccess();
+        showToast(`🛋️ Đã đặt "${item.name}" vào vị trí ${emptySlot.label}!`);
+        saveGame(true);
+        return;
+      }
+    }
+    user.roomDecor.push({ id: item.id, icon: item.icon || '📦', x: user.x, y: user.y - 10 });
+    if (consumed.kind === 'lab' && consumed.labItem) {
+      user.roomDecorSpecs![item.id] = { ...consumed.labItem };
+    }
+    user.memberUpdatedAt = Date.now();
+    dirtyMemberIds.add(user.id);
     closeModal('custom-modal');
     AudioEngine.playSuccess();
-    showToast(`🛋️ Đã đặt ${item.name} vào phòng!`);
-    saveGame();
+    showToast(`🛋️ Đã đặt "${item.name}" vào phòng (số lượng trong túi -1)!`);
+    saveGame(true);
   };
   w.updateHouseDesign = () => {
     const user = getCurrentUser();
     if (!isParent(user)) return;
     state.house.plotIndex = parseInt((document.getElementById('house-plot-select') as HTMLSelectElement)?.value || '1', 10);
     state.house.style = (document.getElementById('house-style-select') as HTMLSelectElement)?.value || 'modern';
+    state.houseUpdatedAt = Date.now();
     closeModal('custom-modal');
     AudioEngine.playSuccess();
     showToast('🏢 Đã cập nhật kiến trúc Nhà Phố Gia Đình!');
@@ -5679,6 +6092,17 @@ export function initB2KSGameEngine() {
     if (amount <= 0 || sender.points < amount) { AudioEngine.playError(); return showToast('❌ Số điểm không hợp lệ hoặc không đủ sao!'); }
     const receiver = state.members.find((m) => m.id === recId);
     if (!receiver || receiver.id === sender.id) return;
+    if (isParent(receiver)) {
+      const cap = getMaxParentPoints();
+      if (receiver.points >= cap) {
+        AudioEngine.playError();
+        return showToast(`⚠️ ${receiver.name} đã đạt giới hạn tối đa ${cap}⭐, không thể nhận thêm!`);
+      }
+      if (receiver.points + amount > cap) {
+        AudioEngine.playError();
+        return showToast(`⚠️ ${receiver.name} chỉ có thể nhận tối đa +${cap - receiver.points}⭐ (giới hạn ${cap}⭐)!`);
+      }
+    }
     const now = Date.now();
     sender.points -= amount;
     sender.memberUpdatedAt = now;
@@ -5865,6 +6289,7 @@ export function initB2KSGameEngine() {
   w.switchSoccerTo2P = () => soccerGame.switchTo2PMode();
   w.createSoccer2PRoom = () => soccerGame.create2PRoom();
   w.joinSoccer2PRoom = () => soccerGame.join2PRoom();
+  w.toggleSoccer2PReady = () => soccerGame.toggle2PReady();
   w.startSoccer2PMatch = () => soccerGame.start2PMatch();
   w.leaveSoccer2PRoom = () => soccerGame.leave2PRoom();
   w.spectateSoccerMatch = () => soccerGame.spectateMatch();
@@ -6001,6 +6426,7 @@ export function initB2KSGameEngine() {
         updateHUD();
       }
     },
+    getMaxParentPoints,
     getFamilyName: () => state.familyName || 'B2KS',
     setFamilyName: (nextName: string) => {
       const clean = String(nextName || '').trim();
@@ -6054,10 +6480,15 @@ export function initB2KSGameEngine() {
     updateMemberProfile: (memberId: string, patch: { name?: string; age?: number; role?: string }) => {
       const target = state.members.find((m) => m.id === memberId);
       if (!target) return { ok: false, msg: 'Không tìm thấy thành viên!' };
+      const now = Date.now();
       if (typeof patch.name === 'string') {
         const cleanName = patch.name.trim();
         if (!cleanName) return { ok: false, msg: 'Tên thành viên không được để trống!' };
-        target.name = cleanName.slice(0, 20);
+        const sliced = cleanName.slice(0, 20);
+        if (sliced !== target.name) {
+          target.name = sliced;
+          target.nameUpdatedAt = now;
+        }
       }
       if (typeof patch.age === 'number' && !Number.isNaN(patch.age)) {
         target.age = Math.max(1, Math.min(120, Math.round(patch.age)));
@@ -6073,7 +6504,8 @@ export function initB2KSGameEngine() {
         }
         target.role = patch.role;
       }
-      target.memberUpdatedAt = Date.now();
+      target.memberUpdatedAt = now;
+      dirtyMemberIds.add(target.id);
       lastHudSignature = '';
       updateHUD();
       saveGame(true);
@@ -6450,7 +6882,7 @@ export function initB2KSGameEngine() {
           starsEarned += petBonus.starBonus;
           me.points += starsEarned;
         } else {
-          addParentPointsWithAllowanceCap(me, starsEarned);
+          starsEarned = addParentPointsWithAllowanceCap(me, starsEarned);
         }
         me.speakingStreak = (me.speakingStreak || 0) + 1;
         if (me.speakingStreak >= 5) {
@@ -6584,6 +7016,7 @@ export function initB2KSGameEngine() {
               familyName: state.familyName || 'B2KS',
               updatedAt: state.updatedAt || 0,
               dailyParentAllowance: getDailyParentAllowance(),
+              maxParentPoints: getMaxParentPoints(),
               memberCount: state.members.length,
               kidCount: state.members.filter((m) => !isParent(m)).length,
               parents
@@ -6633,11 +7066,19 @@ export function initB2KSGameEngine() {
               ? dirEntry.dailyParentAllowance
               : DAILY_PARENT_ALLOWANCE;
 
+          const maxPts =
+            typeof sourceState?.maxParentPoints === 'number'
+              ? sourceState.maxParentPoints
+              : typeof dirEntry?.maxParentPoints === 'number'
+              ? dirEntry.maxParentPoints
+              : MAX_PARENT_POINTS;
+
           results.push({
             slug,
             familyName: String(sourceState?.familyName || dirEntry?.familyName || slug.toUpperCase()),
             updatedAt: Number(sourceState?.updatedAt || dirEntry?.updatedAt || 0),
             dailyParentAllowance: allowance,
+            maxParentPoints: maxPts,
             memberCount: membersList.length,
             kidCount: membersList.filter((m) => m.role !== 'Bố' && m.role !== 'Mẹ').length,
             parents
@@ -6742,6 +7183,7 @@ export function initB2KSGameEngine() {
                 familyName: cleanName,
                 updatedAt: now,
                 dailyParentAllowance: DAILY_PARENT_ALLOWANCE,
+                maxParentPoints: MAX_PARENT_POINTS,
                 deleted: false,
                 members: fresh.members.map((m) => ({
                   id: m.id,
@@ -6891,7 +7333,7 @@ export function initB2KSGameEngine() {
     },
     adminAdjustParentAccount: async (
       slugInput: string,
-      payload: { dailyParentAllowance?: number; parentPoints?: Record<string, number> }
+      payload: { dailyParentAllowance?: number; maxParentPoints?: number; parentPoints?: Record<string, number> }
     ) => {
       if (getActiveFamilySlug() !== 'b2ks' || getCurrentUser().role !== 'Bố') {
         return { ok: false, msg: '❌ Chỉ Admin (Bố B2KS) mới có quyền điều chỉnh!' };
@@ -6904,6 +7346,10 @@ export function initB2KSGameEngine() {
         if (typeof payload.dailyParentAllowance === 'number') {
           state.dailyParentAllowance = Math.max(0, Math.round(payload.dailyParentAllowance));
         }
+        if (typeof payload.maxParentPoints === 'number' && !Number.isNaN(payload.maxParentPoints)) {
+          state.maxParentPoints = Math.max(0, Math.round(payload.maxParentPoints));
+          state.maxParentPointsUpdatedAt = now;
+        }
         if (payload.parentPoints) {
           Object.entries(payload.parentPoints).forEach(([pid, pts]) => {
             const m = state.members.find((x) => x.id === pid);
@@ -6912,12 +7358,13 @@ export function initB2KSGameEngine() {
               m.pointsUpdatedAt = now;
               m.adminPointsUpdatedAt = now;
               m.memberUpdatedAt = now;
+              dirtyMemberIds.add(m.id);
             }
           });
         }
         saveGame(true);
         updateHUD();
-        return { ok: true, msg: `💰 Đã cập nhật điểm & ngân sách Phụ huynh khu phố "${state.familyName}"!` };
+        return { ok: true, msg: `💰 Đã cập nhật điểm, giới hạn & ngân sách Phụ huynh khu phố "${state.familyName}"!` };
       }
 
       const fbUrl = deviceConfig.firebaseUrl;
@@ -6944,6 +7391,10 @@ export function initB2KSGameEngine() {
 
       if (typeof payload.dailyParentAllowance === 'number') {
         targetShared.dailyParentAllowance = Math.max(0, Math.round(payload.dailyParentAllowance));
+      }
+      if (typeof payload.maxParentPoints === 'number' && !Number.isNaN(payload.maxParentPoints)) {
+        targetShared.maxParentPoints = Math.max(0, Math.round(payload.maxParentPoints));
+        targetShared.maxParentPointsUpdatedAt = now;
       }
       const changedParents: any[] = [];
       if (payload.parentPoints) {
@@ -6989,6 +7440,7 @@ export function initB2KSGameEngine() {
               body: JSON.stringify({
                 updatedAt: now,
                 dailyParentAllowance: targetShared.dailyParentAllowance ?? DAILY_PARENT_ALLOWANCE,
+                maxParentPoints: targetShared.maxParentPoints ?? MAX_PARENT_POINTS,
                 members: targetShared.members.map((m: any) => ({
                   id: m.id,
                   name: m.name,
@@ -7525,13 +7977,17 @@ export function initB2KSGameEngine() {
         }
       });
       if (isOwner) {
+        const owner = (room && room.ownerIds && state.members.find((m) => m.id === room.ownerIds![0])) || me;
         ROOM_DECOR_SLOTS.forEach((slot) => {
+          const placedId = owner.roomSlots?.[slot.id];
+          const placedName = placedId ? findAnyCatalogItem(placedId)?.name : null;
           items.push({
-            x: slot.x, y: slot.y, radius: 54, label: `📌 Trang trí: ${slot.label}`,
+            x: slot.x, y: slot.y, radius: 46,
+            label: placedName ? `🎒 Đổi / Cất: ${placedName}` : `📌 Trang trí: ${slot.label}`,
             action: () => {
               selectedRoomSlotId = slot.id;
               openModal('slot-picker-modal');
-              renderPrivateRoomSlotBar();
+              renderPrivateRoomSlotBar(false);
             }
           });
         });
@@ -7587,6 +8043,17 @@ export function initB2KSGameEngine() {
           }
         });
       }
+      const { yShift: legYShift } = getHouseLayoutMetrics();
+      (me.roomDecor || []).forEach((dec, idx) => {
+        const cat = findAnyCatalogItem(dec.id);
+        items.push({
+          x: dec.x,
+          y: dec.y + legYShift,
+          radius: 52,
+          label: `🎒 Cất "${cat?.name || dec.id}" vào túi`,
+          action: () => w.pickupLegacyRoomDecor(idx)
+        });
+      });
     }
 
     state.members.forEach((other) => {
@@ -7786,10 +8253,50 @@ export function initB2KSGameEngine() {
     fetch(`${deviceConfig.firebaseUrl}/${fbBase}/shared.json`)
       .then((r) => r.json())
       .then((remote) => {
+        if (!remote || typeof remote !== 'object') return;
         const shouldHydrate =
-          remote &&
           Array.isArray(remote.members) &&
           ((!hasLocalSaveFile && !hasHydratedRemote) || (remote.updatedAt || 0) > (state.updatedAt || 0));
+
+        if (!shouldHydrate) {
+          let sideChanged = false;
+          if ((remote.buildingLayoutsUpdatedAt || 0) > (state.buildingLayoutsUpdatedAt || 0)) {
+            state.buildingLayouts =
+              remote.buildingLayouts && typeof remote.buildingLayouts === 'object' ? { ...remote.buildingLayouts } : {};
+            state.buildingLayoutsUpdatedAt = remote.buildingLayoutsUpdatedAt || 0;
+            sideChanged = true;
+          }
+          if ((remote.houseUpdatedAt || 0) > (state.houseUpdatedAt || 0) && remote.house && typeof remote.house === 'object') {
+            state.house = { ...remote.house };
+            state.houseUpdatedAt = remote.houseUpdatedAt || 0;
+            sideChanged = true;
+          }
+          if ((remote.maxParentPointsUpdatedAt || 0) > (state.maxParentPointsUpdatedAt || 0) && typeof remote.maxParentPoints === 'number') {
+            state.maxParentPoints = Math.max(0, Math.round(remote.maxParentPoints));
+            state.maxParentPointsUpdatedAt = remote.maxParentPointsUpdatedAt || 0;
+            sideChanged = true;
+          }
+          if (Array.isArray(remote.members)) {
+            remote.members.forEach((rm: Member) => {
+              const lm = state.members.find((x) => x.id === rm.id);
+              if (lm && (rm.nameUpdatedAt || 0) > (lm.nameUpdatedAt || 0) && rm.name) {
+                lm.name = rm.name;
+                lm.nameUpdatedAt = rm.nameUpdatedAt || 0;
+                sideChanged = true;
+              }
+            });
+          }
+          if (sideChanged) {
+            const { englishQuestions: _omitSideEq, ...sidePayload } = state;
+            localStorage.setItem(getFamilyStorageKey(), JSON.stringify(sidePayload));
+            persistDurableMemberArchive();
+            lastHudSignature = '';
+            updateHUD();
+            notifySubscribers();
+          }
+          return;
+        }
+
         if (shouldHydrate) {
           hasHydratedRemote = true;
           const localMembersBackup = state.members.map((m) => ({ ...m }));
@@ -7802,6 +8309,10 @@ export function initB2KSGameEngine() {
           const localFamNameTs = state.familyNameUpdatedAt || 0;
           const localLayouts = state.buildingLayouts;
           const localLayoutsTs = state.buildingLayoutsUpdatedAt || 0;
+          const localHouse = state.house;
+          const localHouseTs = state.houseUpdatedAt || 0;
+          const localMaxParentPts = state.maxParentPoints;
+          const localMaxParentPtsTs = state.maxParentPointsUpdatedAt || 0;
           const localActCfg = state.activityConfigs;
           const localActCfgTs = state.activityConfigsUpdatedAt || 0;
           const prevUnread = getUnreadMessageCount(getCurrentUser());
@@ -7824,9 +8335,21 @@ export function initB2KSGameEngine() {
             state.gamePassword = localGamePw;
             state.gamePasswordUpdatedAt = localGamePwTs;
           }
-          if (localLayouts && localLayoutsTs > (remote.buildingLayoutsUpdatedAt || 0)) {
-            state.buildingLayouts = localLayouts;
+          if (localLayoutsTs > (remote.buildingLayoutsUpdatedAt || 0)) {
+            state.buildingLayouts = localLayouts || {};
             state.buildingLayoutsUpdatedAt = localLayoutsTs;
+          } else {
+            state.buildingLayouts =
+              remote.buildingLayouts && typeof remote.buildingLayouts === 'object' ? { ...remote.buildingLayouts } : {};
+            state.buildingLayoutsUpdatedAt = remote.buildingLayoutsUpdatedAt || 0;
+          }
+          if (localHouseTs > (remote.houseUpdatedAt || 0) && localHouse) {
+            state.house = localHouse;
+            state.houseUpdatedAt = localHouseTs;
+          }
+          if (localMaxParentPtsTs > (remote.maxParentPointsUpdatedAt || 0) && typeof localMaxParentPts === 'number') {
+            state.maxParentPoints = localMaxParentPts;
+            state.maxParentPointsUpdatedAt = localMaxParentPtsTs;
           }
 
           const remotePinTs = remote.parentPinUpdatedAt || 0;
@@ -7856,12 +8379,19 @@ export function initB2KSGameEngine() {
               lm.comicReadStats?.completedIds || [],
               rm.comicReadStats?.completedIds || []
             );
-            const mergedLab = mergeCustomLabItems(lm.customLabItems, rm.customLabItems);
-            const mergedInv = unionStringLists(lm.inventory, rm.inventory);
+            const mergedLab = (lm.memberUpdatedAt || 0) === 0 && (rm.memberUpdatedAt || 0) === 0
+              ? mergeCustomLabItems(lm.customLabItems, rm.customLabItems)
+              : ((lm.memberUpdatedAt || 0) >= (rm.memberUpdatedAt || 0) ? (lm.customLabItems || []) : (rm.customLabItems || []));
+            const mergedInv = (lm.memberUpdatedAt || 0) === 0 && (rm.memberUpdatedAt || 0) === 0
+              ? unionStringLists(lm.inventory, rm.inventory)
+              : ((lm.memberUpdatedAt || 0) >= (rm.memberUpdatedAt || 0) ? (lm.inventory || []) : (rm.inventory || []));
             const mergedAch = mergeAchievementsList(lm.unlockedAchievements, rm.unlockedAchievements);
             const mergedWords = unionStringLists(lm.englishWordsUsed, rm.englishWordsUsed).slice(-2500);
             const maxTasksDone = Math.max(lm.completedTaskCount || 0, rm.completedTaskCount || 0);
             const localIsNewer = (lm.memberUpdatedAt || 0) >= (rm.memberUpdatedAt || 0);
+            const localNameNewer = (lm.nameUpdatedAt || 0) >= (rm.nameUpdatedAt || 0);
+            const resolvedName = localNameNewer ? (lm.name || rm.name) : (rm.name || lm.name);
+            const resolvedNameTs = Math.max(lm.nameUpdatedAt || 0, rm.nameUpdatedAt || 0);
             const remotePtsTs = Math.max(rm.adminPointsUpdatedAt || 0, rm.pointsUpdatedAt || 0);
             const localPtsTs = Math.max(lm.adminPointsUpdatedAt || 0, lm.pointsUpdatedAt || 0);
             const remotePointsNewer = remotePtsTs > localPtsTs;
@@ -7892,14 +8422,18 @@ export function initB2KSGameEngine() {
               }
               if (rm.comicReadStats) rm.comicReadStats.completedIds = mergedComics;
               if (localIsNewer) {
-                rm.name = lm.name;
+                rm.name = resolvedName;
+                rm.nameUpdatedAt = resolvedNameTs;
                 rm.age = lm.age;
                 rm.role = lm.role;
                 rm.activePetId = lm.activePetId;
                 rm.petFoodInventory = lm.petFoodInventory;
                 rm.vouchers = lm.vouchers;
                 rm.roomSlots = lm.roomSlots;
+                rm.roomSlotSpecs = lm.roomSlotSpecs;
                 rm.roomDecor = lm.roomDecor;
+                rm.roomDecorSpecs = lm.roomDecorSpecs;
+                rm.inventoryConsumedMigrated = lm.inventoryConsumedMigrated;
                 rm.roomWall = lm.roomWall;
                 rm.roomUnlocked = lm.roomUnlocked;
                 rm.englishChatStats = lm.englishChatStats;
@@ -7919,14 +8453,20 @@ export function initB2KSGameEngine() {
                   rm.pointsUpdatedAt = lm.pointsUpdatedAt;
                   rm.adminPointsUpdatedAt = lm.adminPointsUpdatedAt;
                 }
-              } else if (localPointsNewer) {
-                rm.points = lm.points;
-                rm.pointsUpdatedAt = lm.pointsUpdatedAt;
-                rm.adminPointsUpdatedAt = Math.max(rm.adminPointsUpdatedAt || 0, lm.adminPointsUpdatedAt || 0);
+              } else {
+                rm.name = resolvedName;
+                rm.nameUpdatedAt = resolvedNameTs;
+                if (localPointsNewer) {
+                  rm.points = lm.points;
+                  rm.pointsUpdatedAt = lm.pointsUpdatedAt;
+                  rm.adminPointsUpdatedAt = Math.max(rm.adminPointsUpdatedAt || 0, lm.adminPointsUpdatedAt || 0);
+                }
               }
             } else if (localIsNewer) {
               state.members[idx] = {
                 ...lm,
+                name: resolvedName,
+                nameUpdatedAt: resolvedNameTs,
                 pets: mergedPets,
                 petAccessories: mergedAcc,
                 unlockedZooAnimals: mergedZoo,
@@ -7944,6 +8484,8 @@ export function initB2KSGameEngine() {
                 state.members[idx].adminPointsUpdatedAt = rm.adminPointsUpdatedAt;
               }
             } else {
+              rm.name = resolvedName;
+              rm.nameUpdatedAt = resolvedNameTs;
               rm.pets = mergedPets;
               rm.petAccessories = mergedAcc;
               rm.unlockedZooAnimals = mergedZoo;
@@ -8034,11 +8576,6 @@ export function initB2KSGameEngine() {
             m.helperRobot = remoteM.helperRobot;
             changed = true;
           }
-          const mergedLab = mergeCustomLabItems(m.customLabItems, remoteM.customLabItems);
-          if (mergedLab.length !== (m.customLabItems || []).length) {
-            m.customLabItems = mergedLab;
-            changed = true;
-          }
           const mergedComics = unionStringLists(
             m.comicReadStats?.completedIds || [],
             remoteM.comicReadStats?.completedIds || []
@@ -8057,11 +8594,37 @@ export function initB2KSGameEngine() {
             changed = true;
           }
 
+          if ((remoteM.nameUpdatedAt || 0) > (m.nameUpdatedAt || 0) && remoteM.name) {
+            m.name = remoteM.name;
+            m.nameUpdatedAt = remoteM.nameUpdatedAt;
+            changed = true;
+          }
+
           if (m.id !== curId && (remoteM.memberUpdatedAt || 0) > (m.memberUpdatedAt || 0)) {
-            m.name = remoteM.name || m.name;
+            if (remoteM.name && (remoteM.nameUpdatedAt || 0) >= (m.nameUpdatedAt || 0)) {
+              m.name = remoteM.name;
+              if (typeof remoteM.nameUpdatedAt === 'number') m.nameUpdatedAt = remoteM.nameUpdatedAt;
+            }
             m.age = remoteM.age || m.age;
             m.role = remoteM.role || m.role;
+            m.hairStyle = remoteM.hairStyle || m.hairStyle;
+            m.hairColor = remoteM.hairColor || m.hairColor;
+            m.shirtColor = remoteM.shirtColor || m.shirtColor;
+            m.shirtPattern = remoteM.shirtPattern || m.shirtPattern;
+            m.pantsColor = remoteM.pantsColor || m.pantsColor;
+            m.pantsStyle = remoteM.pantsStyle || m.pantsStyle;
+            m.outfit = remoteM.outfit !== undefined ? remoteM.outfit : m.outfit;
             m.activePetId = remoteM.activePetId ?? m.activePetId;
+            if (Array.isArray(remoteM.inventory)) m.inventory = [...remoteM.inventory];
+            if (Array.isArray(remoteM.vouchers)) m.vouchers = [...remoteM.vouchers];
+            if (Array.isArray(remoteM.customLabItems)) m.customLabItems = [...remoteM.customLabItems];
+            if (remoteM.roomSlots && typeof remoteM.roomSlots === 'object') m.roomSlots = { ...remoteM.roomSlots };
+            if (remoteM.roomSlotSpecs && typeof remoteM.roomSlotSpecs === 'object') m.roomSlotSpecs = { ...remoteM.roomSlotSpecs };
+            if (Array.isArray(remoteM.roomDecor)) m.roomDecor = [...remoteM.roomDecor];
+            if (remoteM.roomDecorSpecs && typeof remoteM.roomDecorSpecs === 'object') m.roomDecorSpecs = { ...remoteM.roomDecorSpecs };
+            if (typeof remoteM.inventoryConsumedMigrated === 'boolean') m.inventoryConsumedMigrated = remoteM.inventoryConsumedMigrated;
+            if (remoteM.roomWall) m.roomWall = remoteM.roomWall;
+            if (typeof remoteM.roomUnlocked === 'boolean') m.roomUnlocked = remoteM.roomUnlocked;
             m.memberUpdatedAt = remoteM.memberUpdatedAt;
             changed = true;
           }
@@ -8073,6 +8636,7 @@ export function initB2KSGameEngine() {
           localStorage.setItem(getFamilyStorageKey(), JSON.stringify(localPayload2));
           persistPointsLedger();
           persistDurableMemberArchive();
+          lastHudSignature = '';
           updateHUD();
           notifySubscribers();
         }
@@ -8431,6 +8995,13 @@ export function initB2KSGameEngine() {
 
     if (isGameUnlocked) {
       updateContextualChatBar(me);
+    }
+
+    const nowZoneMs = Date.now();
+    if (isGameUnlocked && nowZoneMs - lastZoneExitCheckAt >= 200) {
+      lastZoneExitCheckAt = nowZoneMs;
+      arcadeEngine.checkZoneAutoExit();
+      soccerGame.checkZoneAutoExit();
     }
 
     const interactables = getWorldInteractables();

@@ -3,6 +3,7 @@ import {
   Building2,
   Coins,
   KeyRound,
+  Palette,
   PlusCircle,
   RefreshCw,
   RotateCcw,
@@ -12,6 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import { AdminNeighborhoodRecord, B2KSBridge } from '../types/b2ks';
+import { AssetLibraryTab } from './AssetLibraryTab';
 
 interface Props {
   bridge: B2KSBridge;
@@ -19,7 +21,7 @@ interface Props {
 }
 
 export const AdminPanelModal: React.FC<Props> = ({ bridge, onClose }) => {
-  const [tab, setTab] = useState<'neighborhoods' | 'parent_points'>('neighborhoods');
+  const [tab, setTab] = useState<'neighborhoods' | 'parent_points' | 'assets'>('neighborhoods');
   const [records, setRecords] = useState<AdminNeighborhoodRecord[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -31,8 +33,9 @@ export const AdminPanelModal: React.FC<Props> = ({ bridge, onClose }) => {
   const [confirmDeleteSlug, setConfirmDeleteSlug] = useState<string | null>(null);
   const [confirmResetSlug, setConfirmResetSlug] = useState<string | null>(null);
 
-  // Parent allowance & points drafts keyed by slug
+  // Parent allowance, max cap & points drafts keyed by slug
   const [allowanceDrafts, setAllowanceDrafts] = useState<Record<string, string>>({});
+  const [maxPointsDrafts, setMaxPointsDrafts] = useState<Record<string, string>>({});
   const [parentPointDrafts, setParentPointDrafts] = useState<Record<string, Record<string, string>>>({});
   const [savingSlug, setSavingSlug] = useState<string | null>(null);
 
@@ -45,15 +48,18 @@ export const AdminPanelModal: React.FC<Props> = ({ bridge, onClose }) => {
       const list = await bridge.adminListNeighborhoods();
       setRecords(list);
       const nextAllow: Record<string, string> = {};
+      const nextMaxPts: Record<string, string> = {};
       const nextPts: Record<string, Record<string, string>> = {};
       list.forEach((rec) => {
         nextAllow[rec.slug] = String(rec.dailyParentAllowance ?? 100);
+        nextMaxPts[rec.slug] = String(rec.maxParentPoints ?? 500);
         nextPts[rec.slug] = {};
         rec.parents.forEach((p) => {
           nextPts[rec.slug][p.id] = String(p.points ?? 0);
         });
       });
       setAllowanceDrafts(nextAllow);
+      setMaxPointsDrafts(nextMaxPts);
       setParentPointDrafts(nextPts);
     } finally {
       setLoading(false);
@@ -159,6 +165,7 @@ export const AdminPanelModal: React.FC<Props> = ({ bridge, onClose }) => {
     setSavingSlug(rec.slug);
     try {
       const allowanceVal = Math.max(0, Math.min(10000, Math.round(Number(allowanceDrafts[rec.slug] ?? rec.dailyParentAllowance) || 0)));
+      const maxPointsVal = Math.max(0, Math.min(999999, Math.round(Number(maxPointsDrafts[rec.slug] ?? rec.maxParentPoints ?? 500) || 0)));
       const ptsMap: Record<string, number> = {};
       rec.parents.forEach((p) => {
         const raw = parentPointDrafts[rec.slug]?.[p.id];
@@ -166,6 +173,7 @@ export const AdminPanelModal: React.FC<Props> = ({ bridge, onClose }) => {
       });
       const res = await bridge.adminAdjustParentAccount(rec.slug, {
         dailyParentAllowance: allowanceVal,
+        maxParentPoints: maxPointsVal,
         parentPoints: ptsMap,
       });
       bridge.showToast(res.msg);
@@ -191,7 +199,7 @@ export const AdminPanelModal: React.FC<Props> = ({ bridge, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-[260] flex items-center justify-center bg-black/75 p-3">
-      <div className="w-full max-w-4xl max-h-[90dvh] flex flex-col rounded-2xl border-[3px] border-[#2C3E50] bg-[#F8FAFC] text-[#2C3E50] shadow-2xl overflow-hidden">
+      <div className={`w-full ${tab === 'assets' ? 'max-w-5xl' : 'max-w-4xl'} max-h-[90dvh] flex flex-col rounded-2xl border-[3px] border-[#2C3E50] bg-[#F8FAFC] text-[#2C3E50] shadow-2xl overflow-hidden`}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-[#4C1D95] via-[#6D28D9] to-[#7C3AED] text-white border-b-[3px] border-[#2C3E50]">
           <div className="flex items-center gap-2.5">
@@ -246,16 +254,31 @@ export const AdminPanelModal: React.FC<Props> = ({ bridge, onClose }) => {
               <Coins className="w-3.5 h-3.5" />
               <span>Điều chỉnh điểm Phụ huynh</span>
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                bridge.playClick();
+                setTab('assets');
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer ${
+                tab === 'assets' ? 'bg-[#0284C7] text-white shadow' : 'bg-white text-[#2C3E50]'
+              }`}
+            >
+              <Palette className="w-3.5 h-3.5" />
+              <span>Thư viện Hình ảnh 2D &amp; 3D</span>
+            </button>
           </div>
-          <button
-            type="button"
-            disabled={loading}
-            onClick={loadNeighborhoods}
-            className="btn btn-sm btn-accent"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            <span>{loading ? 'Đang tải...' : 'Làm mới'}</span>
-          </button>
+          {tab !== 'assets' && (
+            <button
+              type="button"
+              disabled={loading}
+              onClick={loadNeighborhoods}
+              className="btn btn-sm btn-accent"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <span>{loading ? 'Đang tải...' : 'Làm mới'}</span>
+            </button>
+          )}
         </div>
 
         {/* Body */}
@@ -350,6 +373,7 @@ export const AdminPanelModal: React.FC<Props> = ({ bridge, onClose }) => {
                           <div className="text-xs text-slate-600 flex flex-wrap gap-3">
                             <span>👥 {rec.memberCount} thành viên ({rec.kidCount} con)</span>
                             <span>📅 Nhận/ngày: <b>{rec.dailyParentAllowance}⭐</b></span>
+                            <span>🔒 Tối đa PH: <b>{rec.maxParentPoints ?? 500}⭐</b></span>
                             <span>
                               💰 PH:{' '}
                               {rec.parents.map((p) => `${p.name} (${p.points}⭐)`).join(' · ') || 'Chưa có'}
@@ -441,12 +465,13 @@ export const AdminPanelModal: React.FC<Props> = ({ bridge, onClose }) => {
           {tab === 'parent_points' && (
             <div className="space-y-3">
               <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-3 text-xs text-amber-950">
-                Tại đây Admin <b>Bố B2KS</b> có thể điều chỉnh <b>điểm ngân sách hàng ngày</b> và <b>số điểm hiện có</b> của tất cả Phụ huynh (Bố/Mẹ) trong từng khu phố.
+                Tại đây Admin <b>Bố B2KS</b> có thể điều chỉnh <b>điểm ngân sách hàng ngày</b>, <b>điểm số tối đa của Phụ huynh</b> (mặc định 500⭐ — đạt mức này ba mẹ sẽ không nhận thêm điểm) và <b>số điểm hiện có</b> của tất cả Phụ huynh (Bố/Mẹ) trong từng khu phố.
               </div>
 
               {records.map((rec) => {
                 const isBusy = savingSlug === rec.slug;
                 const allowVal = allowanceDrafts[rec.slug] ?? String(rec.dailyParentAllowance ?? 100);
+                const maxPtsVal = maxPointsDrafts[rec.slug] ?? String(rec.maxParentPoints ?? 500);
                 return (
                   <div
                     key={rec.slug}
@@ -461,7 +486,7 @@ export const AdminPanelModal: React.FC<Props> = ({ bridge, onClose }) => {
                           ({rec.parents.length} Phụ huynh · {rec.kidCount} con)
                         </span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2.5">
                         <label className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
                           <span>📅 Nhận hàng ngày:</span>
                           <input
@@ -475,6 +500,20 @@ export const AdminPanelModal: React.FC<Props> = ({ bridge, onClose }) => {
                             className="w-20 px-2 py-1 rounded-lg border-2 border-[#2C3E50] bg-amber-50 text-xs font-extrabold text-center"
                           />
                           <span>⭐/ngày</span>
+                        </label>
+                        <label className="text-xs font-bold text-violet-900 flex items-center gap-1.5">
+                          <span>🔒 Điểm tối đa PH:</span>
+                          <input
+                            type="number"
+                            min={0}
+                            max={999999}
+                            value={maxPtsVal}
+                            onChange={(e) =>
+                              setMaxPointsDrafts((prev) => ({ ...prev, [rec.slug]: e.target.value }))
+                            }
+                            className="w-20 px-2 py-1 rounded-lg border-2 border-[#2C3E50] bg-violet-50 text-xs font-extrabold text-center"
+                          />
+                          <span>⭐</span>
                         </label>
                         <button
                           type="button"
@@ -555,6 +594,8 @@ export const AdminPanelModal: React.FC<Props> = ({ bridge, onClose }) => {
               })}
             </div>
           )}
+
+          {tab === 'assets' && <AssetLibraryTab bridge={bridge} />}
         </div>
       </div>
     </div>

@@ -28,27 +28,11 @@ export const FleaMarketModal: React.FC<Props> = ({ bridge, onClose }) => {
   const forceRefresh = () => setTick((t) => t + 1);
 
   const getSellableItems = (): SellableOption[] => {
-    const placedCounts: Record<string, number> = {};
-    if (user.roomSlots) {
-      Object.values(user.roomSlots).forEach((id) => {
-        if (id) placedCounts[id] = (placedCounts[id] || 0) + 1;
-      });
-    }
-    if (Array.isArray(user.roomDecor)) {
-      user.roomDecor.forEach((d) => {
-        if (d.id) placedCounts[d.id] = (placedCounts[d.id] || 0) + 1;
-      });
-    }
-
     const result: SellableOption[] = [];
     user.inventory.forEach((id, invIndex) => {
       const cat = bridge.findCatalogItem(id);
       if (!cat) return;
       if (cat.icon && user.outfit === cat.icon) return;
-      if (placedCounts[id] && placedCounts[id] > 0) {
-        placedCounts[id] -= 1;
-        return;
-      }
       result.push({
         uid: `inv:${invIndex}:${id}`,
         itemKind: 'inventory',
@@ -61,10 +45,6 @@ export const FleaMarketModal: React.FC<Props> = ({ bridge, onClose }) => {
     });
 
     (user.customLabItems || []).forEach((lab, idx) => {
-      if (placedCounts[lab.id] && placedCounts[lab.id] > 0) {
-        placedCounts[lab.id] -= 1;
-        return;
-      }
       result.push({
         uid: `lab:${idx}:${lab.id}`,
         itemKind: 'lab',
@@ -108,6 +88,7 @@ export const FleaMarketModal: React.FC<Props> = ({ bridge, onClose }) => {
       createdAt: Date.now(),
     };
 
+    user.memberUpdatedAt = Date.now();
     state.fleaMarketListings.unshift(listing);
     bridge.syncFleaMarketToFirebase(state.fleaMarketListings);
     bridge.saveGame(true);
@@ -125,12 +106,20 @@ export const FleaMarketModal: React.FC<Props> = ({ bridge, onClose }) => {
       return;
     }
 
+    const now = Date.now();
     const seller = state.members.find((m) => m.id === listing.sellerId);
     user.points -= listing.price;
+    user.memberUpdatedAt = now;
     if (seller) {
-      seller.points = bridge.isParent(seller)
-        ? Math.min(500, seller.points + listing.price)
-        : seller.points + listing.price;
+      if (bridge.isParent(seller)) {
+        const cap = bridge.getMaxParentPoints?.() ?? 500;
+        if (seller.points < cap) {
+          seller.points = Math.min(cap, seller.points + listing.price);
+        }
+      } else {
+        seller.points += listing.price;
+      }
+      seller.memberUpdatedAt = now;
     }
 
     if (listing.itemKind === 'lab' && listing.labItemData) {
@@ -167,6 +156,7 @@ export const FleaMarketModal: React.FC<Props> = ({ bridge, onClose }) => {
     } else {
       user.inventory.push(listing.itemId);
     }
+    user.memberUpdatedAt = Date.now();
     state.fleaMarketListings = state.fleaMarketListings.filter((x) => x.id !== listing.id);
     bridge.syncFleaMarketToFirebase(state.fleaMarketListings);
     bridge.saveGame(true);

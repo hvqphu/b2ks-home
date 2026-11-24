@@ -13,6 +13,8 @@ export interface SoccerEngineDeps {
   triggerConfetti: () => void;
   triggerSpeechBubble: (member: Member, text: string, isEng: boolean) => void;
   showToast: (msg: string) => void;
+  openModal?: (id: string) => void;
+  closeModal?: (id: string) => void;
 }
 
 const LOCAL_SOCCER_ROOM_KEY = 'b2ks_soccer_online_room';
@@ -43,6 +45,7 @@ function createDefaultOnlineRoom(): SoccerOnlineRoom {
     bvy: 0,
     goalBannerText: '',
     goalBannerUntil: 0,
+    readyMap: {},
     updatedAt: 0
   };
 }
@@ -192,13 +195,42 @@ export function createSoccerMiniGame(deps: SoccerEngineDeps) {
     const me = deps.getCurrentUser();
     const isHostActive = active && mode === 'online_2p' && roomState.hostId === me.id && roomState.status === 'playing';
     if (isHostActive) return; // Host owns live match physics
+    const prevStatus = roomState.status;
     roomState = { ...createDefaultOnlineRoom(), ...remote };
+    if (!roomState.readyMap) roomState.readyMap = {};
+
+    const isParticipant = roomState.p1Id === me.id || roomState.p2Id === me.id;
+    if (prevStatus === 'playing' && roomState.status === 'idle' && mode === 'online_2p') {
+      if (timerId) {
+        clearInterval(timerId);
+        timerId = null;
+      }
+      deps.showToast('🚪 Chủ phòng đã thoát khỏi phòng bóng đá!');
+    }
+
+    if (prevStatus !== 'playing' && roomState.status === 'playing' && isParticipant) {
+      mode = 'online_2p';
+      const modalEl = document.getElementById('soccer-modal');
+      if (!modalEl || modalEl.style.display !== 'flex') {
+        if (deps.openModal) {
+          deps.openModal('soccer-modal');
+        } else if (modalEl) {
+          modalEl.style.display = 'flex';
+          openSoccerArena();
+        }
+      } else {
+        renderUIState();
+      }
+      deps.playSuccess();
+      deps.showToast('⚽ Trận đấu Bóng Đá đã bắt đầu!');
+      return;
+    }
 
     if (active) {
       const modalEl = document.getElementById('soccer-modal');
       if (modalEl && modalEl.style.display === 'flex') {
         if (roomState.status === 'playing') {
-          if (roomState.p1Id === me.id || roomState.p2Id === me.id) {
+          if (isParticipant) {
             mode = 'online_2p';
           } else if (mode !== 'solo') {
             mode = 'spectator';
@@ -220,8 +252,8 @@ export function createSoccerMiniGame(deps: SoccerEngineDeps) {
   function getNearbyMembersAtPitch(): Member[] {
     const st = deps.getState();
     const pitchLoc = resolveNeighborhoodLocations(st).find((l) => l.id === 'soccer');
-    const px = pitchLoc ? pitchLoc.x : 1780;
-    const py = pitchLoc ? pitchLoc.y : 1410;
+    const px = pitchLoc ? pitchLoc.x : 2060;
+    const py = pitchLoc ? pitchLoc.y : 1400;
     return st.members.filter(
       (m) => m.scene === 'neighborhood' && Math.hypot(m.x - px, m.y - py) <= 220
     );
@@ -358,6 +390,10 @@ export function createSoccerMiniGame(deps: SoccerEngineDeps) {
 
   function finishOnlineMatch() {
     roomState.status = 'finished';
+    roomState.readyMap = {
+      ...(roomState.p1Id ? { [roomState.p1Id]: false } : {}),
+      ...(roomState.p2Id ? { [roomState.p2Id]: false } : {})
+    };
     if (timerId) {
       clearInterval(timerId);
       timerId = null;
@@ -406,6 +442,7 @@ export function createSoccerMiniGame(deps: SoccerEngineDeps) {
     roomState.hostId = me.id;
     roomState.p1Id = me.id;
     roomState.p1Name = me.name;
+    roomState.readyMap = { [me.id]: false };
     lastHandledP2KickSeq = 0;
     remoteP2Input = { playerId: '', dx: 0, dy: 0, kickSeq: 0, ts: 0 };
     mode = 'online_2p';
@@ -416,22 +453,54 @@ export function createSoccerMiniGame(deps: SoccerEngineDeps) {
 
   function join2PRoom() {
     const me = deps.getCurrentUser();
-    if (roomState.status !== 'lobby') return;
+    if (roomState.status !== 'lobby' && roomState.status !== 'finished') return;
     if (roomState.p1Id === me.id) return deps.showToast('ℹ️ Bạn đang là Chủ phòng (Đội Xanh P1)!');
     if (roomState.p2Id && roomState.p2Id !== me.id) return deps.showToast('⚠️ Phòng đã đủ 2 người! Bạn có thể làm Khán giả xem trực tiếp.');
     deps.playSuccess();
     roomState.p2Id = me.id;
     roomState.p2Name = me.name;
+    roomState.readyMap = {
+      ...(roomState.readyMap || {}),
+      [roomState.p1Id]: Boolean(roomState.readyMap?.[roomState.p1Id]),
+      [me.id]: false
+    };
     mode = 'online_2p';
     pushOnlineRoom(true);
     renderUIState();
     deps.showToast(`🔴 ${me.name} đã vào Đội Đỏ (P2)!`);
   }
 
+  function toggle2PReady() {
+    const me = deps.getCurrentUser();
+    if (roomState.status !== 'lobby' && roomState.status !== 'finished') return;
+    if (roomState.p1Id !== me.id && roomState.p2Id !== me.id) return;
+    deps.playClick();
+    const curReady = Boolean(roomState.readyMap?.[me.id]);
+    roomState.readyMap = {
+      ...(roomState.readyMap || {}),
+      [me.id]: !curReady
+    };
+    pushOnlineRoom(true);
+    lastLobbySignature = '';
+    renderLobbyPanel();
+  }
+
   function start2PMatch() {
     const me = deps.getCurrentUser();
-    if (roomState.status !== 'lobby' || roomState.hostId !== me.id) return;
+    if ((roomState.status !== 'lobby' && roomState.status !== 'finished') || roomState.hostId !== me.id) {
+      if (roomState.hostId !== me.id) {
+        deps.playError();
+        deps.showToast('⚠️ Chỉ người tạo phòng mới có thể bấm Vào Game!');
+      }
+      return;
+    }
     if (!roomState.p2Id) return deps.showToast('⏳ Cần có Người chơi 2 tham gia trước!');
+    const p1Ready = Boolean(roomState.readyMap?.[roomState.p1Id]);
+    const p2Ready = Boolean(roomState.readyMap?.[roomState.p2Id]);
+    if (!p1Ready || !p2Ready) {
+      deps.playError();
+      return deps.showToast('⚠️ Cả 2 người chơi phải bấm "✅ Sẵn Sàng" mới có thể vào game!');
+    }
     deps.playSuccess();
     roomState.status = 'playing';
     roomState.p1Goals = 0;
@@ -459,9 +528,16 @@ export function createSoccerMiniGame(deps: SoccerEngineDeps) {
   function leave2PRoom() {
     const me = deps.getCurrentUser();
     deps.playClick();
+    if (timerId) {
+      clearInterval(timerId);
+      timerId = null;
+    }
     if (roomState.p1Id === me.id || roomState.hostId === me.id) {
       roomState = createDefaultOnlineRoom();
     } else if (roomState.p2Id === me.id) {
+      const nextReady = { ...(roomState.readyMap || {}) };
+      delete nextReady[me.id];
+      roomState.readyMap = nextReady;
       roomState.p2Id = null;
       roomState.p2Name = null;
       if (roomState.status === 'playing' || roomState.status === 'finished') {
@@ -470,6 +546,7 @@ export function createSoccerMiniGame(deps: SoccerEngineDeps) {
     }
     pushOnlineRoom(true);
     mode = 'online_2p';
+    lastLobbySignature = '';
     renderUIState();
   }
 
@@ -525,7 +602,9 @@ export function createSoccerMiniGame(deps: SoccerEngineDeps) {
     if (!lobbyPanel) return;
     const me = deps.getCurrentUser();
     const nearby = getNearbyMembersAtPitch();
-    const sig = `${roomState.status}|${roomState.p1Id}|${roomState.p2Id}|${roomState.p1Goals}|${roomState.p2Goals}|${me.id}|${nearby.map((m) => m.id).join(',')}`;
+    const p1Ready = Boolean(roomState.p1Id && roomState.readyMap?.[roomState.p1Id]);
+    const p2Ready = Boolean(roomState.p2Id && roomState.readyMap?.[roomState.p2Id]);
+    const sig = `${roomState.status}|${roomState.p1Id}|${roomState.p2Id}|${p1Ready ? 1 : 0}|${p2Ready ? 1 : 0}|${roomState.p1Goals}|${roomState.p2Goals}|${me.id}|${nearby.map((m) => m.id).join(',')}`;
     if (sig === lastLobbySignature) return;
     lastLobbySignature = sig;
 
@@ -547,7 +626,10 @@ export function createSoccerMiniGame(deps: SoccerEngineDeps) {
 
     const isP1 = roomState.p1Id === me.id;
     const isP2 = roomState.p2Id === me.id;
+    const isHost = roomState.hostId === me.id;
     const isFinished = roomState.status === 'finished';
+    const myReady = Boolean(roomState.readyMap?.[me.id]);
+    const bothReady = Boolean(roomState.p1Id && roomState.p2Id && p1Ready && p2Ready);
 
     lobbyPanel.innerHTML = `
       <div style="display:flex; flex-direction:column; gap:10px;">
@@ -557,22 +639,32 @@ export function createSoccerMiniGame(deps: SoccerEngineDeps) {
           </div>
         ` : ''}
         <div style="display:grid; grid-template-columns:1fr auto 1fr; gap:8px; align-items:center;">
-          <div style="background:#EFF6FF; border:2.5px solid #2563EB; border-radius:10px; padding:10px; text-align:center;">
-            <div style="font-size:11px; font-weight:700; color:#1D4ED8;">🔵 ĐỘI XANH (P1)</div>
+          <div style="background:#EFF6FF; border:2.5px solid ${p1Ready ? '#16A34A' : '#2563EB'}; border-radius:10px; padding:10px; text-align:center;">
+            <div style="font-size:11px; font-weight:700; color:#1D4ED8;">🔵 ĐỘI XANH (P1 • Chủ phòng)</div>
             <div style="font-size:15px; font-weight:700; color:#0F172A; margin-top:4px;">${roomState.p1Name}</div>
             <div style="font-size:11px; color:#64748B;">Tấn công lên ▲</div>
+            <div style="margin-top:6px;">
+              <span class="tag" style="background:${p1Ready ? '#16A34A' : '#F59E0B'}; color:#FFF; font-size:11px;">
+                ${p1Ready ? '✅ Đã sẵn sàng' : '⏳ Chưa sẵn sàng'}
+              </span>
+            </div>
           </div>
           <div style="font-weight:700; font-size:16px; color:#0F172A;">VS</div>
-          <div style="background:#FEF2F2; border:2.5px solid #DC2626; border-radius:10px; padding:10px; text-align:center;">
+          <div style="background:#FEF2F2; border:2.5px solid ${p2Ready ? '#16A34A' : '#DC2626'}; border-radius:10px; padding:10px; text-align:center;">
             <div style="font-size:11px; font-weight:700; color:#B91C1C;">🔴 ĐỘI ĐỎ (P2)</div>
             <div style="font-size:15px; font-weight:700; color:#0F172A; margin-top:4px;">${roomState.p2Name || '⏳ Đang chờ P2...'}</div>
             <div style="font-size:11px; color:#64748B;">Tấn công xuống ▼</div>
+            <div style="margin-top:6px;">
+              ${roomState.p2Id ? `<span class="tag" style="background:${p2Ready ? '#16A34A' : '#F59E0B'}; color:#FFF; font-size:11px;">${p2Ready ? '✅ Đã sẵn sàng' : '⏳ Chưa sẵn sàng'}</span>` : ''}
+            </div>
           </div>
         </div>
         <div style="font-size:11.5px; color:#475569; text-align:center;">Đang ở Sân Bóng: ${nearbyHtml}</div>
-        <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+        <div style="display:flex; gap:8px; justify-content:center; align-items:center; flex-wrap:wrap;">
           ${!isP1 && !isP2 && !roomState.p2Id ? `<button type="button" class="btn btn-primary" onclick="joinSoccer2PRoom()">🙋 Tham Gia Đội Đỏ (P2)</button>` : ''}
-          ${isP1 && roomState.p2Id ? `<button type="button" class="btn btn-accent" onclick="startSoccer2PMatch()">🚀 ${isFinished ? 'Đá Lại Trận Mới' : 'Bắt Đầu Trận Đấu!'}</button>` : ''}
+          ${(isP1 || isP2) ? `<button type="button" class="btn ${myReady ? 'btn-accent' : 'btn-primary'}" onclick="toggleSoccer2PReady()">${myReady ? '✅ Đã Sẵn Sàng (Hủy)' : '✋ Xác Nhận Sẵn Sàng'}</button>` : ''}
+          ${isHost ? `<button type="button" class="btn" ${!bothReady ? 'disabled' : ''} style="background:${bothReady ? '#16A34A' : '#94A3B8'}; color:#FFF; ${!bothReady ? 'opacity:0.45; cursor:not-allowed; filter:grayscale(0.35);' : 'box-shadow:0 3px 0 #14532D;'}" onclick="startSoccer2PMatch()">🚀 ${isFinished ? 'Đá Lại Trận Mới' : 'Vào Game (Bắt Đầu!)'}</button>` : ''}
+          ${isP2 ? `<span class="tag" style="background:#FEF9C3; color:#854D0E; border:1.5px solid #CA8A04; padding:7px 10px;">⏳ Chờ chủ phòng (${roomState.p1Name}) bấm Vào Game khi cả 2 Sẵn Sàng...</span>` : ''}
           ${(isP1 || isP2) ? `<button type="button" class="btn btn-danger btn-sm" onclick="leaveSoccer2PRoom()">🚪 Rời Phòng</button>` : ''}
           <button type="button" class="btn btn-sm" style="background:#7C3AED;" onclick="spectateSoccerMatch()">📺 Xem Đá (Khán giả)</button>
         </div>
@@ -1130,6 +1222,28 @@ export function createSoccerMiniGame(deps: SoccerEngineDeps) {
     }
   }
 
+  function checkZoneAutoExit() {
+    if (roomState.status !== 'lobby' && roomState.status !== 'playing' && roomState.status !== 'finished') return;
+    const me = deps.getCurrentUser();
+    if (roomState.p1Id !== me.id && roomState.p2Id !== me.id) return;
+    const st = deps.getState();
+    const pitchLoc = resolveNeighborhoodLocations(st).find((l) => l.id === 'soccer');
+    const px = pitchLoc ? pitchLoc.x : 2060;
+    const py = pitchLoc ? pitchLoc.y : 1400;
+    const dist = Math.hypot(me.x - px, me.y - py);
+    if (me.scene !== 'neighborhood' || dist > 220) {
+      leave2PRoom();
+      stopMatch();
+      if (deps.closeModal) {
+        deps.closeModal('soccer-modal');
+      } else {
+        const modalEl = document.getElementById('soccer-modal');
+        if (modalEl) modalEl.style.display = 'none';
+      }
+      deps.showToast('🚶 Bạn đã rời Sân Bóng Đá nên tự động thoát phòng!');
+    }
+  }
+
   return {
     openSoccerArena,
     startMatch: openSoccerArena,
@@ -1142,12 +1256,14 @@ export function createSoccerMiniGame(deps: SoccerEngineDeps) {
     switchTo2PMode,
     create2PRoom,
     join2PRoom,
+    toggle2PReady,
     start2PMatch,
     leave2PRoom,
     spectateMatch,
     pullSoccerRoomFromFirebase,
     onRemoteSoccerRoomUpdate,
     onRemoteP2InputUpdate,
+    checkZoneAutoExit,
     getRoomState: () => roomState,
     isActive: () => active
   };

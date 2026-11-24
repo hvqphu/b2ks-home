@@ -67,6 +67,7 @@ export interface ArcadeHostDeps {
   saveGame: (pushCloud?: boolean) => void;
   triggerSpeechBubble: (m: Member, text: string, isEng: boolean) => void;
   closeModal: (id: string) => void;
+  openModal?: (id: string) => void;
   maxParentPoints: number;
   getMaxParentPoints?: () => number;
 }
@@ -196,11 +197,17 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
       remoteRoom.playerIds.includes(me.id)
     ) {
       const modalEl = document.getElementById('arcade-modal');
-      if (modalEl && modalEl.style.display !== 'flex') {
-        modalEl.style.display = 'flex';
+      if (!modalEl || modalEl.style.display !== 'flex') {
+        if (deps.openModal) {
+          deps.openModal('arcade-modal');
+        } else if (modalEl) {
+          modalEl.style.display = 'flex';
+        }
         deps.playSuccess();
         deps.showToast('🚀 Trận đấu Khu Vui Chơi đã bắt đầu!');
       }
+      renderArcadeLobby();
+      return;
     }
 
     const modalEl = document.getElementById('arcade-modal');
@@ -264,7 +271,7 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
       gameType,
       hostId: me.id,
       playerIds: [me.id],
-      readyMap: { [me.id]: true },
+      readyMap: { [me.id]: false },
       pot: 0,
       matchData: null,
       winnerId: null,
@@ -370,8 +377,13 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
 
   function startOnlineArcadeMatch() {
     const state = deps.getState();
+    const me = deps.getCurrentUser();
     const r = arcadeRoomState;
     if (!r || r.status !== 'lobby') return;
+    if (r.hostId !== me.id) {
+      deps.playError();
+      return deps.showToast('⚠️ Chỉ người tạo phòng mới có thể bấm Bắt Đầu Trận Đấu!');
+    }
     const cat = ARCADE_GAME_CATALOG[r.gameType];
 
     const validPlayers = r.playerIds
@@ -483,17 +495,25 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
 
     if (isDraw) {
       participants.forEach((p) => {
-        p.points = deps.isParent(p)
-          ? Math.max(p.points, Math.min(parentCap, p.points + 1))
-          : p.points + 1;
+        if (deps.isParent(p)) {
+          if (p.points < parentCap) {
+            p.points = Math.min(parentCap, p.points + 1);
+          }
+        } else {
+          p.points += 1;
+        }
       });
       deps.playClick();
     } else if (winnerId) {
       const winnerMember = state.members.find((m) => m.id === winnerId);
       if (winnerMember) {
-        winnerMember.points = deps.isParent(winnerMember)
-          ? Math.max(winnerMember.points, Math.min(parentCap, winnerMember.points + r.pot))
-          : winnerMember.points + r.pot;
+        if (deps.isParent(winnerMember)) {
+          if (winnerMember.points < parentCap) {
+            winnerMember.points = Math.min(parentCap, winnerMember.points + r.pot);
+          }
+        } else {
+          winnerMember.points += r.pot;
+        }
         deps.playSuccess();
         deps.triggerSpeechBubble(winnerMember, `Won +${r.pot}⭐ in ${cat.shortTitle}! 🏆`, true);
       }
@@ -640,7 +660,7 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
               })
               .join('')}
           </div>
-          <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
+          <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center; align-items:center;">
             ${
               !isJoined
                 ? validPlayerObjs.length < cat.maxPlayers
@@ -650,8 +670,10 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
                    <button class="btn" style="background:#7F8C8D;" onclick="leaveArcadeLobby()">🚪 Rời Bàn</button>`
             }
             ${
-              isHost || isJoined
-                ? `<button class="btn btn-primary" ${!allReady ? 'disabled style="opacity:0.45; cursor:not-allowed;"' : ''} onclick="startOnlineArcadeMatch()">🚀 Bắt Đầu Trận Đấu (${validPlayerObjs.length}/${cat.minPlayers})</button>`
+              isHost
+                ? `<button class="btn" ${!allReady ? 'disabled' : ''} style="background:${allReady ? '#16A34A' : '#94A3B8'}; color:#FFF; ${!allReady ? 'opacity:0.45; cursor:not-allowed; filter:grayscale(0.35);' : 'box-shadow:0 3px 0 #14532D;'}" onclick="startOnlineArcadeMatch()">🚀 Vào Game (${validPlayerObjs.length}/${cat.minPlayers})</button>`
+                : isJoined
+                ? `<span class="tag" style="background:#FEF9C3; color:#854D0E; border:1.5px solid #CA8A04; padding:7px 10px;">⏳ Chờ chủ phòng (${state.members.find((m) => m.id === r.hostId)?.name || 'Host'}) bấm Vào Game khi tất cả Sẵn Sàng...</span>`
                 : ''
             }
           </div>
@@ -1318,6 +1340,27 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
     arcadeAnimFrameId = requestAnimationFrame(step);
   }
 
+  function checkZoneAutoExit() {
+    const r = arcadeRoomState;
+    if (!r || (r.status !== 'lobby' && r.status !== 'playing')) return;
+    const me = deps.getCurrentUser();
+    if (!Array.isArray(r.playerIds) || !r.playerIds.includes(me.id)) return;
+    const state = deps.getState();
+    const arcLoc = resolveNeighborhoodLocations(state).find((l) => l.id === 'arcade');
+    const ax = arcLoc ? arcLoc.x : ARCADE_CENTER.x;
+    const ay = arcLoc ? arcLoc.y : ARCADE_CENTER.y;
+    const dist = Math.hypot(me.x - ax, me.y - ay);
+    if (me.scene !== 'neighborhood' || dist > ARCADE_CENTER.radius + 15) {
+      if (r.status === 'lobby') {
+        leaveArcadeLobby();
+      } else {
+        forfeitOnlineMatch();
+      }
+      closeArcadeModal();
+      deps.showToast('🚶 Bạn đã rời Khu Vui Chơi nên tự động thoát phòng game!');
+    }
+  }
+
   return {
     getRoomState,
     stopArcadeLoop,
@@ -1337,6 +1380,7 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
     answerOnlineBuzzerQuestion,
     dashOnlineArcadeShip,
     fireOnlineArcadeShip,
-    handleArcadeKeyPress
+    handleArcadeKeyPress,
+    checkZoneAutoExit
   };
 }

@@ -156,6 +156,12 @@ export const ParentalDashboardModal: React.FC<Props> = ({ bridge, onClose }) => 
   const pendingRequests = state.crossWorldRequests.filter((r) => r.status === 'pending');
 
   useEffect(() => {
+    if (!draggingLocRef.current) {
+      setDraftLayouts({ ...(bridge.getState().buildingLayouts || {}) });
+    }
+  }, [state.buildingLayoutsUpdatedAt]);
+
+  useEffect(() => {
     if (!isB2KSFamily && tab === 'activities') {
       setTab('charts');
     }

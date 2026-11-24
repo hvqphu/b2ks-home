@@ -70,34 +70,53 @@ export const SpeakingPracticeModal: React.FC<Props> = ({ bridge, onClose }) => {
   const [statusMsg, setStatusMsg] = useState('Bấm 🔊 Nghe mẫu trước rồi bấm 🎤 Nói thật rõ nhé!');
 
   const recognitionRef = useRef<InstanceType<SpeechRecognitionCtor> | null>(null);
+  const sessionIdRef = useRef<number>(0);
+  const latestTranscriptRef = useRef<string>('');
+  const handledResultRef = useRef<boolean>(false);
+  const currentSentenceRef = useRef<SpeakingSentence | undefined>(currentSentence);
+  currentSentenceRef.current = currentSentence;
   const hasSpeechRec = Boolean(getSpeechRecognitionCtor());
 
   useEffect(() => {
     let mounted = true;
-    const checkMic = async () => {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        if (mounted) setMicState(hasSpeechRec ? 'ready' : 'unsupported');
+    const initMicStatus = async () => {
+      if (!hasSpeechRec) {
+        if (mounted) setMicState('unsupported');
         return;
       }
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        stream.getTracks().forEach((t) => t.stop());
-        if (mounted) {
-          setMicState(hasSpeechRec ? 'ready' : 'unsupported');
-        }
-      } catch {
-        if (mounted) {
-          setMicState('denied');
+      if (navigator.permissions?.query) {
+        try {
+          const perm = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+          if (mounted) {
+            setMicState(perm.state === 'denied' ? 'denied' : 'ready');
+          }
+          perm.onchange = () => {
+            if (mounted) {
+              setMicState(perm.state === 'denied' ? 'denied' : 'ready');
+            }
+          };
+          return;
+        } catch {
+          // Some browsers don't support microphone permission query
         }
       }
+      if (mounted) setMicState('ready');
     };
-    checkMic();
+    initMicStatus();
     return () => {
       mounted = false;
-      try {
-        recognitionRef.current?.abort();
-      } catch {
-        // ignore
+      sessionIdRef.current += 1;
+      const oldRec = recognitionRef.current;
+      recognitionRef.current = null;
+      if (oldRec) {
+        oldRec.onresult = null;
+        oldRec.onerror = null;
+        oldRec.onend = null;
+        try {
+          oldRec.abort();
+        } catch {
+          // ignore
+        }
       }
     };
   }, [hasSpeechRec]);
@@ -118,17 +137,18 @@ export const SpeakingPracticeModal: React.FC<Props> = ({ bridge, onClose }) => {
   };
 
   const evaluateTranscript = (transcript: string) => {
-    if (!currentSentence) return;
+    const sentenceObj = currentSentenceRef.current;
+    if (!sentenceObj) return;
     const clean = transcript.trim();
     if (!clean) {
       setStatusMsg('⚠️ Chưa nghe rõ giọng đọc, con hãy thử lại nhé!');
       return;
     }
     setSpokenText(clean);
-    const evalRes = scoreSpeakingPronunciation(currentSentence.sentence, clean);
+    const evalRes = scoreSpeakingPronunciation(sentenceObj.sentence, clean);
     const submitted = bridge.submitSpeakingResult?.({
-      sentenceId: currentSentence.id,
-      targetText: currentSentence.sentence,
+      sentenceId: sentenceObj.id,
+      targetText: sentenceObj.sentence,
       spokenText: clean,
       accuracy: evalRes.accuracy,
       npcId: npc.id,
@@ -151,71 +171,161 @@ export const SpeakingPracticeModal: React.FC<Props> = ({ bridge, onClose }) => {
     }
   };
 
-  const handleStartListening = async () => {
+  const stopActiveRecognition = (graceful: boolean) => {
+    const curRec = recognitionRef.current;
+    if (!curRec) return;
+    if (!graceful) {
+      curRec.onresult = null;
+      curRec.onerror = null;
+      curRec.onend = null;
+      recognitionRef.current = null;
+      try {
+        curRec.abort();
+      } catch {
+        // ignore
+      }
+    } else {
+      try {
+        curRec.stop();
+      } catch {
+        // ignore
+      }
+    }
+  };
+
+  const handleStartListening = () => {
     const Ctor = getSpeechRecognitionCtor();
     if (!Ctor) {
       setMicState('unsupported');
       setStatusMsg('⚠️ Trình duyệt không hỗ trợ nhận diện giọng nói Web Speech API. Con có thể nhập câu vừa đọc bên dưới để kiểm tra.');
       return;
     }
-    if (isListening) {
-      try {
-        recognitionRef.current?.stop();
-      } catch {
-        // ignore
-      }
+
+    // Cancel any active TTS playback immediately so it doesn't interfere with mic
+    try {
+      window.speechSynthesis?.cancel();
+    } catch {
+      // ignore
+    }
+
+    if (isListening && recognitionRef.current) {
+      stopActiveRecognition(true);
       setIsListening(false);
+      if (!handledResultRef.current && latestTranscriptRef.current.trim()) {
+        handledResultRef.current = true;
+        evaluateTranscript(latestTranscriptRef.current);
+      }
       return;
     }
 
-    // Ensure microphone permission is granted
-    if (navigator.mediaDevices?.getUserMedia) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        stream.getTracks().forEach((t) => t.stop());
-        setMicState('ready');
-      } catch {
-        setMicState('denied');
-        setStatusMsg('❌ Không có quyền Micro! Hãy cho phép quyền Micro trên trình duyệt để luyện nói.');
-        return;
-      }
-    }
-
+    // Abort any stale session and start synchronously within the user click gesture
+    stopActiveRecognition(false);
+    const mySession = ++sessionIdRef.current;
+    latestTranscriptRef.current = '';
+    handledResultRef.current = false;
     setLastOutcome(null);
     setSpokenText('');
+
     try {
       const rec = new Ctor();
       rec.lang = 'en-US';
-      rec.interimResults = false;
-      rec.maxAlternatives = 2;
+      rec.interimResults = true;
+      rec.maxAlternatives = 3;
       rec.continuous = false;
       recognitionRef.current = rec;
+      setMicState('ready');
       setIsListening(true);
       setStatusMsg('🎙️ Đang nghe con đọc... Hãy đọc to, rõ câu Tiếng Anh trên màn hình!');
 
       rec.onresult = (ev) => {
-        const transcript = ev.results?.[0]?.[0]?.transcript || '';
-        setIsListening(false);
-        evaluateTranscript(transcript);
+        if (sessionIdRef.current !== mySession) return;
+        const results = ev.results as unknown as ArrayLike<
+          ArrayLike<{ transcript: string }> & { isFinal?: boolean }
+        >;
+        if (!results || results.length === 0) return;
+
+        let combined = '';
+        let hasFinal = false;
+        const target = currentSentenceRef.current?.sentence || '';
+
+        for (let i = 0; i < results.length; i++) {
+          const item = results[i];
+          if (!item || item.length === 0) continue;
+          let bestAlt = item[0]?.transcript || '';
+          if (item.isFinal) {
+            hasFinal = true;
+            if (item.length > 1 && target) {
+              let bestAcc = -1;
+              for (let a = 0; a < item.length; a++) {
+                const cand = (item[a]?.transcript || '').trim();
+                if (!cand) continue;
+                const sc = scoreSpeakingPronunciation(target, cand).accuracy;
+                if (sc > bestAcc) {
+                  bestAcc = sc;
+                  bestAlt = cand;
+                }
+              }
+            }
+          }
+          combined += (combined ? ' ' : '') + bestAlt.trim();
+        }
+
+        const clean = combined.trim();
+        if (clean) {
+          latestTranscriptRef.current = clean;
+          setSpokenText(clean);
+        }
+
+        if (hasFinal && clean && !handledResultRef.current) {
+          handledResultRef.current = true;
+          recognitionRef.current = null;
+          setIsListening(false);
+          try {
+            rec.stop();
+          } catch {
+            // ignore
+          }
+          evaluateTranscript(clean);
+        }
       };
+
       rec.onerror = (ev) => {
+        if (sessionIdRef.current !== mySession) return;
+        recognitionRef.current = null;
         setIsListening(false);
+        if (ev.error === 'aborted') {
+          return;
+        }
         if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') {
           setMicState('denied');
-          setStatusMsg('❌ Micro đang bị chặn quyền truy cập.');
+          setStatusMsg('❌ Micro đang bị chặn quyền truy cập. Hãy bật quyền Micro trên trình duyệt!');
         } else if (ev.error === 'no-speech') {
-          setStatusMsg('🔇 Không phát hiện giọng nói. Hãy bấm Mic và đọc lại nhé!');
+          if (latestTranscriptRef.current.trim() && !handledResultRef.current) {
+            handledResultRef.current = true;
+            evaluateTranscript(latestTranscriptRef.current);
+          } else {
+            setStatusMsg('🔇 Không phát hiện giọng nói. Hãy bấm Mic và đọc to, rõ lại nhé!');
+          }
         } else {
           setStatusMsg(`⚠️ Lỗi nhận diện giọng nói (${ev.error}). Hãy thử lại!`);
         }
       };
+
       rec.onend = () => {
+        if (sessionIdRef.current !== mySession) return;
+        recognitionRef.current = null;
         setIsListening(false);
+        if (!handledResultRef.current && latestTranscriptRef.current.trim()) {
+          handledResultRef.current = true;
+          evaluateTranscript(latestTranscriptRef.current);
+        }
       };
+
       rec.start();
     } catch {
+      recognitionRef.current = null;
       setIsListening(false);
-      setStatusMsg('⚠️ Không thể bật micro lúc này.');
+      setStatusMsg('⚠️ Không thể bật micro lúc này. Hãy thử bấm lại 1 lần nữa!');
     }
   };
 

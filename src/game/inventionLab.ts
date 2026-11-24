@@ -73,7 +73,7 @@ export function isValidEnglishLabPrompt(raw: string): { ok: boolean; reason?: st
   return { ok: true, words };
 }
 
-const SHAPE_LIBRARY: { keys: string[]; shape: string }[] = [
+export const SHAPE_LIBRARY: { keys: string[]; shape: string }[] = [
   { keys: ['pencil', 'pen', 'crayon', 'marker'], shape: 'pencil' },
   { keys: ['bicycle', 'bike', 'cycle', 'tricycle'], shape: 'bicycle' },
   { keys: ['motorcycle', 'motorbike'], shape: 'motorbike' },
@@ -168,7 +168,7 @@ function matchShapeList(text: string): string[] {
   return results;
 }
 
-const MATERIAL_PALETTES = [
+export const MATERIAL_PALETTES = [
   { keys: ['galaxy', 'cosmic', 'space', 'nebula', 'night'], material: 'galaxy', hex: '#4F46E5', accent: '#38BDF8', rarity: 'Vũ Trụ' },
   { keys: ['rainbow', 'colorful', 'prism'], material: 'rainbow', hex: '#EC4899', accent: '#FACC15', isRainbow: true, rarity: 'Cầu Vồng' },
   { keys: ['fire', 'lava', 'volcano', 'phoenix', 'flame'], material: 'fire', hex: '#DC2626', accent: '#FBBF24', rarity: 'Rực Lửa' },
@@ -264,7 +264,7 @@ export function parsePromptToLabSpec(
     wingCount,
     wingStyle,
     hasWings: /\b(wings?|winged|flying|fly|angel|pegasus|feather|feathers)\b/i.test(lower),
-    hasWheels: /\b(wheels?|rolling)\b/i.test(lower),
+    hasWheels: /\b(wheels?|rolling)\b/i.test(lower) || (secondaryTrait === 'skateboard' && primaryShape !== 'skateboard'),
     hasLegs: /\b(legs?|walk|walking)\b/i.test(lower) || secondaryTrait === 'table',
     hasFishTail: /\b(mermaid|swim|swimming|fins?|fishtail)\b/i.test(lower) || (secondaryTrait === 'fish' && primaryShape !== 'fish'),
     hasCrown: /\b(crown|tiara|king|queen|royal|princess|prince)\b/i.test(lower) && primaryShape !== 'crown',
@@ -358,6 +358,10 @@ export function buildLabSVGMarkup(spec: LabItemSpec): string {
   if (spec.hasLegs) {
     parts.push(`<rect x="20" y="45" width="5" height="12" rx="2" fill="#92400E" stroke="#1E293B" stroke-width="1.8"/>`);
     parts.push(`<rect x="39" y="45" width="5" height="12" rx="2" fill="#92400E" stroke="#1E293B" stroke-width="1.8"/>`);
+  }
+
+  if (spec.hasCape) {
+    parts.push(`<path d="M22 25 L11 51 Q32 46 53 51 L42 25 Z" fill="#DC2626" stroke="#1E293B" stroke-width="1.8" opacity="0.88"/>`);
   }
 
   if (spec.hasAntenna) {
@@ -608,10 +612,11 @@ export function buildLabSVGMarkup(spec: LabItemSpec): string {
       parts.push(`<circle cx="45" cy="38" r="4.8" fill="#FACC15" stroke="#1E293B" stroke-width="1.8"/>`);
       break;
     case 'guitar':
-      parts.push(`<rect x="30" y="7" width="4.5" height="24" fill="#78350F" stroke="#1E293B" stroke-width="1.6"/>`);
-      parts.push(`<circle cx="32" cy="34" r="9" fill="${fillMain}" stroke="#1E293B" stroke-width="2"/>`);
-      parts.push(`<circle cx="32" cy="45" r="12" fill="${fillMain}" stroke="#1E293B" stroke-width="2"/>`);
-      parts.push(`<circle cx="32" cy="41" r="4" fill="#1E293B"/>`);
+      parts.push(`<path d="M32 25 C26 25 23 29 25 34 C26 36 23 38 20 42 C17 48 21 54 32 54 C43 54 47 48 44 42 C41 38 38 36 39 34 C41 29 38 25 32 25 Z" fill="${fillMain}" stroke="#1E293B" stroke-width="2"/>`);
+      parts.push(`<circle cx="32" cy="37" r="4.3" fill="#0F172A" stroke="#FACC15" stroke-width="1.3"/>`);
+      parts.push(`<rect x="27" y="45" width="10" height="2.4" rx="1" fill="#451A03"/>`);
+      parts.push(`<rect x="29.5" y="10" width="5" height="20" fill="#451A03" stroke="#1E293B" stroke-width="1.4"/>`);
+      parts.push(`<rect x="27.5" y="5" width="9" height="6" rx="1.4" fill="#78350F" stroke="#1E293B" stroke-width="1.4"/>`);
       break;
     case 'piano':
       parts.push(`<rect x="11" y="22" width="42" height="28" rx="4" fill="${fillMain}" stroke="#1E293B" stroke-width="2.1"/>`);

@@ -211,6 +211,7 @@ export interface SoccerOnlineRoom {
   bvy: number;
   goalBannerText: string;
   goalBannerUntil: number;
+  readyMap?: Record<string, boolean>;
   updatedAt: number;
 }
 
@@ -334,6 +335,9 @@ export interface Member {
   roomWall: string;
   roomDecor: { id: string; icon: string; x: number; y: number }[];
   roomSlots?: Record<string, string>;
+  roomSlotSpecs?: Record<string, CustomLabItem>;
+  roomDecorSpecs?: Record<string, CustomLabItem>;
+  inventoryConsumedMigrated?: boolean;
   customLabItems?: CustomLabItem[];
   unlockedZooAnimals?: string[];
   englishQuizHistory?: EnglishQuizRecord[];
@@ -350,6 +354,7 @@ export interface Member {
   petFoodInventory?: Record<string, number>;
   petAccessories?: string[];
   memberUpdatedAt?: number;
+  nameUpdatedAt?: number;
   pointsUpdatedAt?: number;
   adminPointsUpdatedAt?: number;
   englishChatStats?: {
@@ -519,6 +524,7 @@ export interface B2KSState {
   updatedAt: number;
   familyMessages: unknown[];
   house: { plotIndex: number; style: string };
+  houseUpdatedAt?: number;
   buildingLayouts?: Record<string, BuildingLayoutOverride>;
   buildingLayoutsUpdatedAt?: number;
   bgmTheme?: BgmThemeId;
@@ -531,6 +537,8 @@ export interface B2KSState {
   activityConfigs?: Record<ActivityConfigId, ActivityConfigItem>;
   activityConfigsUpdatedAt?: number;
   dailyParentAllowance?: number;
+  maxParentPoints?: number;
+  maxParentPointsUpdatedAt?: number;
   englishQuestions: EnglishQuestion[];
   chatHistory: { sender: string; text: string; isEng: boolean; ts?: number }[];
   lastDailyReset: string;
@@ -541,6 +549,7 @@ export interface OtherFamilySummary {
   familyName: string;
   updatedAt: number;
   dailyParentAllowance?: number;
+  maxParentPoints?: number;
   deleted?: boolean;
   members: Array<{
     id: string;
@@ -557,6 +566,7 @@ export interface AdminNeighborhoodRecord {
   familyName: string;
   updatedAt: number;
   dailyParentAllowance: number;
+  maxParentPoints: number;
   memberCount: number;
   kidCount: number;
   parents: Array<{
@@ -600,7 +610,16 @@ export interface B2KSBridge {
   syncCrossWorldRequestsToFirebase: (reqs: CrossWorldRequest[]) => void;
   syncFleaMarketToFirebase: (listings: FleaMarketListing[]) => void;
   syncActivityLogsToFirebase: (logs: ActivityLogEntry[]) => void;
-  findCatalogItem: (id: string) => { id: string; name: string; icon?: string; desc?: string; category?: string; sub?: string } | null;
+  findCatalogItem: (id: string) => {
+    id: string;
+    name: string;
+    icon?: string;
+    desc?: string;
+    category?: string;
+    sub?: string;
+    labSpec?: LabItemSpec;
+    svgMarkup?: string;
+  } | null;
   renderItemSVG: (id: string, size?: number) => string;
   openReactModal: (modal: ActiveReactModal) => void;
   closeReactModal: () => void;
@@ -660,13 +679,14 @@ export interface B2KSBridge {
     leveledUp: boolean;
     msg: string;
   };
+  getMaxParentPoints?: () => number;
   adminListNeighborhoods?: () => Promise<AdminNeighborhoodRecord[]>;
   adminCreateNeighborhood?: (familyName: string, dadName?: string, momName?: string) => Promise<{ ok: boolean; msg: string; slug?: string }>;
   adminDeleteNeighborhood?: (slug: string) => Promise<{ ok: boolean; msg: string }>;
   adminResetNeighborhoodPasswords?: (slug: string) => Promise<{ ok: boolean; msg: string }>;
   adminAdjustParentAccount?: (
     slug: string,
-    payload: { dailyParentAllowance?: number; parentPoints?: Record<string, number> }
+    payload: { dailyParentAllowance?: number; maxParentPoints?: number; parentPoints?: Record<string, number> }
   ) => Promise<{ ok: boolean; msg: string }>;
   subscribe: (fn: () => void) => () => void;
 }

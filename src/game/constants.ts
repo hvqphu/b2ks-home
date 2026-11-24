@@ -28,14 +28,22 @@ export const PLOTS = [
 ];
 
 export const ROOM_DECOR_SLOTS = [
-  { id: 'slot_bedside', label: 'Cạnh giường ngủ', x: 225, y: 36 },
-  { id: 'slot_window', label: 'Dưới cửa sổ', x: 380, y: 34 },
-  { id: 'slot_bookshelf_side', label: 'Cạnh tủ đồ', x: 535, y: 36 },
-  { id: 'slot_mid_left', label: 'Sát tường trái', x: 44, y: 185 },
-  { id: 'slot_center', label: 'Trung tâm thảm', x: 380, y: 225 },
-  { id: 'slot_right_corner', label: 'Sát tường phải', x: 716, y: 185 },
-  { id: 'slot_left_corner', label: 'Góc dưới trái', x: 54, y: 386 },
-  { id: 'slot_right_wall', label: 'Góc dưới phải', x: 706, y: 386 }
+  { id: 'slot_bedside', label: 'Cạnh giường ngủ', x: 225, y: 42 },
+  { id: 'slot_window', label: 'Dưới cửa sổ', x: 380, y: 42 },
+  { id: 'slot_bookshelf_side', label: 'Cạnh tủ đồ', x: 535, y: 42 },
+  { id: 'slot_bed_foot', label: 'Cuối giường ngủ', x: 118, y: 126 },
+  { id: 'slot_upper_left', label: 'Góc trên trái thảm', x: 265, y: 135 },
+  { id: 'slot_upper_right', label: 'Góc trên phải thảm', x: 495, y: 135 },
+  { id: 'slot_wardrobe_front', label: 'Trước tủ quần áo', x: 645, y: 118 },
+  { id: 'slot_mid_left', label: 'Sát tường trái', x: 44, y: 195 },
+  { id: 'slot_rug_left', label: 'Bên trái thảm', x: 205, y: 230 },
+  { id: 'slot_center', label: 'Trung tâm thảm', x: 380, y: 230 },
+  { id: 'slot_rug_right', label: 'Bên phải thảm', x: 555, y: 230 },
+  { id: 'slot_right_corner', label: 'Sát tường phải', x: 716, y: 195 },
+  { id: 'slot_left_corner', label: 'Góc dưới trái', x: 64, y: 386 },
+  { id: 'slot_front_left', label: 'Góc dưới trái thảm', x: 235, y: 365 },
+  { id: 'slot_front_right', label: 'Góc dưới phải thảm', x: 525, y: 365 },
+  { id: 'slot_right_wall', label: 'Góc dưới phải', x: 696, y: 386 }
 ];
 
 export const SHOP_CATALOG = [
