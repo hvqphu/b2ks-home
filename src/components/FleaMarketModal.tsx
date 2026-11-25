@@ -88,7 +88,8 @@ export const FleaMarketModal: React.FC<Props> = ({ bridge, onClose }) => {
       createdAt: Date.now(),
     };
 
-    user.memberUpdatedAt = Date.now();
+    const now = Date.now();
+    user.memberUpdatedAt = Math.max(now, (user.memberUpdatedAt || 0) + 1);
     state.fleaMarketListings.unshift(listing);
     bridge.syncFleaMarketToFirebase(state.fleaMarketListings);
     bridge.saveGame(true);
@@ -109,7 +110,7 @@ export const FleaMarketModal: React.FC<Props> = ({ bridge, onClose }) => {
     const now = Date.now();
     const seller = state.members.find((m) => m.id === listing.sellerId);
     user.points -= listing.price;
-    user.memberUpdatedAt = now;
+    user.memberUpdatedAt = Math.max(now, (user.memberUpdatedAt || 0) + 1);
     if (seller) {
       if (bridge.isParent(seller)) {
         const cap = bridge.getMaxParentPoints?.() ?? 500;
@@ -119,7 +120,7 @@ export const FleaMarketModal: React.FC<Props> = ({ bridge, onClose }) => {
       } else {
         seller.points += listing.price;
       }
-      seller.memberUpdatedAt = now;
+      seller.memberUpdatedAt = Math.max(now, (seller.memberUpdatedAt || 0) + 1);
     }
 
     if (listing.itemKind === 'lab' && listing.labItemData) {
@@ -156,7 +157,7 @@ export const FleaMarketModal: React.FC<Props> = ({ bridge, onClose }) => {
     } else {
       user.inventory.push(listing.itemId);
     }
-    user.memberUpdatedAt = Date.now();
+    user.memberUpdatedAt = Math.max(Date.now(), (user.memberUpdatedAt || 0) + 1);
     state.fleaMarketListings = state.fleaMarketListings.filter((x) => x.id !== listing.id);
     bridge.syncFleaMarketToFirebase(state.fleaMarketListings);
     bridge.saveGame(true);

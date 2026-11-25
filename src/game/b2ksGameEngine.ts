@@ -22,6 +22,7 @@ import {
   NavDestination,
   OtherFamilySummary,
   OwnedPet,
+  PenaltyZoneId,
   PetStage,
   RobotReminderItem,
   RobotSkinId,
@@ -162,11 +163,16 @@ export function initB2KSGameEngine() {
   const AudioEngine = {
     ctx: null as AudioContext | null,
     isMuted: localStorage.getItem('b2ks_bgm_muted') === '1',
+    tempPaused: false,
     themeId: (localStorage.getItem('b2ks_bgm_theme') as BgmThemeId) || 'sunny_town',
     bgmTimer: null as number | null,
     noteIndex: 0,
+    noiseBuffer: null as AudioBuffer | null,
     getActiveTheme() {
       return BGM_THEME_OPTIONS.find((t) => t.id === this.themeId) || BGM_THEME_OPTIONS[0];
+    },
+    setTempPaused(paused: boolean) {
+      this.tempPaused = Boolean(paused);
     },
     init() {
       if (!this.ctx) {
@@ -217,6 +223,120 @@ export function initB2KSGameEngine() {
         // ignore audio context error
       }
     },
+    playBgmVoice(freq: number, type: OscillatorType, duration: number, vol: number, filterFreq?: number) {
+      if (this.isMuted || this.tempPaused || !this.ctx || freq <= 0) return;
+      try {
+        const t0 = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, t0);
+        gain.gain.setValueAtTime(0.0005, t0);
+        gain.gain.linearRampToValueAtTime(vol, t0 + Math.min(0.014, duration * 0.18));
+        gain.gain.exponentialRampToValueAtTime(0.0006, t0 + duration);
+        if (filterFreq && filterFreq > 0) {
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(filterFreq, t0);
+          osc.connect(filter);
+          filter.connect(gain);
+        } else {
+          osc.connect(gain);
+        }
+        gain.connect(this.ctx.destination);
+        osc.start(t0);
+        osc.stop(t0 + duration + 0.01);
+      } catch {
+        // ignore
+      }
+    },
+    getNoiseBuffer(): AudioBuffer | null {
+      if (!this.ctx) return null;
+      if (this.noiseBuffer) return this.noiseBuffer;
+      const sampleRate = this.ctx.sampleRate || 44100;
+      const len = Math.floor(sampleRate * 0.12);
+      const buf = this.ctx.createBuffer(1, len, sampleRate);
+      const ch = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) {
+        ch[i] = Math.random() * 2 - 1;
+      }
+      this.noiseBuffer = buf;
+      return buf;
+    },
+    playPercussion(kind: 'kick' | 'snare' | 'hat' | 'wood') {
+      if (this.isMuted || this.tempPaused || !this.ctx) return;
+      try {
+        const t0 = this.ctx.currentTime;
+        if (kind === 'kick') {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(138, t0);
+          osc.frequency.exponentialRampToValueAtTime(42, t0 + 0.11);
+          gain.gain.setValueAtTime(0.045, t0);
+          gain.gain.exponentialRampToValueAtTime(0.0008, t0 + 0.12);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(t0);
+          osc.stop(t0 + 0.13);
+        } else if (kind === 'snare') {
+          const buf = this.getNoiseBuffer();
+          if (buf) {
+            const src = this.ctx.createBufferSource();
+            src.buffer = buf;
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.setValueAtTime(1850, t0);
+            const gain = this.ctx.createGain();
+            gain.gain.setValueAtTime(0.024, t0);
+            gain.gain.exponentialRampToValueAtTime(0.0006, t0 + 0.09);
+            src.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.ctx.destination);
+            src.start(t0);
+            src.stop(t0 + 0.095);
+          }
+          this.playBgmVoice(205, 'triangle', 0.055, 0.015, 700);
+        } else if (kind === 'hat') {
+          const buf = this.getNoiseBuffer();
+          if (buf) {
+            const src = this.ctx.createBufferSource();
+            src.buffer = buf;
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = 'highpass';
+            filter.frequency.setValueAtTime(6400, t0);
+            const gain = this.ctx.createGain();
+            gain.gain.setValueAtTime(0.014, t0);
+            gain.gain.exponentialRampToValueAtTime(0.0005, t0 + 0.036);
+            src.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.ctx.destination);
+            src.start(t0);
+            src.stop(t0 + 0.04);
+          }
+        } else if (kind === 'wood') {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(920, t0);
+          osc.frequency.exponentialRampToValueAtTime(660, t0 + 0.05);
+          gain.gain.setValueAtTime(0.022, t0);
+          gain.gain.exponentialRampToValueAtTime(0.0006, t0 + 0.055);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(t0);
+          osc.stop(t0 + 0.06);
+        }
+      } catch {
+        // ignore percussion error
+      }
+    },
+    playNotificationChime() {
+      if (this.isMuted || this.tempPaused) return;
+      [880, 1174.66, 1567.98].forEach((f, i) => {
+        setTimeout(() => this.playTone(f, 'sine', 0.16, 0.075), i * 95);
+      });
+    },
     playClick() {
       this.playTone(580, 'sine', 0.06, 0.05);
     },
@@ -239,14 +359,37 @@ export function initB2KSGameEngine() {
       }
       const theme = this.getActiveTheme();
       this.bgmTimer = window.setInterval(() => {
-        if (!this.isMuted && this.ctx && this.ctx.state === 'running' && isGameUnlocked) {
+        if (!this.isMuted && !this.tempPaused && this.ctx && this.ctx.state === 'running' && isGameUnlocked) {
           const t = this.getActiveTheme();
           const idx = this.noteIndex % t.melody.length;
+          const stepSec = t.stepMs / 1000;
           const freq = t.melody[idx];
           const bassFreq = t.bass[idx % t.bass.length] || 0;
-          this.playTone(freq, t.oscType, Math.min(0.28, (t.stepMs / 1000) * 0.72), t.oscType === 'square' ? 0.012 : 0.022);
+          const leadDur = Math.min(0.55, Math.max(0.08, stepSec * (t.leadDurFactor ?? 0.72)));
+          const leadVol = t.leadGain ?? (t.oscType === 'square' ? 0.012 : 0.022);
+          const bassVol = t.bassGain ?? 0.014;
+          const chordVol = t.chordGain ?? 0.008;
+
+          if (freq > 0) {
+            this.playBgmVoice(freq, t.oscType, leadDur, leadVol, t.filterFreq);
+          }
           if (bassFreq > 0) {
-            this.playTone(bassFreq, t.bassType, Math.min(0.32, (t.stepMs / 1000) * 0.8), 0.012);
+            this.playBgmVoice(bassFreq, t.bassType, Math.min(0.52, stepSec * 0.9), bassVol, t.filterFreq ? t.filterFreq * 0.8 : undefined);
+          }
+          if (Array.isArray(t.chords) && t.chords.length > 0) {
+            const triad = t.chords[idx % t.chords.length];
+            if (Array.isArray(triad) && triad.length > 0) {
+              const chordDur = Math.min(0.68, stepSec * 1.15);
+              triad.forEach((cf) => {
+                if (cf > 0) {
+                  this.playBgmVoice(cf, t.chordType || 'triangle', chordDur, chordVol, t.filterFreq || 2200);
+                }
+              });
+            }
+          }
+          if (Array.isArray(t.percussion) && t.percussion.length > 0) {
+            const hit = t.percussion[idx % t.percussion.length];
+            if (hit) this.playPercussion(hit);
           }
           this.noteIndex++;
         }
@@ -373,8 +516,243 @@ export function initB2KSGameEngine() {
   let currentWeather: WeatherInfo | null = getCachedWeatherInfo();
   const livePosTimestamps = new Map<string, number>();
   let lastSavedPointsMap: Record<string, number> = {};
+  let lastPushedMemberUpdatedAt: Record<string, number> = {};
   const dirtyMemberIds = new Set<string>();
   let lastZoneExitCheckAt = 0;
+
+  const seenTaskIds = new Set<number>();
+  let hasInitializedSeenTasks = false;
+  let notifPromptShownForSession = false;
+
+  function touchMemberData(member: Member, ts = Date.now()) {
+    if (!member) return;
+    member.memberUpdatedAt = Math.max(ts, (member.memberUpdatedAt || 0) + 1);
+    dirtyMemberIds.add(member.id);
+  }
+
+  function snapshotPushedMemberTimestamps() {
+    const next: Record<string, number> = {};
+    state.members.forEach((m) => {
+      next[m.id] = m.memberUpdatedAt || 0;
+    });
+    lastPushedMemberUpdatedAt = next;
+  }
+
+  function syncSeenTasksBaseline() {
+    (state.tasks || []).forEach((t) => {
+      if (t && typeof t.id === 'number') seenTaskIds.add(t.id);
+    });
+    hasInitializedSeenTasks = true;
+  }
+
+  function getNotificationStatus(): {
+    supported: boolean;
+    permission: NotificationPermission | 'unsupported';
+    hasServiceWorker: boolean;
+    enabled: boolean;
+  } {
+    const supported = typeof window !== 'undefined' && 'Notification' in window;
+    const permission: NotificationPermission | 'unsupported' = supported ? Notification.permission : 'unsupported';
+    const hasServiceWorker = typeof navigator !== 'undefined' && 'serviceWorker' in navigator;
+    const prefEnabled = localStorage.getItem('b2ks_task_notif_enabled') !== '0';
+    return {
+      supported,
+      permission,
+      hasServiceWorker,
+      enabled: supported && permission === 'granted' && prefEnabled
+    };
+  }
+
+  function updateNotificationHudUI() {
+    const status = getNotificationStatus();
+    const btn = document.getElementById('hud-notif-btn');
+    const ico = document.getElementById('hud-notif-ico');
+    const lbl = document.getElementById('hud-notif-lbl');
+    if (!btn) return;
+    if (!status.supported) {
+      if (ico) ico.textContent = '🔕';
+      if (lbl) lbl.textContent = 'Không HT';
+      btn.title = 'Trình duyệt không hỗ trợ thông báo hệ thống';
+      return;
+    }
+    if (status.enabled) {
+      if (ico) ico.textContent = '🔔';
+      if (lbl) lbl.textContent = 'Thông báo';
+      btn.style.boxShadow = '0 0 0 2px #10B981 inset';
+      btn.title = 'Thông báo bài tập đang BẬT (Bấm để tắt hoặc thử)';
+    } else if (status.permission === 'denied') {
+      if (ico) ico.textContent = '🔕';
+      if (lbl) lbl.textContent = 'Bị chặn';
+      btn.style.boxShadow = '';
+      btn.title = 'Thông báo đang bị trình duyệt chặn';
+    } else {
+      if (ico) ico.textContent = '🔔';
+      if (lbl) lbl.textContent = 'Bật TB';
+      btn.style.boxShadow = '';
+      btn.title = 'Bấm để bật thông báo khi Bố/Mẹ giao bài tập mới';
+    }
+  }
+
+  async function dispatchSystemNotification(title: string, body: string, tag?: string, taskId?: number) {
+    const status = getNotificationStatus();
+    if (!status.enabled) return;
+    const payload: NotificationOptions & { renotify?: boolean } = {
+      body,
+      icon: './pwa-192x192.png',
+      badge: './pwa-192x192.png',
+      tag: tag || 'b2ks-task',
+      renotify: true,
+      data: { taskId: taskId || null }
+    };
+    try {
+      if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg && typeof reg.showNotification === 'function') {
+          await reg.showNotification(title, payload);
+          return;
+        }
+      }
+    } catch {
+      // fallback to window.Notification
+    }
+    try {
+      const n = new Notification(title, payload);
+      n.onclick = () => {
+        try {
+          window.focus();
+          if (isGameUnlocked) openSmartphoneModal('tasks');
+          n.close();
+        } catch {
+          // ignore
+        }
+      };
+    } catch {
+      // ignore Notification error
+    }
+  }
+
+  async function requestNotificationPermission(): Promise<{ ok: boolean; permission: NotificationPermission | 'unsupported'; msg: string }> {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      updateNotificationHudUI();
+      return {
+        ok: false,
+        permission: 'unsupported',
+        msg: '⚠️ Trình duyệt hiện tại chưa hỗ trợ thông báo OS (trên iPhone hãy Cài vào màn hình chính iOS 16.4+).'
+      };
+    }
+    if (Notification.permission === 'granted') {
+      localStorage.setItem('b2ks_task_notif_enabled', '1');
+      updateNotificationHudUI();
+      return { ok: true, permission: 'granted', msg: '🔔 Thông báo bài tập mới đang BẬT!' };
+    }
+    if (Notification.permission === 'denied') {
+      updateNotificationHudUI();
+      return {
+        ok: false,
+        permission: 'denied',
+        msg: '❌ Trình duyệt đang chặn Thông báo. Hãy bấm biểu tượng 🔒 trên thanh địa chỉ để Cho phép Thông báo!'
+      };
+    }
+    try {
+      const res = await Notification.requestPermission();
+      if (res === 'granted') {
+        localStorage.setItem('b2ks_task_notif_enabled', '1');
+        updateNotificationHudUI();
+        dispatchSystemNotification('🔔 Đã bật thông báo B2KS!', 'Khi Bố/Mẹ giao bài tập hoặc việc nhà mới, con sẽ nhận được thông báo ngay.');
+        return { ok: true, permission: 'granted', msg: '🔔 Đã bật thông báo bài tập & nhiệm vụ mới!' };
+      }
+      updateNotificationHudUI();
+      return {
+        ok: false,
+        permission: res,
+        msg: res === 'denied'
+          ? '❌ Bạn đã từ chối quyền thông báo. Có thể bật lại trong Cài đặt trang web.'
+          : 'ℹ️ Chưa cấp quyền thông báo.'
+      };
+    } catch {
+      updateNotificationHudUI();
+      return { ok: false, permission: Notification.permission, msg: '⚠️ Không thể xin quyền thông báo lúc này.' };
+    }
+  }
+
+  async function sendTestNotification(): Promise<boolean> {
+    const res = await requestNotificationPermission();
+    if (!res.ok) {
+      showToast(res.msg);
+      return false;
+    }
+    AudioEngine.init();
+    AudioEngine.playNotificationChime();
+    const cur = getCurrentUser();
+    const msg = `Chào ${cur.name}! Thông báo bài tập đang hoạt động tốt trên thiết bị này.`;
+    showToast(`🔔 ${msg}`);
+    await dispatchSystemNotification('📬 Thử Thông Báo B2KS', msg, 'b2ks-test-notif');
+    return true;
+  }
+
+  function isTaskRelevantToMember(t: TaskItem, member: Member): boolean {
+    if (!t || t.status !== 'pending' || !member) return false;
+    if (t.creatorId === member.id) return false;
+    if (t.type === 'family_quest') {
+      return !Array.isArray(t.participantIds) || t.participantIds.includes(member.id);
+    }
+    return t.assigneeId === member.id;
+  }
+
+  function detectAndNotifyNewTasks() {
+    if (!hasInitializedSeenTasks) {
+      syncSeenTasksBaseline();
+      return;
+    }
+    const newlyArrived: TaskItem[] = [];
+    (state.tasks || []).forEach((t) => {
+      if (!t || typeof t.id !== 'number') return;
+      if (!seenTaskIds.has(t.id)) {
+        seenTaskIds.add(t.id);
+        newlyArrived.push(t);
+      }
+    });
+    if (!isGameUnlocked || newlyArrived.length === 0) return;
+
+    const cur = getCurrentUser();
+    const relevant = newlyArrived.filter((t) => isTaskRelevantToMember(t, cur));
+    if (relevant.length === 0) return;
+
+    const latest = relevant[relevant.length - 1];
+    const creatorName = state.members.find((m) => m.id === latest.creatorId)?.name || 'Bố/Mẹ';
+    const typeLabel =
+      latest.type === 'homework' ? '📚 Bài tập mới' : latest.type === 'family_quest' ? '🤝 Nhiệm vụ đồng đội' : '🧹 Việc nhà mới';
+    const summary =
+      relevant.length === 1
+        ? `${typeLabel} từ ${creatorName}: "${latest.title}" (+${latest.reward}⭐)`
+        : `Có ${relevant.length} nhiệm vụ mới từ ${creatorName}! Mới nhất: "${latest.title}"`;
+
+    AudioEngine.playNotificationChime();
+    showToast(`🔔 ${summary}`);
+    triggerSpeechBubble(cur, `Có nhiệm vụ mới: ${latest.title}! 📬`, false);
+    dispatchSystemNotification('📬 B2KS — Nhiệm vụ mới!', summary, `b2ks-task-${latest.id}`, latest.id);
+
+    const status = getNotificationStatus();
+    if (!notifPromptShownForSession && status.supported && status.permission === 'default') {
+      notifPromptShownForSession = true;
+      window.setTimeout(() => {
+        showToast('💡 Bấm nút 🔔 "Bật TB" trên thanh công cụ để nhận thông báo cả khi thu nhỏ app!');
+      }, 1800);
+    }
+
+    const tasksModal = document.getElementById('tasks-modal');
+    if (tasksModal && tasksModal.style.display === 'flex') renderTasksModal();
+    const phoneModal = document.getElementById('smartphone-modal');
+    if (phoneModal && phoneModal.style.display === 'flex') renderSmartphoneScreen();
+  }
+
+  if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
+    navigator.serviceWorker.addEventListener('message', (ev) => {
+      if (ev.data && ev.data.type === 'B2KS_OPEN_TASKS' && isGameUnlocked) {
+        openSmartphoneModal('tasks');
+      }
+    });
+  }
 
   let deviceConfig: { currentMemberId: string; isLockedToMember: boolean; firebaseUrl: string; lastFamilyName?: string } = (() => {
     try {
@@ -1136,7 +1514,7 @@ export function initB2KSGameEngine() {
           points: m.points,
           pointsUpdatedAt: m.pointsUpdatedAt || 0,
           adminPointsUpdatedAt: m.adminPointsUpdatedAt || 0,
-          memberUpdatedAt: m.memberUpdatedAt || Date.now(),
+          memberUpdatedAt: m.memberUpdatedAt || 0,
           nameUpdatedAt: m.nameUpdatedAt || 0,
           hairStyle: m.hairStyle,
           hairColor: m.hairColor,
@@ -1260,17 +1638,18 @@ export function initB2KSGameEngine() {
           if (entry.pantsStyle) m.pantsStyle = entry.pantsStyle;
           if (typeof entry.roomUnlocked === 'boolean') m.roomUnlocked = entry.roomUnlocked;
           if (entry.roomWall) m.roomWall = entry.roomWall;
-          if (Array.isArray(entry.inventory)) m.inventory = [...entry.inventory];
-          if (Array.isArray(entry.vouchers)) m.vouchers = [...entry.vouchers];
-          if (Array.isArray(entry.customLabItems)) m.customLabItems = [...entry.customLabItems];
-          if (entry.roomSlots && typeof entry.roomSlots === 'object') m.roomSlots = { ...entry.roomSlots };
-          if (entry.roomSlotSpecs && typeof entry.roomSlotSpecs === 'object') m.roomSlotSpecs = { ...entry.roomSlotSpecs };
-          if (Array.isArray(entry.roomDecor)) m.roomDecor = [...entry.roomDecor];
-          if (entry.roomDecorSpecs && typeof entry.roomDecorSpecs === 'object') m.roomDecorSpecs = { ...entry.roomDecorSpecs };
+          m.inventory = Array.isArray(entry.inventory) ? [...entry.inventory] : [];
+          m.vouchers = Array.isArray(entry.vouchers) ? [...entry.vouchers] : [];
+          m.customLabItems = Array.isArray(entry.customLabItems) ? [...entry.customLabItems] : [];
+          m.roomSlots = entry.roomSlots && typeof entry.roomSlots === 'object' ? { ...entry.roomSlots } : {};
+          m.roomSlotSpecs = entry.roomSlotSpecs && typeof entry.roomSlotSpecs === 'object' ? { ...entry.roomSlotSpecs } : {};
+          m.roomDecor = Array.isArray(entry.roomDecor) ? [...entry.roomDecor] : [];
+          m.roomDecorSpecs = entry.roomDecorSpecs && typeof entry.roomDecorSpecs === 'object' ? { ...entry.roomDecorSpecs } : {};
           if (typeof entry.inventoryConsumedMigrated === 'boolean') m.inventoryConsumedMigrated = entry.inventoryConsumedMigrated;
-          if (entry.petFoodInventory && Object.keys(entry.petFoodInventory).length > 0) {
-            m.petFoodInventory = { ...(entry.petFoodInventory || {}), ...(m.petFoodInventory || {}) };
-          }
+          m.petFoodInventory =
+            entry.petFoodInventory && typeof entry.petFoodInventory === 'object'
+              ? { ...entry.petFoodInventory }
+              : {};
           m.memberUpdatedAt = entry.memberUpdatedAt;
         }
         ensureMemberProps(m);
@@ -1364,7 +1743,6 @@ export function initB2KSGameEngine() {
     if (!deviceConfig.firebaseUrl) return;
     const fbBase = getFirebaseBasePath();
     const cur = getCurrentUser();
-    cur.memberUpdatedAt = cur.memberUpdatedAt || Date.now();
     const { englishQuestions: _omitEng, ...sharedPayload } = state;
     fetch(`${deviceConfig.firebaseUrl}/${fbBase}/shared.json`, {
       method: 'PUT',
@@ -1385,10 +1763,20 @@ export function initB2KSGameEngine() {
       })
     }).catch(() => {});
 
-    const memberIdsToPush = new Set<string>([cur.id, ...extraMemberIds]);
+    const memberIdsToPush = new Set<string>(extraMemberIds);
+    state.members.forEach((m) => {
+      if (lastPushedMemberUpdatedAt[m.id] === undefined || (m.memberUpdatedAt || 0) > (lastPushedMemberUpdatedAt[m.id] || 0)) {
+        memberIdsToPush.add(m.id);
+      }
+    });
+    if (memberIdsToPush.size === 0 && cur) {
+      memberIdsToPush.add(cur.id);
+    }
+
     memberIdsToPush.forEach((mId) => {
       const mObj = state.members.find((x) => x.id === mId);
       if (!mObj) return;
+      lastPushedMemberUpdatedAt[mObj.id] = mObj.memberUpdatedAt || 0;
       fetch(`${deviceConfig.firebaseUrl}/${fbBase}/member_data/${mObj.id}.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -1497,12 +1885,10 @@ export function initB2KSGameEngine() {
       state.members.forEach((m) => {
         if (lastSavedPointsMap[m.id] !== undefined && m.points !== lastSavedPointsMap[m.id]) {
           m.pointsUpdatedAt = now;
-          m.memberUpdatedAt = Math.max(m.memberUpdatedAt || 0, now);
+          touchMemberData(m, now);
           changedPointMembers.push(m.id);
         }
       });
-      const cur = getCurrentUser();
-      if (cur) cur.memberUpdatedAt = now;
 
       snapshotSavedPointsMap();
       hasLocalSaveFile = true;
@@ -1626,11 +2012,11 @@ export function initB2KSGameEngine() {
     if (isParent(user)) {
       state.members.filter(isParent).forEach((p) => {
         p.roomUnlocked = nextUnlocked;
-        p.memberUpdatedAt = nowTs;
+        touchMemberData(p, nowTs);
       });
     } else {
       user.roomUnlocked = nextUnlocked;
-      user.memberUpdatedAt = nowTs;
+      touchMemberData(user, nowTs);
     }
   }
 
@@ -1639,11 +2025,11 @@ export function initB2KSGameEngine() {
     if (isParent(user)) {
       state.members.filter(isParent).forEach((p) => {
         p.roomWall = nextWall;
-        p.memberUpdatedAt = nowTs;
+        touchMemberData(p, nowTs);
       });
     } else {
       user.roomWall = nextWall;
-      user.memberUpdatedAt = nowTs;
+      touchMemberData(user, nowTs);
     }
   }
 
@@ -2550,6 +2936,8 @@ export function initB2KSGameEngine() {
         completedAt: null,
         deadline
       });
+      state.tasksUpdatedAt = Date.now();
+      syncSeenTasksBaseline();
       const titleInput = document.getElementById('task-title') as HTMLInputElement | null;
       if (titleInput) titleInput.value = '';
       if (deadlineInput) deadlineInput.value = '';
@@ -2580,6 +2968,8 @@ export function initB2KSGameEngine() {
         parentFile: fileData, parentFileName: fileName,
         childFile: null, childFileName: '', childNote: '', grade: null
       });
+      state.tasksUpdatedAt = now;
+      syncSeenTasksBaseline();
       const titleInput = document.getElementById('task-title') as HTMLInputElement | null;
       if (titleInput) titleInput.value = '';
       if (deadlineInput) deadlineInput.value = '';
@@ -2617,6 +3007,7 @@ export function initB2KSGameEngine() {
       task.status = 'submitted';
       task.submittedAt = Date.now();
     }
+    state.tasksUpdatedAt = Date.now();
 
     logActivity({
       memberId: user.id,
@@ -2645,6 +3036,7 @@ export function initB2KSGameEngine() {
     const baseReward = isLate ? Math.floor(task.reward / 3) : task.reward;
     task.status = 'completed';
     task.completedAt = now;
+    state.tasksUpdatedAt = now;
     (task.participantIds || []).forEach((pid) => {
       const m = state.members.find((x) => x.id === pid);
       if (m) {
@@ -2653,7 +3045,7 @@ export function initB2KSGameEngine() {
         m.points += baseReward + pb.starBonus;
         m.completedTaskCount = (m.completedTaskCount || 0) + 1;
         m.pointsUpdatedAt = now;
-        m.memberUpdatedAt = now;
+        touchMemberData(m, now);
         evaluateAndUnlockMemberBadges(m);
       }
     });
@@ -2672,8 +3064,10 @@ export function initB2KSGameEngine() {
   function submitChore(taskId: number) {
     const task = state.tasks.find((t) => t.id === taskId);
     if (!task) return;
+    const now = Date.now();
     task.status = 'submitted';
-    task.submittedAt = Date.now();
+    task.submittedAt = now;
+    state.tasksUpdatedAt = now;
     const user = getCurrentUser();
     logActivity({
       memberId: user.id,
@@ -2684,7 +3078,7 @@ export function initB2KSGameEngine() {
     });
     AudioEngine.playSuccess();
     triggerSpeechBubble(user, `Con đã làm xong: ${task.title}!`, false);
-    showToast(task.deadline && Date.now() > task.deadline ? '📨 Đã báo cáo xong (quá hạn: còn 1/3⭐ khi duyệt)!' : '📨 Đã báo cáo hoàn thành cho Bố/Mẹ!');
+    showToast(task.deadline && now > task.deadline ? '📨 Đã báo cáo xong (quá hạn: còn 1/3⭐ khi duyệt)!' : '📨 Đã báo cáo hoàn thành cho Bố/Mẹ!');
     updateHUD();
     renderTasksModal();
     const phoneModal = document.getElementById('smartphone-modal');
@@ -2701,6 +3095,7 @@ export function initB2KSGameEngine() {
     const baseReward = isLate ? Math.floor(task.reward / 3) : task.reward;
     task.status = 'completed';
     task.completedAt = now;
+    state.tasksUpdatedAt = now;
     if (assignee) {
       ensureMemberProps(assignee);
       const pb = getMemberPetBonuses(assignee);
@@ -2708,7 +3103,7 @@ export function initB2KSGameEngine() {
       assignee.points += earned;
       assignee.completedTaskCount = (assignee.completedTaskCount || 0) + 1;
       assignee.pointsUpdatedAt = now;
-      assignee.memberUpdatedAt = now;
+      touchMemberData(assignee, now);
       AudioEngine.playCoin();
       showToast(
         isLate
@@ -2742,6 +3137,7 @@ export function initB2KSGameEngine() {
       if (creator) addParentPointsWithAllowanceCap(creator, refund);
     }
     state.tasks.splice(idx, 1);
+    state.tasksUpdatedAt = Date.now();
     AudioEngine.playClick();
     showToast(task.status !== 'completed' ? `🗑️ Đã xóa nhiệm vụ & hoàn lại +${refund}⭐ ngân sách!` : '🗑️ Đã xóa nhiệm vụ khỏi danh sách!');
     updateHUD();
@@ -4091,12 +4487,29 @@ export function initB2KSGameEngine() {
     }
 
     if (smartphoneCurrentView === 'tasks') {
+      const notifStatus = getNotificationStatus();
+      const notifBannerHtml = notifStatus.supported
+        ? `
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; padding:7px 9px; border-radius:10px; border:2px solid ${notifStatus.enabled ? '#10B981' : '#F59E0B'}; background:${notifStatus.enabled ? '#ECFDF5' : '#FFFBEB'}; margin-bottom:8px;">
+            <span style="font-size:11px; font-weight:700; color:${notifStatus.enabled ? '#065F46' : '#92400E'};">
+              ${notifStatus.enabled ? '🔔 Đã bật thông báo khi có bài tập mới' : notifStatus.permission === 'denied' ? '🔕 Thông báo đang bị chặn ở trình duyệt' : '🔔 Bật thông báo để biết ngay khi Bố/Mẹ giao bài'}
+            </span>
+            <div style="display:flex; gap:4px; shrink:0;">
+              <button type="button" class="btn btn-sm" style="padding:3px 8px; font-size:10.5px; background:${notifStatus.enabled ? '#475569' : '#0284C7'}; color:#FFF;" onclick="toggleTaskNotifications()">
+                ${notifStatus.enabled ? '🔕 Tắt' : '🔔 Bật'}
+              </button>
+              ${notifStatus.enabled ? `<button type="button" class="btn btn-sm btn-primary" style="padding:3px 8px; font-size:10.5px;" onclick="window.B2KS?.sendTestNotification()">Thử</button>` : ''}
+            </div>
+          </div>
+        `
+        : '';
       body.innerHTML = `
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
           <button type="button" class="btn btn-sm" style="background:#34495E;" onclick="switchSmartphoneView('home')">◀ Trang chủ</button>
           <b style="font-size:14px; color:#C0392B;">📋 Tasks & Đồng Đội</b>
           <span class="points-pill">${me.points}⭐</span>
         </div>
+        ${notifBannerHtml}
         <div id="phone-parent-task-creator" style="display:${isParent(me) ? 'block' : 'none'}; background:#FFF8E7; padding:9px; border:2px solid #2C3E50; border-radius:10px; margin-bottom:10px;">
           <div style="font-weight:700; font-size:12.5px; margin-bottom:6px;">➕ Giao việc / Đồng đội cho con</div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:6px;">
@@ -4336,9 +4749,12 @@ export function initB2KSGameEngine() {
     const menu = document.getElementById('member-dropdown-menu');
     if (menu) menu.classList.remove('open');
     lastHudSignature = '';
+    syncSeenTasksBaseline();
+    updateNotificationHudUI();
     syncPrivateRoomToolbar();
     updateHUD();
     saveGame();
+    pullFromFirebase();
     showToast(`👤 Đang điều khiển: ${getCurrentUser().name}`);
   }
 
@@ -5227,6 +5643,8 @@ export function initB2KSGameEngine() {
         assigneeId: participantIds[0], participantIds, progressMap,
         reward, status: 'pending', createdAt: Date.now(), completedAt: null, deadline
       });
+      state.tasksUpdatedAt = Date.now();
+      syncSeenTasksBaseline();
       AudioEngine.playSuccess();
       showToast(`🤝 Đã giao Nhiệm Vụ Đồng Đội (-${totalCost}⭐)!`);
       lastHudSignature = '';
@@ -5252,6 +5670,8 @@ export function initB2KSGameEngine() {
         status: 'pending', createdAt: Date.now(), completedAt: null, deadline,
         parentFile: fileData, parentFileName: fileName, childFile: null, childFileName: '', childNote: '', grade: null
       });
+      state.tasksUpdatedAt = Date.now();
+      syncSeenTasksBaseline();
       AudioEngine.playSuccess();
       showToast(`✅ Đã giao nhiệm vụ (-${reward}⭐ ngân sách)`);
       lastHudSignature = '';
@@ -5265,6 +5685,33 @@ export function initB2KSGameEngine() {
       reader.onload = (ev) => finalize((ev.target?.result as string) || null, f.name);
       reader.readAsDataURL(f);
     } else finalize(null, '');
+  };
+
+  w.toggleTaskNotifications = async () => {
+    AudioEngine.init();
+    AudioEngine.playClick();
+    const curStatus = getNotificationStatus();
+    if (!curStatus.supported) {
+      showToast('⚠️ Trình duyệt hiện tại chưa hỗ trợ thông báo OS (trên iPhone hãy cài vào màn hình chính).');
+      return;
+    }
+    if (curStatus.permission === 'granted') {
+      const nextEnabled = !curStatus.enabled;
+      localStorage.setItem('b2ks_task_notif_enabled', nextEnabled ? '1' : '0');
+      updateNotificationHudUI();
+      if (nextEnabled) {
+        AudioEngine.playNotificationChime();
+        showToast('🔔 Đã bật thông báo khi có bài tập/nhiệm vụ mới!');
+        dispatchSystemNotification('🔔 Đã bật thông báo B2KS!', 'Bạn sẽ nhận thông báo khi Bố/Mẹ giao bài tập mới.', 'b2ks-notif-toggle');
+      } else {
+        showToast('🔕 Đã tạm tắt thông báo OS (vẫn hiện chấm đỏ trong game).');
+      }
+    } else {
+      const res = await requestNotificationPermission();
+      showToast(res.msg);
+    }
+    const pm = document.getElementById('smartphone-modal');
+    if (pm && pm.style.display === 'flex' && smartphoneCurrentView === 'tasks') renderSmartphoneScreen();
   };
 
   w.toggleChatLog = () => {
@@ -5382,17 +5829,19 @@ export function initB2KSGameEngine() {
     const note = (document.getElementById('hw-child-note') as HTMLTextAreaElement)?.value.trim() || '';
     const fileInput = document.getElementById('hw-child-file') as HTMLInputElement | null;
     const finish = (fileData: string | null, fileName: string) => {
+      const now = Date.now();
       task.childNote = note;
       task.childFile = fileData;
       task.childFileName = fileName;
       task.status = 'submitted';
-      task.submittedAt = Date.now();
+      task.submittedAt = now;
+      state.tasksUpdatedAt = now;
       const u = getCurrentUser();
       logActivity({ memberId: u.id, memberName: u.name, action: 'task_done', detail: `Nộp bài tập: "${task.title}"`, taskId: task.id });
       closeModal('hw-action-modal');
       AudioEngine.playSuccess();
       triggerSpeechBubble(u, 'I finished my homework!', true);
-      showToast(task.deadline && Date.now() > task.deadline ? '📤 Đã nộp bài (quá hạn: còn 1/3⭐ điểm cơ bản)!' : '📤 Đã nộp bài tập thành công!');
+      showToast(task.deadline && now > task.deadline ? '📤 Đã nộp bài (quá hạn: còn 1/3⭐ điểm cơ bản)!' : '📤 Đã nộp bài tập thành công!');
       updateHUD();
       renderTasksModal();
       const pm = document.getElementById('smartphone-modal');
@@ -5436,6 +5885,7 @@ export function initB2KSGameEngine() {
     task.grade = grade;
     task.status = 'completed';
     task.completedAt = now;
+    state.tasksUpdatedAt = now;
     const assignee = state.members.find((m) => m.id === task.assigneeId);
     const creator = state.members.find((m) => m.id === task.creatorId);
     const rawEarned = Math.round(task.reward * (grade / 10));
@@ -5453,7 +5903,7 @@ export function initB2KSGameEngine() {
       assignee.points += earned;
       assignee.completedTaskCount = (assignee.completedTaskCount || 0) + 1;
       assignee.pointsUpdatedAt = now;
-      assignee.memberUpdatedAt = now;
+      touchMemberData(assignee, now);
     }
     let actualParentBonus = 0;
     if (creator && parentBonus > 0) {
@@ -5603,6 +6053,7 @@ export function initB2KSGameEngine() {
     user.points -= cost;
     user.hairStyle = salonDraft.hairStyle;
     user.hairColor = salonDraft.hairColor;
+    touchMemberData(user);
     AudioEngine.playSuccess();
     triggerSpeechBubble(user, 'Love my new hairstyle! 💇✨', true);
     showToast(`💇 Đã đổi kiểu tóc mới (-${cost}⭐)!`);
@@ -6295,6 +6746,7 @@ export function initB2KSGameEngine() {
   w.spectateSoccerMatch = () => soccerGame.spectateMatch();
   w.soccerTouchDir = (dir: 'up' | 'down' | 'left' | 'right', down: boolean) => soccerGame.setTouchDir(dir, down);
   w.soccerKick = () => soccerGame.kickBall();
+  w.soccerPickPenaltyZone = (zone: PenaltyZoneId) => soccerGame.pickPenaltyZone(zone);
   w.soccerCanvasKick = (ev: MouseEvent) => {
     const c = document.getElementById('soccer-canvas') as HTMLCanvasElement | null;
     if (!c) return;
@@ -6724,6 +7176,12 @@ export function initB2KSGameEngine() {
       notifySubscribers();
       return muted;
     },
+    setAudioTempPaused: (paused: boolean) => {
+      AudioEngine.setTempPaused(paused);
+    },
+    getNotificationStatus,
+    requestNotificationPermission,
+    sendTestNotification,
     setGameUnlocked: (unlocked: boolean) => {
       isGameUnlocked = unlocked;
       if (unlocked) {
@@ -6731,6 +7189,8 @@ export function initB2KSGameEngine() {
         if (state.bgmTheme && state.bgmTheme !== AudioEngine.themeId) {
           AudioEngine.setTheme(state.bgmTheme);
         }
+        syncSeenTasksBaseline();
+        updateNotificationHudUI();
       }
       notifySubscribers();
     },
@@ -7599,6 +8059,8 @@ export function initB2KSGameEngine() {
       publishFamilyDirectorySummary();
       AudioEngine.init();
       AudioEngine.playSuccess();
+      syncSeenTasksBaseline();
+      updateNotificationHudUI();
       lastHudSignature = '';
       updateFamilyBrandingDOM();
       updateHUD();
@@ -8164,6 +8626,8 @@ export function initB2KSGameEngine() {
     restoreDurableMemberArchive(famName);
     ensureStateArrays();
     snapshotSavedPointsMap();
+    snapshotPushedMemberTimestamps();
+    syncSeenTasksBaseline();
     pruneExpiredFamilyMessages();
     if (deviceConfig.currentMemberId && state.members.some((m) => m.id === deviceConfig.currentMemberId)) {
       state.currentUserId = deviceConfig.currentMemberId;
@@ -8185,6 +8649,7 @@ export function initB2KSGameEngine() {
     if (state.bgmTheme) {
       AudioEngine.setTheme(state.bgmTheme);
     }
+    updateNotificationHudUI();
     syncPrivateRoomToolbar();
     syncHudToolsVisibility();
     updateFamilyBrandingDOM();
@@ -8217,12 +8682,26 @@ export function initB2KSGameEngine() {
     return Array.from(new Set([...(a || []), ...(b || [])]));
   }
 
+  function refreshOpenMemberViews() {
+    syncPrivateRoomToolbar();
+    const bagModal = document.getElementById('bag-modal');
+    if (bagModal && bagModal.style.display === 'flex') renderBagModal(currentBagTab);
+    const customModal = document.getElementById('custom-modal');
+    if (customModal && customModal.style.display === 'flex') renderCustomModal();
+    const slotModal = document.getElementById('slot-picker-modal');
+    if (slotModal && slotModal.style.display === 'flex') renderPrivateRoomSlotBar(false);
+    const tasksModal = document.getElementById('tasks-modal');
+    if (tasksModal && tasksModal.style.display === 'flex') renderTasksModal();
+    const phoneModal = document.getElementById('smartphone-modal');
+    if (phoneModal && phoneModal.style.display === 'flex') renderSmartphoneScreen();
+  }
+
   function pullFromFirebase() {
     if (!deviceConfig.firebaseUrl) return;
     const fbBase = getFirebaseBasePath();
     const curId = getCurrentUser().id || deviceConfig.currentMemberId;
 
-    fetch(`${deviceConfig.firebaseUrl}/${fbBase}/auth_meta.json`)
+    fetch(`${deviceConfig.firebaseUrl}/${fbBase}/auth_meta.json`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((meta) => {
         if (!meta || typeof meta !== 'object') return;
@@ -8250,7 +8729,7 @@ export function initB2KSGameEngine() {
       })
       .catch(() => {});
 
-    fetch(`${deviceConfig.firebaseUrl}/${fbBase}/shared.json`)
+    fetch(`${deviceConfig.firebaseUrl}/${fbBase}/shared.json`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((remote) => {
         if (!remote || typeof remote !== 'object') return;
@@ -8260,6 +8739,12 @@ export function initB2KSGameEngine() {
 
         if (!shouldHydrate) {
           let sideChanged = false;
+          if ((remote.tasksUpdatedAt || 0) > (state.tasksUpdatedAt || 0) && Array.isArray(remote.tasks)) {
+            state.tasks = remote.tasks;
+            state.tasksUpdatedAt = remote.tasksUpdatedAt || 0;
+            detectAndNotifyNewTasks();
+            sideChanged = true;
+          }
           if ((remote.buildingLayoutsUpdatedAt || 0) > (state.buildingLayoutsUpdatedAt || 0)) {
             state.buildingLayouts =
               remote.buildingLayouts && typeof remote.buildingLayouts === 'object' ? { ...remote.buildingLayouts } : {};
@@ -8292,6 +8777,7 @@ export function initB2KSGameEngine() {
             persistDurableMemberArchive();
             lastHudSignature = '';
             updateHUD();
+            refreshOpenMemberViews();
             notifySubscribers();
           }
           return;
@@ -8506,6 +8992,7 @@ export function initB2KSGameEngine() {
             ensureMemberProps(state.members[idx]);
           });
 
+          detectAndNotifyNewTasks();
           snapshotSavedPointsMap();
           const { englishQuestions: _omitSavedEq, ...localStatePayload } = state;
           localStorage.setItem(getFamilyStorageKey(), JSON.stringify(localStatePayload));
@@ -8515,17 +9002,19 @@ export function initB2KSGameEngine() {
           lastHudSignature = '';
           updateFamilyBrandingDOM();
           updateHUD();
+          refreshOpenMemberViews();
           notifySubscribers();
         }
       })
       .catch(() => {});
 
-    // Pull authoritative per-member snapshots for ALL members (ensures points & pets evolution never vanish across reloads/devices)
-    fetch(`${deviceConfig.firebaseUrl}/${fbBase}/member_data.json`)
+    // Pull authoritative per-member snapshots for ALL members (ensures inventory, room decor, points & pets sync reliably across devices)
+    fetch(`${deviceConfig.firebaseUrl}/${fbBase}/member_data.json`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((memberMap) => {
         if (!memberMap || typeof memberMap !== 'object') return;
         let changed = false;
+        let curMemberChanged = false;
         state.members.forEach((m) => {
           const remoteM = memberMap[m.id] as Member | undefined;
           if (!remoteM) return;
@@ -8600,7 +9089,7 @@ export function initB2KSGameEngine() {
             changed = true;
           }
 
-          if (m.id !== curId && (remoteM.memberUpdatedAt || 0) > (m.memberUpdatedAt || 0)) {
+          if ((remoteM.memberUpdatedAt || 0) > (m.memberUpdatedAt || 0)) {
             if (remoteM.name && (remoteM.nameUpdatedAt || 0) >= (m.nameUpdatedAt || 0)) {
               m.name = remoteM.name;
               if (typeof remoteM.nameUpdatedAt === 'number') m.nameUpdatedAt = remoteM.nameUpdatedAt;
@@ -8614,18 +9103,25 @@ export function initB2KSGameEngine() {
             m.pantsColor = remoteM.pantsColor || m.pantsColor;
             m.pantsStyle = remoteM.pantsStyle || m.pantsStyle;
             m.outfit = remoteM.outfit !== undefined ? remoteM.outfit : m.outfit;
-            m.activePetId = remoteM.activePetId ?? m.activePetId;
-            if (Array.isArray(remoteM.inventory)) m.inventory = [...remoteM.inventory];
-            if (Array.isArray(remoteM.vouchers)) m.vouchers = [...remoteM.vouchers];
-            if (Array.isArray(remoteM.customLabItems)) m.customLabItems = [...remoteM.customLabItems];
-            if (remoteM.roomSlots && typeof remoteM.roomSlots === 'object') m.roomSlots = { ...remoteM.roomSlots };
-            if (remoteM.roomSlotSpecs && typeof remoteM.roomSlotSpecs === 'object') m.roomSlotSpecs = { ...remoteM.roomSlotSpecs };
-            if (Array.isArray(remoteM.roomDecor)) m.roomDecor = [...remoteM.roomDecor];
-            if (remoteM.roomDecorSpecs && typeof remoteM.roomDecorSpecs === 'object') m.roomDecorSpecs = { ...remoteM.roomDecorSpecs };
+            m.activePetId = remoteM.activePetId ?? null;
+            // Explicitly default emptied Firebase arrays/objects so deleted/used/placed items don't resurrect
+            m.inventory = Array.isArray(remoteM.inventory) ? [...remoteM.inventory] : [];
+            m.vouchers = Array.isArray(remoteM.vouchers) ? [...remoteM.vouchers] : [];
+            m.customLabItems = Array.isArray(remoteM.customLabItems) ? [...remoteM.customLabItems] : [];
+            m.roomSlots = remoteM.roomSlots && typeof remoteM.roomSlots === 'object' ? { ...remoteM.roomSlots } : {};
+            m.roomSlotSpecs = remoteM.roomSlotSpecs && typeof remoteM.roomSlotSpecs === 'object' ? { ...remoteM.roomSlotSpecs } : {};
+            m.roomDecor = Array.isArray(remoteM.roomDecor) ? [...remoteM.roomDecor] : [];
+            m.roomDecorSpecs = remoteM.roomDecorSpecs && typeof remoteM.roomDecorSpecs === 'object' ? { ...remoteM.roomDecorSpecs } : {};
+            m.petFoodInventory =
+              remoteM.petFoodInventory && typeof remoteM.petFoodInventory === 'object'
+                ? { ...remoteM.petFoodInventory }
+                : {};
             if (typeof remoteM.inventoryConsumedMigrated === 'boolean') m.inventoryConsumedMigrated = remoteM.inventoryConsumedMigrated;
             if (remoteM.roomWall) m.roomWall = remoteM.roomWall;
             if (typeof remoteM.roomUnlocked === 'boolean') m.roomUnlocked = remoteM.roomUnlocked;
             m.memberUpdatedAt = remoteM.memberUpdatedAt;
+            lastPushedMemberUpdatedAt[m.id] = Math.max(lastPushedMemberUpdatedAt[m.id] || 0, remoteM.memberUpdatedAt || 0);
+            if (m.id === curId) curMemberChanged = true;
             changed = true;
           }
           ensureMemberProps(m);
@@ -8638,6 +9134,7 @@ export function initB2KSGameEngine() {
           persistDurableMemberArchive();
           lastHudSignature = '';
           updateHUD();
+          if (curMemberChanged) refreshOpenMemberViews();
           notifySubscribers();
         }
       })
@@ -8647,7 +9144,7 @@ export function initB2KSGameEngine() {
     const nowMetaCheck = Date.now();
     if (nowMetaCheck - lastSharedEnglishMetaCheckAt >= 15000) {
       lastSharedEnglishMetaCheckAt = nowMetaCheck;
-      fetch(`${deviceConfig.firebaseUrl}/b2ks_shared_english_bank_meta.json`)
+      fetch(`${deviceConfig.firebaseUrl}/b2ks_shared_english_bank_meta.json`, { cache: 'no-store' })
         .then((r) => r.json())
         .then((meta) => {
           if (
@@ -8655,7 +9152,7 @@ export function initB2KSGameEngine() {
             Number(meta.version) >= CURRICULUM_BANK_VERSION &&
             Number(meta.updatedAt || 0) > sharedEnglishBankUpdatedAt
           ) {
-            fetch(`${deviceConfig.firebaseUrl}/b2ks_shared_english_bank.json`)
+            fetch(`${deviceConfig.firebaseUrl}/b2ks_shared_english_bank.json`, { cache: 'no-store' })
               .then((r2) => r2.json())
               .then((fullBank) => {
                 if (fullBank && Array.isArray(fullBank.questions) && fullBank.questions.length > 0) {
@@ -8671,7 +9168,7 @@ export function initB2KSGameEngine() {
 
     if (nowMetaCheck - lastSharedSpeakingMetaCheckAt >= 15000) {
       lastSharedSpeakingMetaCheckAt = nowMetaCheck;
-      fetch(`${deviceConfig.firebaseUrl}/b2ks_shared_speaking_bank_meta.json`)
+      fetch(`${deviceConfig.firebaseUrl}/b2ks_shared_speaking_bank_meta.json`, { cache: 'no-store' })
         .then((r) => r.json())
         .then((meta) => {
           if (
@@ -8679,7 +9176,7 @@ export function initB2KSGameEngine() {
             Number(meta.version) >= SPEAKING_BANK_VERSION &&
             Number(meta.updatedAt || 0) > sharedSpeakingBankUpdatedAt
           ) {
-            fetch(`${deviceConfig.firebaseUrl}/b2ks_shared_speaking_bank.json`)
+            fetch(`${deviceConfig.firebaseUrl}/b2ks_shared_speaking_bank.json`, { cache: 'no-store' })
               .then((r2) => r2.json())
               .then((fullSpk) => {
                 if (fullSpk && Array.isArray(fullSpk.sentences) && fullSpk.sentences.length > 0) {
@@ -8693,7 +9190,7 @@ export function initB2KSGameEngine() {
         .catch(() => {});
     }
 
-    fetch(`${deviceConfig.firebaseUrl}/${fbBase}/live_pos.json`)
+    fetch(`${deviceConfig.firebaseUrl}/${fbBase}/live_pos.json`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((posMap) => {
         if (!posMap || typeof posMap !== 'object') return;

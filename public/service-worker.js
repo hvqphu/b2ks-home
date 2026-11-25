@@ -1,4 +1,4 @@
-const CACHE_NAME = 'b2ks-daily-routines-v19';
+const CACHE_NAME = 'b2ks-daily-routines-v20';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -61,6 +61,26 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => cached);
       return cached || fetchPromise;
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const payload = event.notification.data || {};
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if ('focus' in client) {
+          client.focus();
+          client.postMessage({ type: 'B2KS_OPEN_TASKS', taskId: payload.taskId || null });
+          return;
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow('./');
+      }
+      return undefined;
     })
   );
 });

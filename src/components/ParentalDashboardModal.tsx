@@ -457,6 +457,7 @@ export const ParentalDashboardModal: React.FC<Props> = ({ bridge, onClose }) => 
       completedAt: null,
       deadline: parsedDeadline,
     });
+    state.tasksUpdatedAt = Date.now();
 
     setQuestTitle('');
     setQuestDeadline('');

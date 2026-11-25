@@ -26,8 +26,8 @@
             }
         }
     </script>
-  <script type="module" crossorigin src="./assets/index-WFMeDVQZ.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-DKKrNNrp.css">
+  <script type="module" crossorigin src="./assets/index-Eq504Con.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-kUdmXedt.css">
 <link rel="manifest" href="./manifest.webmanifest"></head>
 <body>
 
@@ -118,6 +118,10 @@
                 <button type="button" class="hud-tile-btn tone-emerald" id="audio-toggle-btn" onclick="toggleAudio()" title="Bật / Tắt âm thanh">
                     <span class="hud-tile-ico" id="audio-toggle-ico">🔊</span>
                     <span class="hud-tile-lbl" id="audio-toggle-lbl">Nhạc</span>
+                </button>
+                <button type="button" class="hud-tile-btn tone-sky" id="hud-notif-btn" onclick="toggleTaskNotifications()" title="Bật / Kiểm tra thông báo bài tập mới">
+                    <span class="hud-tile-ico" id="hud-notif-ico">🔔</span>
+                    <span class="hud-tile-lbl" id="hud-notif-lbl">Thông báo</span>
                 </button>
                 <span id="hud-sound-slot" style="display:inline-flex; align-items:center;"></span>
                 <span id="hud-pwa-slot" style="display:inline-flex; align-items:center;"></span>
@@ -834,18 +838,21 @@
             </div>
 
             <div id="soccer-controls-wrap" style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; background:#FFF; border:2px solid #10B981; border-radius:12px; padding:8px 12px;">
-                <div style="display:grid; grid-template-columns:repeat(3, 38px); grid-template-rows:repeat(2, 34px); gap:4px; align-items:center; justify-items:center;">
-                    <span></span>
-                    <button type="button" class="btn btn-sm btn-accent" style="width:38px; height:34px; padding:0;" onmousedown="soccerTouchDir('up', true)" onmouseup="soccerTouchDir('up', false)" onmouseleave="soccerTouchDir('up', false)" ontouchstart="event.preventDefault(); soccerTouchDir('up', true)" ontouchend="soccerTouchDir('up', false)">▲</button>
-                    <span></span>
-                    <button type="button" class="btn btn-sm btn-accent" style="width:38px; height:34px; padding:0;" onmousedown="soccerTouchDir('left', true)" onmouseup="soccerTouchDir('left', false)" onmouseleave="soccerTouchDir('left', false)" ontouchstart="event.preventDefault(); soccerTouchDir('left', true)" ontouchend="soccerTouchDir('left', false)">◀</button>
-                    <button type="button" class="btn btn-sm btn-accent" style="width:38px; height:34px; padding:0;" onmousedown="soccerTouchDir('down', true)" onmouseup="soccerTouchDir('down', false)" onmouseleave="soccerTouchDir('down', false)" ontouchstart="event.preventDefault(); soccerTouchDir('down', true)" ontouchend="soccerTouchDir('down', false)">▼</button>
-                    <button type="button" class="btn btn-sm btn-accent" style="width:38px; height:34px; padding:0;" onmousedown="soccerTouchDir('right', true)" onmouseup="soccerTouchDir('right', false)" onmouseleave="soccerTouchDir('right', false)" ontouchstart="event.preventDefault(); soccerTouchDir('right', true)" ontouchend="soccerTouchDir('right', false)">▶</button>
+                <div id="soccer-solo-controls" style="display:flex; width:100%; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+                    <div style="display:grid; grid-template-columns:repeat(3, 38px); grid-template-rows:repeat(2, 34px); gap:4px; align-items:center; justify-items:center;">
+                        <span></span>
+                        <button type="button" class="btn btn-sm btn-accent" style="width:38px; height:34px; padding:0;" onmousedown="soccerTouchDir('up', true)" onmouseup="soccerTouchDir('up', false)" onmouseleave="soccerTouchDir('up', false)" ontouchstart="event.preventDefault(); soccerTouchDir('up', true)" ontouchend="soccerTouchDir('up', false)">▲</button>
+                        <span></span>
+                        <button type="button" class="btn btn-sm btn-accent" style="width:38px; height:34px; padding:0;" onmousedown="soccerTouchDir('left', true)" onmouseup="soccerTouchDir('left', false)" onmouseleave="soccerTouchDir('left', false)" ontouchstart="event.preventDefault(); soccerTouchDir('left', true)" ontouchend="soccerTouchDir('left', false)">◀</button>
+                        <button type="button" class="btn btn-sm btn-accent" style="width:38px; height:34px; padding:0;" onmousedown="soccerTouchDir('down', true)" onmouseup="soccerTouchDir('down', false)" onmouseleave="soccerTouchDir('down', false)" ontouchstart="event.preventDefault(); soccerTouchDir('down', true)" ontouchend="soccerTouchDir('down', false)">▼</button>
+                        <button type="button" class="btn btn-sm btn-accent" style="width:38px; height:34px; padding:0;" onmousedown="soccerTouchDir('right', true)" onmouseup="soccerTouchDir('right', false)" onmouseleave="soccerTouchDir('right', false)" ontouchstart="event.preventDefault(); soccerTouchDir('right', true)" ontouchend="soccerTouchDir('right', false)">▶</button>
+                    </div>
+                    <div style="font-size:11.5px; color:#475569; flex:1; min-width:140px; text-align:center;">
+                        Dùng phím <b>Mũi tên / WASD</b> + <b>Space</b> (hoặc chạm lên sân để sút về hướng đó!)
+                    </div>
+                    <button type="button" class="btn btn-primary" style="padding:12px 18px; font-size:15px;" onclick="soccerKick()">⚡ SÚT BÓNG!</button>
                 </div>
-                <div style="font-size:11.5px; color:#475569; flex:1; min-width:140px; text-align:center;">
-                    Dùng phím <b>Mũi tên / WASD</b> + <b>Space</b> (hoặc chạm lên sân để sút về hướng đó!)
-                </div>
-                <button type="button" class="btn btn-primary" style="padding:12px 18px; font-size:15px;" onclick="soccerKick()">⚡ SÚT BÓNG!</button>
+                <div id="soccer-penalty-controls" style="display:none; width:100%;"></div>
             </div>
         </div>
     </div>
@@ -898,7 +905,7 @@
           window.startAudioOnce = function () {};
         }
         setTimeout(function () {
-          if (window.__B2KS_BOOTED__) return;
+          if (window.__B2KS_BOOTED__ || /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname)) return;
           fetch('./docs/index.html', { method: 'HEAD' })
             .then(function (res) {
               if (res && res.ok) {
@@ -917,7 +924,7 @@
                 guide.appendChild(warn);
               }
             });
-        }, 1200);
+        }, 2500);
       })();
     </script>
 </body>

@@ -162,6 +162,14 @@ export interface BgmThemeDef {
   bassType: OscillatorType;
   melody: number[];
   bass: number[];
+  chordType?: OscillatorType;
+  chords?: number[][];
+  leadDurFactor?: number;
+  leadGain?: number;
+  bassGain?: number;
+  chordGain?: number;
+  filterFreq?: number;
+  percussion?: ('kick' | 'snare' | 'hat' | 'wood' | null)[];
 }
 
 export type WeatherCondition = 'clear' | 'cloudy' | 'rain' | 'thunder' | 'fog' | 'snow';
@@ -187,8 +195,20 @@ export interface SoccerPlayerInput {
   ts: number;
 }
 
+export type PenaltyZoneId = 'TL' | 'BL' | 'C' | 'BR' | 'TR';
+
+export interface PenaltyPickPayload {
+  kickIndex: number;
+  playerId: string;
+  zone: PenaltyZoneId;
+  ts: number;
+}
+
 export interface SoccerOnlineRoom {
   status: 'idle' | 'lobby' | 'playing' | 'finished';
+  rev?: number;
+  matchId?: string;
+  modeKind?: 'penalty' | 'realtime';
   hostId: string;
   p1Id: string;
   p1Name: string;
@@ -212,6 +232,19 @@ export interface SoccerOnlineRoom {
   goalBannerText: string;
   goalBannerUntil: number;
   readyMap?: Record<string, boolean>;
+  phase?: 'choosing' | 'animating';
+  kickIndex?: number;
+  maxKicks?: number;
+  p1History?: ('G' | 'M')[];
+  p2History?: ('G' | 'M')[];
+  turnDeadlineAt?: number;
+  animStartedAt?: number;
+  lastShotZone?: PenaltyZoneId | null;
+  lastSaveZone?: PenaltyZoneId | null;
+  lastResult?: 'goal' | 'saved' | null;
+  lastShooterId?: string | null;
+  shotLockedBy?: string | null;
+  saveLockedBy?: string | null;
   updatedAt: number;
 }
 
@@ -530,6 +563,7 @@ export interface B2KSState {
   bgmTheme?: BgmThemeId;
   members: Member[];
   tasks: TaskItem[];
+  tasksUpdatedAt?: number;
   crossWorldItems: CrossWorldItem[];
   crossWorldRequests: CrossWorldRequest[];
   fleaMarketListings: FleaMarketListing[];
@@ -641,6 +675,15 @@ export interface B2KSBridge {
   setBgmTheme?: (themeId: BgmThemeId) => void;
   isAudioMuted?: () => boolean;
   toggleAudioMuted?: () => boolean;
+  setAudioTempPaused?: (paused: boolean) => void;
+  getNotificationStatus?: () => {
+    supported: boolean;
+    permission: NotificationPermission | 'unsupported';
+    hasServiceWorker: boolean;
+    enabled?: boolean;
+  };
+  requestNotificationPermission?: () => Promise<{ ok: boolean; permission: string; msg: string }>;
+  sendTestNotification?: () => Promise<boolean>;
   setGameUnlocked?: (unlocked: boolean) => void;
   authenticateFamilyLogin?: (familyName: string, enteredPassword: string) => Promise<{ ok: boolean; msg: string; familyName: string }>;
   getLastLoginFamilyName?: () => string;

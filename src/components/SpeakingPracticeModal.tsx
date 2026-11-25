@@ -8,19 +8,24 @@ interface Props {
   onClose: () => void;
 }
 
+interface SpeechRecognitionInstance {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  continuous: boolean;
+  onaudiostart: (() => void) | null;
+  onsoundstart: (() => void) | null;
+  onspeechstart: (() => void) | null;
+  onresult: ((ev: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onerror: ((ev: { error: string }) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+}
+
 interface SpeechRecognitionCtor {
-  new (): {
-    lang: string;
-    interimResults: boolean;
-    maxAlternatives: number;
-    continuous: boolean;
-    onresult: ((ev: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
-    onerror: ((ev: { error: string }) => void) | null;
-    onend: (() => void) | null;
-    start: () => void;
-    stop: () => void;
-    abort: () => void;
-  };
+  new (): SpeechRecognitionInstance;
 }
 
 function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
@@ -55,6 +60,7 @@ export const SpeakingPracticeModal: React.FC<Props> = ({ bridge, onClose }) => {
 
   const [micState, setMicState] = useState<'checking' | 'ready' | 'denied' | 'unsupported'>('checking');
   const [isListening, setIsListening] = useState(false);
+  const [listeningPhase, setListeningPhase] = useState<'idle' | 'starting' | 'active'>('idle');
   const [spokenText, setSpokenText] = useState('');
   const [manualInput, setManualInput] = useState('');
   const [lastOutcome, setLastOutcome] = useState<{
@@ -69,29 +75,44 @@ export const SpeakingPracticeModal: React.FC<Props> = ({ bridge, onClose }) => {
   } | null>(null);
   const [statusMsg, setStatusMsg] = useState('Bấm 🔊 Nghe mẫu trước rồi bấm 🎤 Nói thật rõ nhé!');
 
-  const recognitionRef = useRef<InstanceType<SpeechRecognitionCtor> | null>(null);
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const sessionIdRef = useRef<number>(0);
   const latestTranscriptRef = useRef<string>('');
   const handledResultRef = useRef<boolean>(false);
+  const startingRef = useRef<boolean>(false);
+  const retryTimerRef = useRef<number | null>(null);
+  const retryCountRef = useRef<number>(0);
+  const audioHeardRef = useRef<boolean>(false);
+  const startAttemptAtRef = useRef<number>(0);
+  const mountedRef = useRef<boolean>(true);
   const currentSentenceRef = useRef<SpeakingSentence | undefined>(currentSentence);
   currentSentenceRef.current = currentSentence;
   const hasSpeechRec = Boolean(getSpeechRecognitionCtor());
 
+  const clearRetryTimer = () => {
+    if (retryTimerRef.current !== null) {
+      window.clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+  };
+
   useEffect(() => {
-    let mounted = true;
+    mountedRef.current = true;
+    bridge.setAudioTempPaused?.(true);
+
     const initMicStatus = async () => {
       if (!hasSpeechRec) {
-        if (mounted) setMicState('unsupported');
+        if (mountedRef.current) setMicState('unsupported');
         return;
       }
       if (navigator.permissions?.query) {
         try {
           const perm = await navigator.permissions.query({ name: 'microphone' as PermissionName });
-          if (mounted) {
+          if (mountedRef.current) {
             setMicState(perm.state === 'denied' ? 'denied' : 'ready');
           }
           perm.onchange = () => {
-            if (mounted) {
+            if (mountedRef.current) {
               setMicState(perm.state === 'denied' ? 'denied' : 'ready');
             }
           };
@@ -100,15 +121,28 @@ export const SpeakingPracticeModal: React.FC<Props> = ({ bridge, onClose }) => {
           // Some browsers don't support microphone permission query
         }
       }
-      if (mounted) setMicState('ready');
+      if (mountedRef.current) setMicState('ready');
     };
     initMicStatus();
     return () => {
-      mounted = false;
+      mountedRef.current = false;
+      clearRetryTimer();
       sessionIdRef.current += 1;
+      startingRef.current = false;
+      bridge.setAudioTempPaused?.(false);
+      try {
+        if (window.speechSynthesis?.speaking || window.speechSynthesis?.pending) {
+          window.speechSynthesis.cancel();
+        }
+      } catch {
+        // ignore
+      }
       const oldRec = recognitionRef.current;
       recognitionRef.current = null;
       if (oldRec) {
+        oldRec.onaudiostart = null;
+        oldRec.onsoundstart = null;
+        oldRec.onspeechstart = null;
         oldRec.onresult = null;
         oldRec.onerror = null;
         oldRec.onend = null;
@@ -119,7 +153,7 @@ export const SpeakingPracticeModal: React.FC<Props> = ({ bridge, onClose }) => {
         }
       }
     };
-  }, [hasSpeechRec]);
+  }, [hasSpeechRec, bridge]);
 
   useEffect(() => {
     if (currentSentence) {
@@ -175,6 +209,9 @@ export const SpeakingPracticeModal: React.FC<Props> = ({ bridge, onClose }) => {
     const curRec = recognitionRef.current;
     if (!curRec) return;
     if (!graceful) {
+      curRec.onaudiostart = null;
+      curRec.onsoundstart = null;
+      curRec.onspeechstart = null;
       curRec.onresult = null;
       curRec.onerror = null;
       curRec.onend = null;
@@ -193,38 +230,38 @@ export const SpeakingPracticeModal: React.FC<Props> = ({ bridge, onClose }) => {
     }
   };
 
-  const handleStartListening = () => {
-    const Ctor = getSpeechRecognitionCtor();
-    if (!Ctor) {
-      setMicState('unsupported');
-      setStatusMsg('⚠️ Trình duyệt không hỗ trợ nhận diện giọng nói Web Speech API. Con có thể nhập câu vừa đọc bên dưới để kiểm tra.');
-      return;
-    }
-
-    // Cancel any active TTS playback immediately so it doesn't interfere with mic
-    try {
-      window.speechSynthesis?.cancel();
-    } catch {
-      // ignore
-    }
-
-    if (isListening && recognitionRef.current) {
-      stopActiveRecognition(true);
-      setIsListening(false);
-      if (!handledResultRef.current && latestTranscriptRef.current.trim()) {
-        handledResultRef.current = true;
-        evaluateTranscript(latestTranscriptRef.current);
-      }
-      return;
-    }
-
-    // Abort any stale session and start synchronously within the user click gesture
+  const launchRecognitionSession = (Ctor: SpeechRecognitionCtor, isRetry = false) => {
+    if (!mountedRef.current) return;
+    clearRetryTimer();
     stopActiveRecognition(false);
+
     const mySession = ++sessionIdRef.current;
-    latestTranscriptRef.current = '';
-    handledResultRef.current = false;
-    setLastOutcome(null);
-    setSpokenText('');
+    startingRef.current = true;
+    audioHeardRef.current = false;
+    startAttemptAtRef.current = Date.now();
+    if (!isRetry) {
+      retryCountRef.current = 0;
+      latestTranscriptRef.current = '';
+      handledResultRef.current = false;
+      setLastOutcome(null);
+      setSpokenText('');
+    }
+
+    const scheduleAutoRetry = () => {
+      if (!mountedRef.current || retryCountRef.current >= 2) return false;
+      retryCountRef.current += 1;
+      setStatusMsg('🔄 Đang kết nối lại micro...');
+      setIsListening(true);
+      setListeningPhase('starting');
+      clearRetryTimer();
+      retryTimerRef.current = window.setTimeout(() => {
+        retryTimerRef.current = null;
+        if (mountedRef.current && sessionIdRef.current === mySession) {
+          launchRecognitionSession(Ctor, true);
+        }
+      }, 190);
+      return true;
+    };
 
     try {
       const rec = new Ctor();
@@ -235,10 +272,35 @@ export const SpeakingPracticeModal: React.FC<Props> = ({ bridge, onClose }) => {
       recognitionRef.current = rec;
       setMicState('ready');
       setIsListening(true);
-      setStatusMsg('🎙️ Đang nghe con đọc... Hãy đọc to, rõ câu Tiếng Anh trên màn hình!');
+      setListeningPhase('starting');
+      setStatusMsg('🎙️ Đang mở micro...');
+
+      rec.onaudiostart = () => {
+        if (sessionIdRef.current !== mySession) return;
+        audioHeardRef.current = true;
+        startingRef.current = false;
+        setListeningPhase('active');
+        setStatusMsg('🎙️ Micro đã sẵn sàng — hãy đọc to, rõ câu Tiếng Anh!');
+      };
+
+      rec.onsoundstart = () => {
+        if (sessionIdRef.current !== mySession) return;
+        audioHeardRef.current = true;
+        setListeningPhase('active');
+      };
+
+      rec.onspeechstart = () => {
+        if (sessionIdRef.current !== mySession) return;
+        audioHeardRef.current = true;
+        setListeningPhase('active');
+        setStatusMsg('🗣️ Đang ghi nhận giọng đọc của con...');
+      };
 
       rec.onresult = (ev) => {
         if (sessionIdRef.current !== mySession) return;
+        audioHeardRef.current = true;
+        startingRef.current = false;
+        setListeningPhase('active');
         const results = ev.results as unknown as ArrayLike<
           ArrayLike<{ transcript: string }> & { isFinal?: boolean }
         >;
@@ -278,8 +340,10 @@ export const SpeakingPracticeModal: React.FC<Props> = ({ bridge, onClose }) => {
 
         if (hasFinal && clean && !handledResultRef.current) {
           handledResultRef.current = true;
+          clearRetryTimer();
           recognitionRef.current = null;
           setIsListening(false);
+          setListeningPhase('idle');
           try {
             rec.stop();
           } catch {
@@ -291,14 +355,33 @@ export const SpeakingPracticeModal: React.FC<Props> = ({ bridge, onClose }) => {
 
       rec.onerror = (ev) => {
         if (sessionIdRef.current !== mySession) return;
+        startingRef.current = false;
         recognitionRef.current = null;
+
+        if (
+          (ev.error === 'aborted' || ev.error === 'audio-capture') &&
+          !audioHeardRef.current &&
+          !latestTranscriptRef.current.trim() &&
+          Date.now() - startAttemptAtRef.current < 900 &&
+          scheduleAutoRetry()
+        ) {
+          return;
+        }
+
         setIsListening(false);
+        setListeningPhase('idle');
         if (ev.error === 'aborted') {
+          if (latestTranscriptRef.current.trim() && !handledResultRef.current) {
+            handledResultRef.current = true;
+            evaluateTranscript(latestTranscriptRef.current);
+          } else {
+            setStatusMsg('ℹ️ Đã tạm dừng micro. Bấm 🎤 Bấm Để Nói khi con sẵn sàng!');
+          }
           return;
         }
         if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') {
           setMicState('denied');
-          setStatusMsg('❌ Micro đang bị chặn quyền truy cập. Hãy bật quyền Micro trên trình duyệt!');
+          setStatusMsg('❌ Micro đang bị chặn quyền truy cập. Hãy bấm "🔓 Cấp quyền Micro" hoặc mở quyền trên trình duyệt!');
         } else if (ev.error === 'no-speech') {
           if (latestTranscriptRef.current.trim() && !handledResultRef.current) {
             handledResultRef.current = true;
@@ -313,23 +396,110 @@ export const SpeakingPracticeModal: React.FC<Props> = ({ bridge, onClose }) => {
 
       rec.onend = () => {
         if (sessionIdRef.current !== mySession) return;
+        startingRef.current = false;
         recognitionRef.current = null;
+
+        const elapsed = Date.now() - startAttemptAtRef.current;
+        if (
+          !handledResultRef.current &&
+          !latestTranscriptRef.current.trim() &&
+          !audioHeardRef.current &&
+          elapsed < 600 &&
+          scheduleAutoRetry()
+        ) {
+          return;
+        }
+
         setIsListening(false);
+        setListeningPhase('idle');
         if (!handledResultRef.current && latestTranscriptRef.current.trim()) {
           handledResultRef.current = true;
           evaluateTranscript(latestTranscriptRef.current);
+        } else if (!handledResultRef.current && !latestTranscriptRef.current.trim()) {
+          setStatusMsg('🔇 Chưa nghe thấy giọng đọc. Con hãy bấm 🎤 Nói và đọc to hơn một chút nhé!');
         }
       };
 
       rec.start();
     } catch {
+      startingRef.current = false;
       recognitionRef.current = null;
-      setIsListening(false);
-      setStatusMsg('⚠️ Không thể bật micro lúc này. Hãy thử bấm lại 1 lần nữa!');
+      if (!scheduleAutoRetry()) {
+        setIsListening(false);
+        setListeningPhase('idle');
+        setStatusMsg('⚠️ Không thể bật micro lúc này. Hãy thử bấm lại 1 lần nữa!');
+      }
     }
   };
 
+  const handleRequestMicPermission = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setStatusMsg('⚠️ Trình duyệt không hỗ trợ cấp quyền trực tiếp, hãy kiểm tra biểu tượng 🔒 trên thanh địa chỉ.');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((t) => t.stop());
+      setMicState('ready');
+      setStatusMsg('✅ Đã mở quyền Micro! Bấm 🎤 Bấm Để Nói để bắt đầu.');
+    } catch {
+      setMicState('denied');
+      setStatusMsg('❌ Quyền Micro vẫn đang bị chặn trong cài đặt trình duyệt.');
+    }
+  };
+
+  const handleStartListening = () => {
+    const Ctor = getSpeechRecognitionCtor();
+    if (!Ctor) {
+      setMicState('unsupported');
+      setStatusMsg('⚠️ Trình duyệt không hỗ trợ nhận diện giọng nói Web Speech API. Con có thể nhập câu vừa đọc bên dưới để kiểm tra.');
+      return;
+    }
+
+    if (isListening || startingRef.current) {
+      clearRetryTimer();
+      sessionIdRef.current += 1;
+      startingRef.current = false;
+      stopActiveRecognition(true);
+      setIsListening(false);
+      setListeningPhase('idle');
+      if (!handledResultRef.current && latestTranscriptRef.current.trim()) {
+        handledResultRef.current = true;
+        evaluateTranscript(latestTranscriptRef.current);
+      } else {
+        setStatusMsg('⏹️ Đã dừng nghe. Bấm 🎤 Bấm Để Nói khi con sẵn sàng!');
+      }
+      return;
+    }
+
+    // Cancel TTS only if actively speaking so we avoid unnecessary audio focus reset
+    let hadSpeech = false;
+    try {
+      if (window.speechSynthesis?.speaking || window.speechSynthesis?.pending) {
+        hadSpeech = true;
+        window.speechSynthesis.cancel();
+      }
+    } catch {
+      // ignore
+    }
+
+    // Launch synchronously inside click gesture (required on iOS/Safari & crisp on desktop);
+    // if Chromium briefly aborts due to just-cancelled TTS focus, auto-retry handles it in 190ms.
+    if (hadSpeech) {
+      retryCountRef.current = 0;
+    }
+    launchRecognitionSession(Ctor, false);
+  };
+
   const handleNextSentence = () => {
+    clearRetryTimer();
+    if (isListening || startingRef.current) {
+      sessionIdRef.current += 1;
+      startingRef.current = false;
+      stopActiveRecognition(false);
+      setIsListening(false);
+      setListeningPhase('idle');
+    }
     setLastOutcome(null);
     setSpokenText('');
     setManualInput('');
@@ -457,7 +627,13 @@ export const SpeakingPracticeModal: React.FC<Props> = ({ bridge, onClose }) => {
                 className={`btn btn-sm ${isListening ? 'btn-danger' : 'btn-primary'}`}
               >
                 {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                <span>{isListening ? '⏹️ Dừng nghe' : '🎤 Bấm Để Nói'}</span>
+                <span>
+                  {isListening
+                    ? listeningPhase === 'starting'
+                      ? '⏳ Đang mở micro...'
+                      : '⏹️ Dừng nghe'
+                    : '🎤 Bấm Để Nói'}
+                </span>
               </button>
               <button
                 type="button"
@@ -478,20 +654,33 @@ export const SpeakingPracticeModal: React.FC<Props> = ({ bridge, onClose }) => {
 
         {/* Mic status & Status message */}
         <div
-          className={`rounded-xl border-2 px-3 py-2 text-xs font-bold mb-3 flex items-center gap-2 ${
+          className={`rounded-xl border-2 px-3 py-2 text-xs font-bold mb-3 flex items-center justify-between gap-2 ${
             micState === 'denied'
               ? 'bg-rose-100 border-rose-500 text-rose-900'
               : isListening
-                ? 'bg-amber-100 border-amber-500 text-amber-900'
+                ? listeningPhase === 'active'
+                  ? 'bg-emerald-100 border-emerald-500 text-emerald-900'
+                  : 'bg-amber-100 border-amber-500 text-amber-900'
                 : 'bg-sky-50 border-sky-400 text-sky-900'
           }`}
         >
-          {micState === 'denied' ? (
-            <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
-          ) : (
-            <Sparkles className="w-4 h-4 shrink-0 text-amber-600" />
+          <div className="flex items-center gap-2 min-w-0">
+            {micState === 'denied' ? (
+              <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+            ) : (
+              <Sparkles className="w-4 h-4 shrink-0 text-amber-600" />
+            )}
+            <span>{statusMsg}</span>
+          </div>
+          {micState === 'denied' && (
+            <button
+              type="button"
+              onClick={handleRequestMicPermission}
+              className="btn btn-sm btn-primary shrink-0"
+            >
+              🔓 Cấp quyền Micro
+            </button>
           )}
-          <span>{statusMsg}</span>
         </div>
 
         {/* Fallback input when browser does not support Web Speech API */}

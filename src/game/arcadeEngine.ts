@@ -74,6 +74,8 @@ export interface ArcadeHostDeps {
 
 export interface ArcadeRoomState {
   status: 'idle' | 'lobby' | 'playing' | 'finished';
+  rev?: number;
+  matchId?: string;
   gameType: string;
   hostId: string | null;
   playerIds: string[];
@@ -88,6 +90,8 @@ export interface ArcadeRoomState {
 export function createArcadeEngine(deps: ArcadeHostDeps) {
   let arcadeRoomState: ArcadeRoomState = {
     status: 'idle',
+    rev: 0,
+    matchId: '',
     gameType: 'tictactoe',
     hostId: null,
     playerIds: [],
@@ -100,6 +104,7 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
   };
   let arcadeAnimFrameId: number | null = null;
   let arcadeLastSyncedShootAt = 0;
+  let fastPollTimer: number | null = null;
 
   function getRoomState(): ArcadeRoomState {
     return arcadeRoomState;
@@ -128,17 +133,38 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
     }
   }
 
+  function ensureFastLobbyPoll() {
+    if (fastPollTimer !== null) return;
+    fastPollTimer = window.setInterval(() => {
+      const modalEl = document.getElementById('arcade-modal');
+      const modalOpen = Boolean(modalEl && modalEl.style.display === 'flex');
+      if (modalOpen || arcadeRoomState.status === 'lobby' || arcadeRoomState.status === 'playing') {
+        pullArcadeRoomFromFirebase();
+      } else if (fastPollTimer !== null) {
+        clearInterval(fastPollTimer);
+        fastPollTimer = null;
+      }
+    }, 320);
+  }
+
   function closeArcadeModal() {
     stopArcadeLoop();
     deps.closeModal('arcade-modal');
   }
 
-  function pushArcadeRoomToFirebase(roomObj: ArcadeRoomState) {
-    arcadeRoomState = roomObj;
+  function pushArcadeRoomToFirebase(roomObj: ArcadeRoomState, revBump = 1) {
+    const prevRev = arcadeRoomState?.rev || 0;
+    const prevTs = arcadeRoomState?.updatedAt || 0;
+    const nextRoom: ArcadeRoomState = {
+      ...roomObj,
+      rev: Math.max(roomObj.rev || 0, prevRev + revBump),
+      updatedAt: Math.max(Date.now(), prevTs + 1)
+    };
+    arcadeRoomState = nextRoom;
     const slug = normalizeFamilySlug(deps.getState().familyName);
     const fbRoot = getFamilyFirebaseRoot(deps.getState().familyName);
     try {
-      localStorage.setItem(`b2ks_arcade_online_room_${slug}`, JSON.stringify(roomObj));
+      localStorage.setItem(`b2ks_arcade_online_room_${slug}`, JSON.stringify(nextRoom));
     } catch {
       // ignore
     }
@@ -147,18 +173,47 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
     fetch(`${url}/${fbRoot}/arcade_room.json`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(roomObj)
+      body: JSON.stringify(nextRoom)
     }).catch(() => {});
+  }
+
+  function shouldAcceptRemoteRoom(remoteRoom: ArcadeRoomState, localRoom: ArcadeRoomState): boolean {
+    if (!remoteRoom || typeof remoteRoom !== 'object') return false;
+    const rStatus = remoteRoom.status || 'idle';
+    const lStatus = localRoom?.status || 'idle';
+    if (lStatus === 'idle' && rStatus !== 'idle') return true;
+    if (lStatus === 'lobby' && (rStatus === 'playing' || rStatus === 'finished')) {
+      if (!remoteRoom.hostId || !localRoom.hostId || remoteRoom.hostId === localRoom.hostId) return true;
+    }
+    if (remoteRoom.matchId && remoteRoom.matchId !== localRoom.matchId && rStatus === 'playing') {
+      return true;
+    }
+    const rRev = remoteRoom.rev || 0;
+    const lRev = localRoom?.rev || 0;
+    if (rRev > lRev) return true;
+    if (rRev === lRev && (remoteRoom.updatedAt || 0) > (localRoom?.updatedAt || 0)) return true;
+    if (lStatus === 'lobby' && rStatus === 'lobby') {
+      const rPlayers = Array.isArray(remoteRoom.playerIds) ? remoteRoom.playerIds.join(',') : '';
+      const lPlayers = Array.isArray(localRoom.playerIds) ? localRoom.playerIds.join(',') : '';
+      if (rPlayers !== lPlayers) return true;
+      if (JSON.stringify(remoteRoom.readyMap || {}) !== JSON.stringify(localRoom.readyMap || {})) return true;
+    }
+    return false;
   }
 
   function onRemoteArcadeRoomUpdate(remoteRoom: ArcadeRoomState) {
     const prevStatus = arcadeRoomState?.status;
     const prevUpdated = arcadeRoomState?.updatedAt || 0;
+    const prevRev = arcadeRoomState?.rev || 0;
+    const prevMatchId = arcadeRoomState?.matchId || '';
     const me = deps.getCurrentUser();
-
-    if (
+    const isSameMatchPlaying =
       prevStatus === 'playing' &&
       remoteRoom.status === 'playing' &&
+      (!remoteRoom.matchId || !prevMatchId || remoteRoom.matchId === prevMatchId);
+
+    if (
+      isSameMatchPlaying &&
       remoteRoom.gameType === 'shooter' &&
       arcadeRoomState?.matchData?.ships &&
       remoteRoom.matchData?.ships
@@ -185,16 +240,21 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
         }
       });
       arcadeRoomState.updatedAt = remoteRoom.updatedAt;
+      arcadeRoomState.rev = remoteRoom.rev ?? arcadeRoomState.rev;
       return;
     }
 
-    arcadeRoomState = remoteRoom;
+    arcadeRoomState = {
+      ...remoteRoom,
+      playerIds: Array.isArray(remoteRoom.playerIds) ? remoteRoom.playerIds : [],
+      readyMap: remoteRoom.readyMap && typeof remoteRoom.readyMap === 'object' ? remoteRoom.readyMap : {}
+    };
 
+    const isParticipant = arcadeRoomState.playerIds.includes(me.id);
     if (
-      prevStatus !== 'playing' &&
-      remoteRoom.status === 'playing' &&
-      Array.isArray(remoteRoom.playerIds) &&
-      remoteRoom.playerIds.includes(me.id)
+      arcadeRoomState.status === 'playing' &&
+      (prevStatus !== 'playing' || (arcadeRoomState.matchId && arcadeRoomState.matchId !== prevMatchId)) &&
+      isParticipant
     ) {
       const modalEl = document.getElementById('arcade-modal');
       if (!modalEl || modalEl.style.display !== 'flex') {
@@ -203,20 +263,25 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
         } else if (modalEl) {
           modalEl.style.display = 'flex';
         }
-        deps.playSuccess();
-        deps.showToast('🚀 Trận đấu Khu Vui Chơi đã bắt đầu!');
       }
+      deps.playSuccess();
+      deps.showToast('🚀 Trận đấu Khu Vui Chơi đã bắt đầu!');
+      ensureFastLobbyPoll();
       renderArcadeLobby();
       return;
     }
 
     const modalEl = document.getElementById('arcade-modal');
     if (modalEl && modalEl.style.display === 'flex') {
-      if (remoteRoom.status === 'playing' && remoteRoom.gameType === 'shooter') {
+      if (arcadeRoomState.status === 'playing' && arcadeRoomState.gameType === 'shooter') {
         if (prevStatus !== 'playing' || !document.getElementById('arcade-shooter-canvas')) {
           renderArcadeLobby();
         }
-      } else if (remoteRoom.updatedAt !== prevUpdated || prevStatus !== remoteRoom.status) {
+      } else if (
+        arcadeRoomState.updatedAt !== prevUpdated ||
+        (arcadeRoomState.rev || 0) !== prevRev ||
+        prevStatus !== arcadeRoomState.status
+      ) {
         renderArcadeLobby();
       }
     }
@@ -231,7 +296,7 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
         const localRaw = localStorage.getItem(`b2ks_arcade_online_room_${slug}`);
         if (localRaw) {
           const parsed = JSON.parse(localRaw) as ArcadeRoomState;
-          if (parsed && (parsed.updatedAt || 0) > (arcadeRoomState?.updatedAt || 0)) {
+          if (shouldAcceptRemoteRoom(parsed, arcadeRoomState)) {
             onRemoteArcadeRoomUpdate(parsed);
           }
         }
@@ -240,11 +305,11 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
       }
       return;
     }
-    fetch(`${url}/${fbRoot}/arcade_room.json`)
+    fetch(`${url}/${fbRoot}/arcade_room.json`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((remoteRoom: ArcadeRoomState | null) => {
         if (!remoteRoom) return;
-        if ((remoteRoom.updatedAt || 0) > (arcadeRoomState?.updatedAt || 0)) {
+        if (shouldAcceptRemoteRoom(remoteRoom, arcadeRoomState)) {
           onRemoteArcadeRoomUpdate(remoteRoom);
         }
       })
@@ -268,6 +333,8 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
     deps.playSuccess();
     const newRoom: ArcadeRoomState = {
       status: 'lobby',
+      rev: (arcadeRoomState?.rev || 0) + 1,
+      matchId: '',
       gameType,
       hostId: me.id,
       playerIds: [me.id],
@@ -279,6 +346,7 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
       updatedAt: Date.now()
     };
     pushArcadeRoomToFirebase(newRoom);
+    ensureFastLobbyPoll();
     renderArcadeLobby();
   }
 
@@ -305,6 +373,7 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
       updatedAt: Date.now()
     };
     pushArcadeRoomToFirebase(updated);
+    ensureFastLobbyPoll();
     renderArcadeLobby();
   }
 
@@ -314,12 +383,38 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
     if (!r || r.status !== 'lobby' || !r.playerIds.includes(me.id)) return;
     deps.playClick();
     const nextReady = !(r.readyMap && r.readyMap[me.id]);
+    const nextRev = (r.rev || 0) + 1;
+    const nextTs = Math.max(Date.now(), (r.updatedAt || 0) + 1);
     const updated: ArcadeRoomState = {
       ...r,
+      rev: nextRev,
       readyMap: { ...(r.readyMap || {}), [me.id]: nextReady },
-      updatedAt: Date.now()
+      updatedAt: nextTs
     };
-    pushArcadeRoomToFirebase(updated);
+    arcadeRoomState = updated;
+    const slug = normalizeFamilySlug(deps.getState().familyName);
+    const fbRoot = getFamilyFirebaseRoot(deps.getState().familyName);
+    try {
+      localStorage.setItem(`b2ks_arcade_online_room_${slug}`, JSON.stringify(updated));
+    } catch {
+      // ignore
+    }
+    const url = deps.getFirebaseUrl();
+    if (url) {
+      Promise.all([
+        fetch(`${url}/${fbRoot}/arcade_room/readyMap/${me.id}.json`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(nextReady)
+        }),
+        fetch(`${url}/${fbRoot}/arcade_room.json`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rev: nextRev, updatedAt: nextTs })
+        })
+      ]).catch(() => {});
+    }
+    ensureFastLobbyPoll();
     renderArcadeLobby();
   }
 
@@ -469,6 +564,7 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
     const playingRoom: ArcadeRoomState = {
       ...r,
       status: 'playing',
+      matchId: `arc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       playerIds: validPlayers.map((p) => p.id),
       pot,
       matchData,
@@ -476,7 +572,8 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
       isDraw: false,
       updatedAt: Date.now()
     };
-    pushArcadeRoomToFirebase(playingRoom);
+    pushArcadeRoomToFirebase(playingRoom, 10);
+    ensureFastLobbyPoll();
     renderArcadeLobby();
   }
 
@@ -532,6 +629,7 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
   }
 
   function renderArcadeLobby() {
+    ensureFastLobbyPoll();
     const container = document.getElementById('arcade-dynamic-container');
     if (!container) return;
 

@@ -509,56 +509,129 @@ export const BGM_THEME_OPTIONS: BgmThemeDef[] = [
     id: 'sunny_town',
     name: 'Phố Nắng Vui Tươi',
     icon: '☀️',
-    desc: 'Giai điệu thị trấn ấm áp, nhẹ nhàng mặc định',
-    stepMs: 430,
+    desc: 'Nhịp Calypso C-trưởng rộn ràng với hợp âm marimba sáng rõ',
+    stepMs: 255,
     oscType: 'triangle',
     bassType: 'sine',
-    melody: [261.63, 329.63, 392.0, 523.25, 440.0, 392.0, 329.63, 293.66],
-    bass: [130.81, 0, 164.81, 0, 196.0, 0, 146.83, 0]
+    chordType: 'sine',
+    leadDurFactor: 0.58,
+    leadGain: 0.025,
+    bassGain: 0.018,
+    chordGain: 0.009,
+    filterFreq: 2400,
+    melody: [523.25, 0, 659.25, 587.33, 523.25, 783.99, 659.25, 0, 698.46, 0, 880.0, 783.99, 659.25, 587.33, 523.25, 0],
+    bass: [130.81, 0, 196.0, 0, 164.81, 0, 196.0, 0, 174.61, 0, 220.0, 0, 196.0, 0, 146.83, 0],
+    chords: [
+      [261.63, 329.63, 392.0], [], [261.63, 329.63, 392.0], [],
+      [261.63, 329.63, 392.0], [], [], [],
+      [349.23, 440.0, 523.25], [], [349.23, 440.0, 523.25], [],
+      [392.0, 493.88, 587.33], [], [261.63, 329.63, 392.0], []
+    ],
+    percussion: ['kick', 'hat', 'wood', 'hat', 'kick', 'hat', 'wood', 'hat', 'kick', 'hat', 'wood', 'hat', 'kick', 'snare', 'wood', 'hat']
   },
   {
     id: 'adventure_rpg',
     name: 'Phiêu Lưu Khám Phá',
     icon: '🧭',
-    desc: 'Nhịp hành khúc phấn khởi cho các nhiệm vụ',
-    stepMs: 320,
-    oscType: 'triangle',
+    desc: 'Hành khúc Rê-thứ hào hùng, kèn đồng & trống dồn phấn khích',
+    stepMs: 210,
+    oscType: 'sawtooth',
     bassType: 'triangle',
-    melody: [293.66, 349.23, 440.0, 523.25, 493.88, 440.0, 392.0, 329.63, 293.66, 392.0, 440.0, 587.33],
-    bass: [146.83, 146.83, 220.0, 0, 196.0, 0, 164.81, 196.0, 146.83, 0, 220.0, 0]
+    chordType: 'triangle',
+    leadDurFactor: 0.78,
+    leadGain: 0.015,
+    bassGain: 0.022,
+    chordGain: 0.008,
+    filterFreq: 1350,
+    melody: [293.66, 293.66, 440.0, 0, 523.25, 493.88, 440.0, 392.0, 349.23, 392.0, 440.0, 587.33, 523.25, 0, 440.0, 0],
+    bass: [146.83, 220.0, 146.83, 220.0, 174.61, 261.63, 196.0, 293.66, 174.61, 220.0, 146.83, 220.0, 130.81, 196.0, 146.83, 0],
+    chords: [
+      [293.66, 440.0], [], [293.66, 440.0], [],
+      [261.63, 392.0], [], [293.66, 440.0], [],
+      [349.23, 523.25], [], [293.66, 440.0], [],
+      [261.63, 392.0], [], [293.66, 440.0], []
+    ],
+    percussion: ['kick', 'hat', 'snare', 'hat', 'kick', 'kick', 'snare', 'hat', 'kick', 'hat', 'snare', 'hat', 'kick', 'snare', 'kick', 'snare']
   },
   {
     id: 'cozy_lullaby',
     name: 'Êm Dịu Buổi Tối',
     icon: '🌙',
-    desc: 'Nhẹ nhàng thư giãn khi đọc truyện & nghỉ ngơi',
-    stepMs: 560,
+    desc: 'Hộp nhạc Waltz 3/4 chậm rãi êm ái như lời ru trước giờ ngủ',
+    stepMs: 580,
     oscType: 'sine',
     bassType: 'sine',
-    melody: [329.63, 392.0, 493.88, 392.0, 293.66, 349.23, 440.0, 349.23],
-    bass: [164.81, 0, 164.81, 0, 146.83, 0, 146.83, 0]
+    chordType: 'sine',
+    leadDurFactor: 1.15,
+    leadGain: 0.019,
+    bassGain: 0.011,
+    chordGain: 0.006,
+    filterFreq: 1150,
+    melody: [659.25, 783.99, 659.25, 587.33, 523.25, 0, 587.33, 659.25, 587.33, 493.88, 392.0, 0],
+    bass: [130.81, 0, 0, 164.81, 0, 0, 146.83, 0, 0, 196.0, 0, 0],
+    chords: [
+      [261.63, 329.63], [329.63, 392.0], [329.63, 392.0],
+      [261.63, 329.63], [329.63, 392.0], [],
+      [293.66, 349.23], [349.23, 440.0], [349.23, 440.0],
+      [246.94, 392.0], [246.94, 392.0], []
+    ],
+    percussion: []
   },
   {
     id: 'retro_chiptune',
     name: 'Retro Arcade 8-bit',
     icon: '🕹️',
-    desc: 'Âm thanh máy game cổ điển sôi động',
-    stepMs: 250,
+    desc: 'Arpeggio 8-bit tốc độ cao phong cách máy điện tử cổ điển',
+    stepMs: 145,
     oscType: 'square',
     bassType: 'triangle',
-    melody: [523.25, 659.25, 783.99, 659.25, 587.33, 698.46, 880.0, 783.99],
-    bass: [130.81, 196.0, 130.81, 196.0, 146.83, 220.0, 174.61, 196.0]
+    chordType: 'square',
+    leadDurFactor: 0.52,
+    leadGain: 0.011,
+    bassGain: 0.019,
+    chordGain: 0.004,
+    filterFreq: 3000,
+    melody: [
+      523.25, 659.25, 783.99, 1046.5, 783.99, 659.25, 523.25, 659.25,
+      587.33, 698.46, 880.0, 1174.66, 880.0, 698.46, 587.33, 698.46,
+      659.25, 783.99, 987.77, 1318.51, 987.77, 783.99, 659.25, 783.99,
+      523.25, 0, 783.99, 0, 1046.5, 0, 783.99, 0
+    ],
+    bass: [
+      130.81, 0, 261.63, 0, 130.81, 0, 196.0, 0,
+      146.83, 0, 293.66, 0, 146.83, 0, 220.0, 0,
+      164.81, 0, 329.63, 0, 196.0, 0, 246.94, 0,
+      130.81, 130.81, 196.0, 0, 261.63, 0, 196.0, 0
+    ],
+    chords: [],
+    percussion: [
+      'kick', 'hat', 'snare', 'hat', 'kick', 'hat', 'snare', 'hat',
+      'kick', 'hat', 'snare', 'hat', 'kick', 'kick', 'snare', 'hat'
+    ]
   },
   {
     id: 'calm_forest',
     name: 'Vườn Xanh Thiên Nhiên',
     icon: '🌿',
-    desc: 'Âm hưởng ngũ cung trong trẻo gần gũi thiên nhiên',
-    stepMs: 470,
-    oscType: 'sine',
+    desc: 'Tiếng sáo & đàn hạc Fa-Lydian du dương giữa khu rừng mát',
+    stepMs: 365,
+    oscType: 'triangle',
     bassType: 'sine',
-    melody: [261.63, 293.66, 392.0, 440.0, 523.25, 440.0, 392.0, 293.66],
-    bass: [130.81, 0, 196.0, 0, 130.81, 0, 146.83, 0]
+    chordType: 'sine',
+    leadDurFactor: 1.05,
+    leadGain: 0.02,
+    bassGain: 0.013,
+    chordGain: 0.008,
+    filterFreq: 1650,
+    melody: [349.23, 440.0, 523.25, 659.25, 587.33, 523.25, 440.0, 392.0, 349.23, 493.88, 523.25, 698.46, 659.25, 523.25, 440.0, 0],
+    bass: [174.61, 0, 0, 261.63, 196.0, 0, 0, 146.83, 174.61, 0, 0, 246.94, 174.61, 0, 130.81, 0],
+    chords: [
+      [349.23, 440.0, 523.25], [], [], [],
+      [392.0, 493.88, 587.33], [], [], [],
+      [349.23, 440.0, 659.25], [], [], [],
+      [349.23, 440.0, 523.25], [], [], []
+    ],
+    percussion: ['wood', null, null, 'wood', null, 'wood', null, null]
   }
 ];
 
