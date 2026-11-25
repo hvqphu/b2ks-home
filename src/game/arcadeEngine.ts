@@ -105,6 +105,85 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
   let arcadeAnimFrameId: number | null = null;
   let arcadeLastSyncedShootAt = 0;
   let fastPollTimer: number | null = null;
+  let localWriteSeq = 0;
+  let pullInFlight = false;
+  let pullStartedAt = 0;
+
+  function normalizeTicTacToeBoard(rawBoard: any): string[] {
+    const out = Array(9).fill('');
+    if (Array.isArray(rawBoard)) {
+      for (let i = 0; i < 9; i++) {
+        out[i] = rawBoard[i] ? String(rawBoard[i]) : '';
+      }
+    } else if (rawBoard && typeof rawBoard === 'object') {
+      for (let i = 0; i < 9; i++) {
+        const val = rawBoard[i] ?? rawBoard[String(i)];
+        out[i] = val ? String(val) : '';
+      }
+    }
+    return out;
+  }
+
+  function normalizeArcadeRoom(raw: ArcadeRoomState): ArcadeRoomState {
+    const playerIds = Array.isArray(raw.playerIds)
+      ? raw.playerIds.filter(Boolean)
+      : raw.playerIds && typeof raw.playerIds === 'object'
+      ? (Object.values(raw.playerIds) as string[]).filter(Boolean)
+      : [];
+    const readyMap =
+      raw.readyMap && typeof raw.readyMap === 'object' ? { ...raw.readyMap } : {};
+    let matchData = raw.matchData && typeof raw.matchData === 'object' ? { ...raw.matchData } : null;
+
+    if (raw.status === 'playing' || matchData) {
+      if (raw.gameType === 'tictactoe') {
+        matchData = {
+          board: normalizeTicTacToeBoard(matchData?.board),
+          turnIdx: typeof matchData?.turnIdx === 'number' ? matchData.turnIdx : 0
+        };
+      } else if (raw.gameType === 'quiz') {
+        const rawScores = Array.isArray(matchData?.scores)
+          ? matchData.scores
+          : matchData?.scores && typeof matchData.scores === 'object'
+          ? Object.values(matchData.scores)
+          : [];
+        const scores = playerIds.map((_, idx) => Number(rawScores[idx] || 0));
+        const questions = Array.isArray(matchData?.questions) ? matchData.questions : [];
+        const buzzRaw = matchData?.buzzedPlayerIdx;
+        const buzzedPlayerIdx = typeof buzzRaw === 'number' && buzzRaw >= 0 ? buzzRaw : -1;
+        matchData = {
+          scores,
+          questions,
+          qIdx: typeof matchData?.qIdx === 'number' ? matchData.qIdx : 0,
+          buzzedPlayerIdx
+        };
+      } else if (raw.gameType === 'shooter') {
+        matchData = {
+          W: Number(matchData?.W || 580),
+          H: Number(matchData?.H || 360),
+          ships: Array.isArray(matchData?.ships) ? matchData.ships : [],
+          bullets: Array.isArray(matchData?.bullets) ? matchData.bullets : [],
+          asteroids: Array.isArray(matchData?.asteroids) ? matchData.asteroids : [],
+          powerups: Array.isArray(matchData?.powerups) ? matchData.powerups : [],
+          particles: Array.isArray(matchData?.particles) ? matchData.particles : []
+        };
+      }
+    }
+
+    return {
+      status: raw.status || 'idle',
+      rev: raw.rev || 0,
+      matchId: raw.matchId || '',
+      gameType: raw.gameType || 'tictactoe',
+      hostId: raw.hostId || null,
+      playerIds,
+      readyMap,
+      pot: Number(raw.pot || 0),
+      matchData,
+      winnerId: raw.winnerId || null,
+      isDraw: Boolean(raw.isDraw),
+      updatedAt: Number(raw.updatedAt || 0)
+    };
+  }
 
   function getRoomState(): ArcadeRoomState {
     return arcadeRoomState;
@@ -153,13 +232,14 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
   }
 
   function pushArcadeRoomToFirebase(roomObj: ArcadeRoomState, revBump = 1) {
+    localWriteSeq += 1;
     const prevRev = arcadeRoomState?.rev || 0;
     const prevTs = arcadeRoomState?.updatedAt || 0;
-    const nextRoom: ArcadeRoomState = {
+    const nextRoom: ArcadeRoomState = normalizeArcadeRoom({
       ...roomObj,
       rev: Math.max(roomObj.rev || 0, prevRev + revBump),
       updatedAt: Math.max(Date.now(), prevTs + 1)
-    };
+    });
     arcadeRoomState = nextRoom;
     const slug = normalizeFamilySlug(deps.getState().familyName);
     const fbRoot = getFamilyFirebaseRoot(deps.getState().familyName);
@@ -183,7 +263,7 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
     const lStatus = localRoom?.status || 'idle';
     if (lStatus === 'idle' && rStatus !== 'idle') return true;
     if (lStatus === 'lobby' && (rStatus === 'playing' || rStatus === 'finished')) {
-      if (!remoteRoom.hostId || !localRoom.hostId || remoteRoom.hostId === localRoom.hostId) return true;
+      return true;
     }
     if (remoteRoom.matchId && remoteRoom.matchId !== localRoom.matchId && rStatus === 'playing') {
       return true;
@@ -201,7 +281,8 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
     return false;
   }
 
-  function onRemoteArcadeRoomUpdate(remoteRoom: ArcadeRoomState) {
+  function onRemoteArcadeRoomUpdate(rawRemoteRoom: ArcadeRoomState) {
+    const remoteRoom = normalizeArcadeRoom(rawRemoteRoom);
     const prevStatus = arcadeRoomState?.status;
     const prevUpdated = arcadeRoomState?.updatedAt || 0;
     const prevRev = arcadeRoomState?.rev || 0;
@@ -220,6 +301,7 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
     ) {
       const localMd = arcadeRoomState.matchData;
       const remoteMd = remoteRoom.matchData;
+      if (!Array.isArray(localMd.bullets)) localMd.bullets = [];
       remoteMd.ships.forEach((rShip: any, idx: number) => {
         const lShip = localMd.ships[idx];
         if (!lShip || rShip.memberId === me.id) return;
@@ -244,11 +326,7 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
       return;
     }
 
-    arcadeRoomState = {
-      ...remoteRoom,
-      playerIds: Array.isArray(remoteRoom.playerIds) ? remoteRoom.playerIds : [],
-      readyMap: remoteRoom.readyMap && typeof remoteRoom.readyMap === 'object' ? remoteRoom.readyMap : {}
-    };
+    arcadeRoomState = remoteRoom;
 
     const isParticipant = arcadeRoomState.playerIds.includes(me.id);
     if (
@@ -295,7 +373,7 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
       try {
         const localRaw = localStorage.getItem(`b2ks_arcade_online_room_${slug}`);
         if (localRaw) {
-          const parsed = JSON.parse(localRaw) as ArcadeRoomState;
+          const parsed = normalizeArcadeRoom(JSON.parse(localRaw) as ArcadeRoomState);
           if (shouldAcceptRemoteRoom(parsed, arcadeRoomState)) {
             onRemoteArcadeRoomUpdate(parsed);
           }
@@ -305,15 +383,29 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
       }
       return;
     }
+    const now = Date.now();
+    if (pullInFlight && now - pullStartedAt < 2500) return;
+    pullInFlight = true;
+    pullStartedAt = now;
+    const seqAtStart = localWriteSeq;
     fetch(`${url}/${fbRoot}/arcade_room.json`, { cache: 'no-store' })
       .then((r) => r.json())
-      .then((remoteRoom: ArcadeRoomState | null) => {
-        if (!remoteRoom) return;
+      .then((rawRemote: ArcadeRoomState | null) => {
+        if (!rawRemote) return;
+        const remoteRoom = normalizeArcadeRoom(rawRemote);
+        if (seqAtStart !== localWriteSeq && arcadeRoomState.status === 'playing' && remoteRoom.status === 'lobby') {
+          return;
+        }
         if (shouldAcceptRemoteRoom(remoteRoom, arcadeRoomState)) {
           onRemoteArcadeRoomUpdate(remoteRoom);
         }
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.warn('Arcade poll error:', err);
+      })
+      .finally(() => {
+        pullInFlight = false;
+      });
   }
 
   function createArcadeLobby(gameType: string) {
@@ -381,6 +473,7 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
     const me = deps.getCurrentUser();
     const r = arcadeRoomState;
     if (!r || r.status !== 'lobby' || !r.playerIds.includes(me.id)) return;
+    localWriteSeq += 1;
     deps.playClick();
     const nextReady = !(r.readyMap && r.readyMap[me.id]);
     const nextRev = (r.rev || 0) + 1;
@@ -439,7 +532,7 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
         winnerId: null,
         isDraw: false,
         updatedAt: Date.now()
-      });
+      }, 5);
     } else {
       pushArcadeRoomToFirebase({
         ...r,
@@ -466,7 +559,7 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
       winnerId: null,
       isDraw: false,
       updatedAt: Date.now()
-    });
+    }, 10);
     renderArcadeLobby();
   }
 
@@ -511,14 +604,15 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
 
     let matchData: any = null;
     if (r.gameType === 'tictactoe') {
-      matchData = { board: Array(9).fill(null), turnIdx: 0 };
+      // Use '' instead of null because Firebase RTDB strips null array elements
+      matchData = { board: Array(9).fill(''), turnIdx: 0 };
     } else if (r.gameType === 'quiz') {
       const pool = [...state.englishQuestions].sort(() => Math.random() - 0.5).slice(0, 5);
       matchData = {
         scores: validPlayers.map(() => 0),
         questions: pool,
         qIdx: 0,
-        buzzedPlayerIdx: null
+        buzzedPlayerIdx: -1
       };
     } else if (r.gameType === 'shooter') {
       const W = 580;
@@ -833,12 +927,14 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
     spectatorBanner: string
   ) {
     const state = deps.getState();
-    const md = r.matchData;
+    const md = r.matchData || {};
+    const board = normalizeTicTacToeBoard(md.board);
+    const turnIdx = typeof md.turnIdx === 'number' ? md.turnIdx : 0;
     const p0 = state.members.find((m) => m.id === r.playerIds[0]) || { name: 'P1' };
     const p1 = state.members.find((m) => m.id === r.playerIds[1]) || { name: 'P2' };
-    const curTurnMember = md.turnIdx === 0 ? p0 : p1;
-    const curMark = md.turnIdx === 0 ? '❌' : '⭕';
-    const isMyTurn = !isSpectator && myPlayerIdx === md.turnIdx;
+    const curTurnMember = turnIdx === 0 ? p0 : p1;
+    const curMark = turnIdx === 0 ? '❌' : '⭕';
+    const isMyTurn = !isSpectator && myPlayerIdx === turnIdx;
 
     container.innerHTML = `
       ${spectatorBanner}
@@ -847,12 +943,12 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
           <span>❌ <b>${p0.name}</b> ${myPlayerIdx === 0 ? '(Bạn)' : ''} vs ⭕ <b>${p1.name}</b> ${myPlayerIdx === 1 ? '(Bạn)' : ''}</span>
           <span class="points-pill">🏆 Quỹ thưởng: ${r.pot}⭐</span>
         </div>
-        <div style="font-size:15px; font-weight:700; margin-bottom:10px; padding:6px 12px; border-radius:8px; display:inline-block; background:${isMyTurn ? '#EAFAF1' : '#FEF9E7'}; border:2px solid ${ARCADE_PLAYER_THEMES[md.turnIdx].color}; color:${ARCADE_PLAYER_THEMES[md.turnIdx].color};">
+        <div style="font-size:15px; font-weight:700; margin-bottom:10px; padding:6px 12px; border-radius:8px; display:inline-block; background:${isMyTurn ? '#EAFAF1' : '#FEF9E7'}; border:2px solid ${(ARCADE_PLAYER_THEMES[turnIdx] || ARCADE_PLAYER_THEMES[0]).color}; color:${(ARCADE_PLAYER_THEMES[turnIdx] || ARCADE_PLAYER_THEMES[0]).color};">
           ${isMyTurn ? `👉 Tới lượt CỦA BẠN (${curMark})! Hãy bấm chọn 1 ô trống:` : `⏳ Đang chờ lượt của ${curTurnMember.name} (${curMark})...`}
         </div>
         <div style="display:grid; grid-template-columns:repeat(3, 88px); gap:8px; justify-content:center; margin:0 auto 14px auto;">
-          ${md.board
-            .map((cell: string | null, i: number) => {
+          ${board
+            .map((cell: string, i: number) => {
               const canClick = isMyTurn && !cell;
               return `
                 <button type="button" onclick="playOnlineTicTacToeCell(${i})" ${!canClick ? 'disabled' : ''}
@@ -874,12 +970,14 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
     const r = arcadeRoomState;
     if (!r || r.status !== 'playing' || r.gameType !== 'tictactoe') return;
     const myPlayerIdx = r.playerIds.indexOf(me.id);
-    const md = r.matchData;
-    if (myPlayerIdx === -1 || myPlayerIdx !== md.turnIdx || md.board[idx]) return;
+    const md = r.matchData || {};
+    const board = normalizeTicTacToeBoard(md.board);
+    const turnIdx = typeof md.turnIdx === 'number' ? md.turnIdx : 0;
+    if (myPlayerIdx === -1 || myPlayerIdx !== turnIdx || board[idx]) return;
 
     deps.playClick();
-    const nextBoard = [...md.board];
-    nextBoard[idx] = md.turnIdx === 0 ? '❌' : '⭕';
+    const nextBoard = [...board];
+    nextBoard[idx] = turnIdx === 0 ? '❌' : '⭕';
 
     const wins = [
       [0, 1, 2], [3, 4, 5], [6, 7, 8],
@@ -888,17 +986,17 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
     ];
     const hasWon = wins.some(([a, b, c]) => nextBoard[a] && nextBoard[a] === nextBoard[b] && nextBoard[a] === nextBoard[c]);
     if (hasWon) {
-      r.matchData = { ...md, board: nextBoard };
-      return finishOnlineArcadeMatch(r.playerIds[md.turnIdx], false);
+      r.matchData = { ...md, board: nextBoard, turnIdx };
+      return finishOnlineArcadeMatch(r.playerIds[turnIdx], false);
     }
-    if (nextBoard.every(Boolean)) {
-      r.matchData = { ...md, board: nextBoard };
+    if (nextBoard.every((cell) => Boolean(cell))) {
+      r.matchData = { ...md, board: nextBoard, turnIdx };
       return finishOnlineArcadeMatch(null, true);
     }
 
     pushArcadeRoomToFirebase({
       ...r,
-      matchData: { board: nextBoard, turnIdx: 1 - md.turnIdx },
+      matchData: { board: nextBoard, turnIdx: 1 - turnIdx },
       updatedAt: Date.now()
     });
     renderArcadeLobby();
@@ -923,37 +1021,42 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
     spectatorBanner: string
   ) {
     const state = deps.getState();
-    const md = r.matchData;
+    const md = r.matchData || {};
+    const questions = Array.isArray(md.questions) ? md.questions : [];
+    const scores = r.playerIds.map((_, idx) => Number((md.scores && md.scores[idx]) || 0));
+    const qIdx = typeof md.qIdx === 'number' ? md.qIdx : 0;
+    const buzzIdx = typeof md.buzzedPlayerIdx === 'number' && md.buzzedPlayerIdx >= 0 ? md.buzzedPlayerIdx : -1;
     const players = r.playerIds.map((id) => state.members.find((m) => m.id === id) || { id, name: id });
 
-    if (md.qIdx >= md.questions.length) {
-      const maxScore = Math.max(...md.scores);
-      const topIndices = md.scores.map((s: number, i: number) => (s === maxScore ? i : -1)).filter((i: number) => i !== -1);
-      if (topIndices.length > 1) return finishOnlineArcadeMatch(null, true);
+    if (qIdx >= questions.length || questions.length === 0) {
+      const maxScore = scores.length > 0 ? Math.max(...scores) : 0;
+      const topIndices = scores.map((s: number, i: number) => (s === maxScore ? i : -1)).filter((i: number) => i !== -1);
+      if (topIndices.length > 1 || topIndices.length === 0) return finishOnlineArcadeMatch(null, true);
       return finishOnlineArcadeMatch(r.playerIds[topIndices[0]], false);
     }
 
-    const qObj = md.questions[md.qIdx];
+    const qObj = questions[qIdx];
     const letters = ['A', 'B', 'C', 'D'];
     const scoreBarHtml = players
       .map(
         (p, i) =>
-          `<div style="background:${ARCADE_PLAYER_THEMES[i].color}; color:#FFF; padding:4px 10px; border-radius:8px; font-size:12px; font-weight:700;">${p.name}: ${md.scores[i]}đ</div>`
+          `<div style="background:${(ARCADE_PLAYER_THEMES[i] || ARCADE_PLAYER_THEMES[0]).color}; color:#FFF; padding:4px 10px; border-radius:8px; font-size:12px; font-weight:700;">${p.name}: ${scores[i]}đ</div>`
       )
       .join('');
 
     let actionAreaHtml = '';
-    if (md.buzzedPlayerIdx === null) {
+    if (buzzIdx < 0 || buzzIdx >= players.length) {
+      const myTheme = ARCADE_PLAYER_THEMES[myPlayerIdx] || ARCADE_PLAYER_THEMES[0];
       actionAreaHtml = !isSpectator
         ? `<div style="margin-top:12px; text-align:center;">
-             <button type="button" class="btn" style="background:${ARCADE_PLAYER_THEMES[myPlayerIdx].color}; padding:14px 24px; font-size:16px; width:100%;" onclick="buzzOnlinePlayerIn()">
+             <button type="button" class="btn" style="background:${myTheme.color}; padding:14px 24px; font-size:16px; width:100%;" onclick="buzzOnlinePlayerIn()">
                🔔 BẤM CHUÔNG GIÀNH QUYỀN TRẢ LỜI! (${me.name})
              </button>
            </div>`
         : `<div style="margin-top:10px; text-align:center; font-size:13px; color:#7F8C8D; font-weight:700;">⏳ Đang chờ người chơi bấm chuông...</div>`;
     } else {
-      const buzzedPlayer = players[md.buzzedPlayerIdx];
-      const isMyBuzz = !isSpectator && md.buzzedPlayerIdx === myPlayerIdx;
+      const buzzedPlayer = players[buzzIdx];
+      const isMyBuzz = !isSpectator && buzzIdx === myPlayerIdx;
       actionAreaHtml = isMyBuzz
         ? `<div style="margin-top:10px; padding:10px; background:#FEF9E7; border:2px solid #F39C12; border-radius:10px;">
              <div style="font-weight:700; color:#D35400; margin-bottom:8px;">⚡ Bạn đã giành quyền trả lời! Hãy chọn đáp án:</div>
@@ -969,7 +1072,7 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
              </div>
            </div>`
         : `<div style="margin-top:10px; padding:10px; background:#FEF9E7; border:2px solid #F39C12; border-radius:10px; text-align:center; font-weight:700; color:#D35400;">
-             ⚡ <b>${buzzedPlayer.name}</b> đã bấm chuông nhanh nhất và đang chọn đáp án...
+             ⚡ <b>${buzzedPlayer?.name || 'Người chơi'}</b> đã bấm chuông nhanh nhất và đang chọn đáp án...
            </div>`;
     }
 
@@ -981,7 +1084,7 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
           <span class="points-pill">🏆 Quỹ thưởng: ${r.pot}⭐</span>
         </div>
         <div style="background:#FFF; border:2.5px solid #2C3E50; border-radius:12px; padding:12px;">
-          <div class="tag" style="margin-bottom:6px;">Câu ${md.qIdx + 1} / ${md.questions.length}</div>
+          <div class="tag" style="margin-bottom:6px;">Câu ${qIdx + 1} / ${questions.length}</div>
           <div style="font-size:15px; font-weight:700; color:#2C3E50;">${qObj.q}</div>
           <div style="margin-top:8px; font-size:13px; color:#555;">${qObj.opts.map((o: string, i: number) => `<div><b>${letters[i]}.</b> ${o}</div>`).join('')}</div>
           ${actionAreaHtml}
@@ -995,12 +1098,14 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
     const r = arcadeRoomState;
     if (!r || r.status !== 'playing' || r.gameType !== 'quiz') return;
     const myPlayerIdx = r.playerIds.indexOf(me.id);
-    if (myPlayerIdx === -1 || r.matchData.buzzedPlayerIdx !== null) return;
+    const md = r.matchData || {};
+    const curBuzz = typeof md.buzzedPlayerIdx === 'number' ? md.buzzedPlayerIdx : -1;
+    if (myPlayerIdx === -1 || curBuzz >= 0) return;
 
     deps.playTone(880, 'square', 0.12, 0.08);
     pushArcadeRoomToFirebase({
       ...r,
-      matchData: { ...r.matchData, buzzedPlayerIdx: myPlayerIdx },
+      matchData: { ...md, buzzedPlayerIdx: myPlayerIdx },
       updatedAt: Date.now()
     });
     renderArcadeLobby();
@@ -1011,11 +1116,15 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
     const r = arcadeRoomState;
     if (!r || r.status !== 'playing' || r.gameType !== 'quiz') return;
     const myPlayerIdx = r.playerIds.indexOf(me.id);
-    const md = r.matchData;
-    if (myPlayerIdx === -1 || md.buzzedPlayerIdx !== myPlayerIdx) return;
+    const md = r.matchData || {};
+    const curBuzz = typeof md.buzzedPlayerIdx === 'number' ? md.buzzedPlayerIdx : -1;
+    if (myPlayerIdx === -1 || curBuzz !== myPlayerIdx) return;
 
-    const qObj = md.questions[md.qIdx];
-    const nextScores = [...md.scores];
+    const qIdx = typeof md.qIdx === 'number' ? md.qIdx : 0;
+    const questions = Array.isArray(md.questions) ? md.questions : [];
+    const qObj = questions[qIdx];
+    if (!qObj) return;
+    const nextScores = r.playerIds.map((_, idx) => Number((md.scores && md.scores[idx]) || 0));
     if (optIdx === qObj.ans) {
       nextScores[myPlayerIdx] += 1;
       deps.playCoin();
@@ -1028,7 +1137,7 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
 
     pushArcadeRoomToFirebase({
       ...r,
-      matchData: { ...md, scores: nextScores, qIdx: md.qIdx + 1, buzzedPlayerIdx: null },
+      matchData: { ...md, scores: nextScores, qIdx: qIdx + 1, buzzedPlayerIdx: -1 },
       updatedAt: Date.now()
     });
     renderArcadeLobby();
@@ -1204,9 +1313,11 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
       const sctx = sc.getContext('2d');
       if (!sctx) return;
       const md = r.matchData;
-      if (!md.asteroids) md.asteroids = [];
-      if (!md.powerups) md.powerups = [];
-      if (!md.particles) md.particles = [];
+      if (!Array.isArray(md.ships)) md.ships = [];
+      if (!Array.isArray(md.bullets)) md.bullets = [];
+      if (!Array.isArray(md.asteroids)) md.asteroids = [];
+      if (!Array.isArray(md.powerups)) md.powerups = [];
+      if (!Array.isArray(md.particles)) md.particles = [];
 
       const bgGrad = sctx.createRadialGradient(md.W * 0.5, md.H * 0.5, 20, md.W * 0.5, md.H * 0.5, md.W * 0.7);
       bgGrad.addColorStop(0, '#1B263B');

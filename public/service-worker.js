@@ -1,4 +1,4 @@
-const CACHE_NAME = 'b2ks-daily-routines-v20';
+const CACHE_NAME = 'b2ks-daily-routines-v21';
 const STATIC_ASSETS = [
   './',
   './index.html',

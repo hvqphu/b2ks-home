@@ -168,6 +168,11 @@ export function createSoccerMiniGame(deps: SoccerEngineDeps) {
   let remoteShotPayload: PenaltyPickPayload | null = null;
   let remoteSavePayload: PenaltyPickPayload | null = null;
   let resolvingKickIndex = -1;
+  let localWriteSeq = 0;
+  let pullInFlight = false;
+  let pullStartedAt = 0;
+  let localAnimKickKey = '';
+  let localAnimStartedAt = 0;
 
   function clearHostAdvanceTimer() {
     if (hostAdvanceTimer !== null) {
@@ -190,6 +195,7 @@ export function createSoccerMiniGame(deps: SoccerEngineDeps) {
     const now = Date.now();
     if (!immediate && now - lastRoomPushAt < 105) return;
     lastRoomPushAt = now;
+    localWriteSeq += 1;
     const slug = normalizeFamilySlug(deps.getState().familyName);
     const fbRoot = getFamilyFirebaseRoot(deps.getState().familyName);
     roomState.rev = (roomState.rev || 0) + revBump;
@@ -333,14 +339,27 @@ export function createSoccerMiniGame(deps: SoccerEngineDeps) {
     const fbRoot = getFamilyFirebaseRoot(deps.getState().familyName);
     const fb = deps.getFirebaseUrl();
     if (fb) {
-      fetch(`${fb}/${fbRoot}/soccer_room.json`, { cache: 'no-store' })
-        .then((r) => r.json())
-        .then((remote: SoccerOnlineRoom | null) => {
-          if (remote && shouldAcceptRemoteRoom(remote, roomState)) {
-            onRemoteSoccerRoomUpdate(remote);
-          }
-        })
-        .catch(() => {});
+      const now = Date.now();
+      if (!pullInFlight || now - pullStartedAt >= 2500) {
+        pullInFlight = true;
+        pullStartedAt = now;
+        const seqAtStart = localWriteSeq;
+        fetch(`${fb}/${fbRoot}/soccer_room.json`, { cache: 'no-store' })
+          .then((r) => r.json())
+          .then((remote: SoccerOnlineRoom | null) => {
+            if (!remote) return;
+            if (seqAtStart !== localWriteSeq && roomState.status === 'playing' && remote.status === 'lobby') {
+              return;
+            }
+            if (shouldAcceptRemoteRoom(remote, roomState)) {
+              onRemoteSoccerRoomUpdate(remote);
+            }
+          })
+          .catch(() => {})
+          .finally(() => {
+            pullInFlight = false;
+          });
+      }
 
       const me = deps.getCurrentUser();
       if (
@@ -808,6 +827,7 @@ export function createSoccerMiniGame(deps: SoccerEngineDeps) {
     const me = deps.getCurrentUser();
     if (roomState.status !== 'lobby' && roomState.status !== 'finished') return;
     if (roomState.p1Id !== me.id && roomState.p2Id !== me.id) return;
+    localWriteSeq += 1;
     deps.playClick();
     const nextReady = !Boolean(roomState.readyMap?.[me.id]);
     const nextRev = (roomState.rev || 0) + 1;
@@ -1711,7 +1731,12 @@ export function createSoccerMiniGame(deps: SoccerEngineDeps) {
     let shooterY = PEN_BALL_START_Y + 34;
 
     if (isAnim && roomState.lastShotZone && roomState.lastSaveZone) {
-      const elapsed = Math.max(0, now - (roomState.animStartedAt || now));
+      const animKey = `${roomState.matchId || ''}|${curKick}`;
+      if (localAnimKickKey !== animKey) {
+        localAnimKickKey = animKey;
+        localAnimStartedAt = now;
+      }
+      const elapsed = Math.max(0, now - (localAnimStartedAt || now));
       const t = Math.min(1, elapsed / 760);
       const easeOut = 1 - Math.pow(1 - t, 3);
       const sz = getZoneDef(roomState.lastShotZone);
@@ -1788,7 +1813,7 @@ export function createSoccerMiniGame(deps: SoccerEngineDeps) {
       );
     }
 
-    if (isAnim && roomState.goalBannerText && now < (roomState.goalBannerUntil || 0)) {
+    if (isAnim && roomState.goalBannerText && localAnimStartedAt && now < localAnimStartedAt + ANIM_DURATION_MS) {
       drawGoalBannerOverlay(ctx, roomState.goalBannerText);
     }
   }
