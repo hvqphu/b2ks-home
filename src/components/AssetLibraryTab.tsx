@@ -993,6 +993,7 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
     petGroup: any;
     charGroup: any;
     robotGroup: any;
+    bldgGroup: any;
     robotBannerTex: any;
     camBaseDist: number;
     camTargetY: number;
@@ -1095,6 +1096,7 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
           petGroup: null,
           charGroup: null,
           robotGroup: null,
+          bldgGroup: null,
           robotBannerTex: null,
           camBaseDist: 4.5,
           camTargetY: 0.7,
@@ -1127,15 +1129,75 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
           }
 
           if (ctx.petGroup && ctx.petGroup.userData?.actor) {
-            const actor = ctx.petGroup.userData.actor;
-            actor.position.y = Math.sin(now * 0.004) * 0.06;
-            if (ctx.petGroup.userData.wingL && ctx.petGroup.userData.wingR) {
-              const flap = Math.sin(now * 0.012) * 0.35;
-              ctx.petGroup.userData.wingL.rotation.z = flap;
-              ctx.petGroup.userData.wingR.rotation.z = -flap;
+            const pud = ctx.petGroup.userData;
+            pud.actor.position.y = Math.sin(now * 0.004) * 0.06;
+            if (pud.leftWingPivot && pud.rightWingPivot) {
+              const spd = pud.leftWingPivot.userData.flapSpeed || 0.009;
+              const amp = pud.leftWingPivot.userData.flapAmp || 0.25;
+              const fl = Math.sin(now * spd) * amp;
+              pud.leftWingPivot.rotation.z = (pud.leftWingPivot.userData.baseZ || 0) - fl;
+              pud.rightWingPivot.rotation.z = (pud.rightWingPivot.userData.baseZ || 0) + fl;
             }
-            if (ctx.petGroup.userData.auraRing) {
-              ctx.petGroup.userData.auraRing.rotation.z = now * 0.002;
+            if (pud.variantOrbit) {
+              pud.variantOrbit.rotation.y = now * 0.0018;
+            }
+            if (pud.variantWheel) {
+              pud.variantWheel.rotation.z = now * 0.0014;
+            }
+            if (pud.auraRing) {
+              pud.auraRing.rotation.z = now * 0.002;
+            }
+          }
+
+          if (ctx.bldgGroup && ctx.bldgGroup.userData) {
+            const bud = ctx.bldgGroup.userData;
+            if (bud.waterSpray) {
+              bud.waterSpray.position.y = 5.45 + Math.sin(now * 0.008) * 0.24;
+              bud.waterSpray.scale.setScalar(0.92 + Math.sin(now * 0.01) * 0.16);
+            }
+            if (bud.waterDroplets) {
+              bud.waterDroplets.forEach((drop: any) => {
+                const dud = drop.userData;
+                const cyc = ((now * 0.0014 + dud.phase) % 1 + 1) % 1;
+                drop.position.set(
+                  Math.cos(dud.ang) * (dud.radius + cyc * 1.15),
+                  0.85 + Math.sin(cyc * Math.PI) * 3.1,
+                  Math.sin(dud.ang) * (dud.radius + cyc * 1.15)
+                );
+                drop.scale.setScalar(0.65 + (1 - Math.abs(cyc - 0.5) * 2) * 0.55);
+              });
+            }
+            if (bud.waterRipples) {
+              bud.waterRipples.forEach((ring: any) => {
+                ring.scale.setScalar(0.88 + (((now * 0.0008 + ring.userData.phase) % 1) * 0.35));
+              });
+            }
+            if (bud.butterflies) {
+              bud.butterflies.forEach((bf: any) => {
+                const bfud = bf.userData;
+                const t = now * 0.0016 + bfud.angle;
+                bf.position.set(Math.cos(t) * bfud.radius, bfud.baseY + Math.sin(t * 2.4) * 0.32, Math.sin(t) * bfud.radius);
+                bf.rotation.y = -t;
+                if (bf.children[0] && bf.children[1]) {
+                  const fl = Math.sin(now * 0.022 + bfud.angle) * 0.65;
+                  bf.children[0].rotation.z = fl;
+                  bf.children[1].rotation.z = -fl;
+                }
+              });
+            }
+            if (bud.barberPole) {
+              bud.barberPole.rotation.y = now * 0.005;
+            }
+            if (bud.portalRing) {
+              bud.portalRing.rotation.z = now * 0.0018;
+            }
+            if (bud.floatingEgg) {
+              bud.floatingEgg.position.y = 5.85 + Math.sin(now * 0.003) * 0.18;
+              bud.floatingEgg.rotation.y = now * 0.0012;
+            }
+            if (bud.floatingCrystal) {
+              bud.floatingCrystal.position.y = 6.45 + Math.sin(now * 0.0028) * 0.22;
+              bud.floatingCrystal.rotation.y = now * 0.0018;
             }
           }
 
@@ -1253,6 +1315,7 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
       ctx.petGroup = null;
       ctx.charGroup = null;
       ctx.robotGroup = null;
+      ctx.bldgGroup = null;
     }
     if (ctx.robotBannerTex) {
       ctx.robotBannerTex.dispose();
@@ -1303,6 +1366,7 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
       } else {
         built = buildOutdoorLandmark3D(THREE, mats, selectedEntry.buildingId, 0, 0);
       }
+      ctx.bldgGroup = built;
     } else if (selectedEntry.kind === 'character' && activeCharacterPreview) {
       if (selectedEntry.isNpc && charHairStyle === (selectedEntry.member.hairStyle || '') && charHairColor === (selectedEntry.member.hairColor || '') && charAccessory === '__default__') {
         built = buildForeignNpc3D(THREE, mats, textures.shadowTex, {
@@ -1894,23 +1958,56 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
 
               {selectedEntry.kind === 'building' && (
                 <div className="rounded-xl border border-indigo-200 bg-indigo-50/70 p-2.5 space-y-2 text-[11px]">
-                  {selectedEntry.subkind !== 'outdoor' && selectedEntry.buildingId !== 'church' && (
+                  {selectedEntry.subkind !== 'outdoor' && (
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="font-extrabold text-indigo-950">🏛️ Kiểu kiến trúc:</span>
-                      {BUILDING_SHAPE_OPTIONS.map((sh) => (
-                        <button
-                          key={sh.id}
-                          type="button"
-                          onClick={() => setBldgShape(sh.id)}
-                          className={`px-2 py-0.5 rounded-md border font-bold cursor-pointer ${
-                            bldgShape === sh.id
-                              ? 'bg-indigo-600 text-white border-indigo-800'
-                              : 'bg-white text-slate-700 border-slate-300'
-                          }`}
-                        >
-                          {sh.icon} {sh.label}
-                        </button>
-                      ))}
+                      <span className="font-extrabold text-indigo-950">
+                        {selectedEntry.buildingId === 'church' ? '⛪ Thiết kế Nhà Thờ Tin Lành:' : '🏛️ Kiểu kiến trúc:'}
+                      </span>
+                      {BUILDING_SHAPE_OPTIONS.map((sh) => {
+                        const churchNames: Record<string, string> = {
+                          classic: '⛪ Cổ Điển (Tháp Trắng)',
+                          modern: '🏛️ Hiện Đại Kính & Gỗ',
+                          pavilion: '🕌 Đài Vòm Colonial',
+                          castle: '🏰 Lễ Đường Tháp Đôi',
+                        };
+                        return (
+                          <button
+                            key={sh.id}
+                            type="button"
+                            onClick={() => setBldgShape(sh.id)}
+                            className={`px-2 py-0.5 rounded-md border font-bold cursor-pointer ${
+                              bldgShape === sh.id
+                                ? 'bg-indigo-600 text-white border-indigo-800'
+                                : 'bg-white text-slate-700 border-slate-300'
+                            }`}
+                          >
+                            {selectedEntry.buildingId === 'church' ? churchNames[sh.id] : `${sh.icon} ${sh.label}`}
+                          </button>
+                        );
+                      })}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const layoutKey =
+                            selectedEntry.buildingId === 'english' ? 'english_center' : selectedEntry.buildingId;
+                          const prevLayouts = state.buildingLayouts || {};
+                          const curLoc = bridge.getResolvedLocations?.().find((l) => l.id === layoutKey);
+                          bridge.setBuildingLayouts?.({
+                            ...prevLayouts,
+                            [layoutKey]: {
+                              ...(prevLayouts[layoutKey] || {}),
+                              x: prevLayouts[layoutKey]?.x ?? curLoc?.x ?? 0,
+                              y: prevLayouts[layoutKey]?.y ?? curLoc?.y ?? 0,
+                              shape: bldgShape,
+                            },
+                          });
+                          bridge.playSuccess?.();
+                          bridge.showToast?.(`✨ Đã áp dụng thiết kế mới cho "${selectedEntry.name}" lên bản đồ!`);
+                        }}
+                        className="ml-auto px-2.5 py-0.5 rounded-md border border-emerald-700 bg-emerald-600 text-white font-extrabold cursor-pointer hover:bg-emerald-700"
+                      >
+                        ✨ Áp dụng lên bản đồ
+                      </button>
                     </div>
                   )}
                   <div className="flex flex-wrap items-center gap-3">

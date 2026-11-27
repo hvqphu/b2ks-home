@@ -204,9 +204,9 @@ export function renderBuilding2DDataUrl(
     ctx.scale(0.92, 0.92);
     drawStreetTownhouse(ctx, 0, 0, houseStyle, lighting, familyName, shape);
   } else if (buildingKey === 'church') {
-    ctx.translate(150, 198);
-    ctx.scale(0.95, 0.95);
-    drawProtestantChurch2D(ctx, 0, 0, lighting);
+    ctx.translate(150, 212);
+    ctx.scale(0.84, 0.84);
+    drawProtestantChurch2D(ctx, 0, 0, lighting, shape);
   } else {
     const preset = SHOP_PREVIEW_PRESETS[buildingKey] || SHOP_PREVIEW_PRESETS.supermarket;
     ctx.translate(150, 182);

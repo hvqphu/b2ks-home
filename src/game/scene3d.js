@@ -1122,93 +1122,347 @@ function buildShopBuilding3D(THREE, mats, x, z, type, shape, isNight) {
 
     addBuildingShapeDecor3D(THREE, mats, g, shape, 8.6, 5.1, 5.0);
   } else if (type === 'zoo') {
-    const lawn = makeBox(THREE, 11.4, 0.18, 8.0, mats.get('#BBF7D0', { roughness: 0.88 }), false, true);
-    lawn.position.set(0, 0.09, 0);
-    const pond = makeCyl(THREE, 1.55, 1.65, 0.12, 16, mats.get('#38BDF8', { roughness: 0.18, metalness: 0.1 }), false, true);
-    pond.position.set(2.4, 0.15, -0.6);
-    g.add(lawn, pond);
+    // Detailed Safari Zoo Compound with stone arch gate, striped awning, giraffe beside acacia tree, elephant, lion & pond
+    const grassMat = mats.get('#86EFAC', { roughness: 0.88 });
+    const dirtPathMat = mats.get('#FDE68A', { roughness: 0.9 });
+    const lawn = makeBox(THREE, 13.6, 0.2, 9.2, grassMat, false, true);
+    lawn.position.set(0, 0.1, -0.35);
+    const walkway = makeBox(THREE, 3.2, 0.22, 5.2, dirtPathMat, false, true);
+    walkway.position.set(0, 0.12, 1.4);
+    const lionRock = makeCyl(THREE, 1.5, 1.9, 0.42, 8, mats.get('#CBD5E1', { roughness: 0.85 }), true, true);
+    lionRock.position.set(3.2, 0.28, -2.0);
+    const pond = makeCyl(THREE, 1.65, 1.75, 0.14, 18, mats.get('#38BDF8', { roughness: 0.14, metalness: 0.12 }), false, true);
+    pond.position.set(0.3, 0.16, -2.1);
+    const pondRim = new THREE.Mesh(new THREE.TorusGeometry(1.7, 0.16, 7, 18), mats.get('#94A3B8', { roughness: 0.85 }));
+    pondRim.rotation.x = Math.PI / 2;
+    pondRim.position.set(0.3, 0.2, -2.1);
+    g.add(lawn, walkway, lionRock, pond, pondRim);
 
-    // Timber log palisade fence
-    const postMat = mats.get('#92400E', { roughness: 0.84 });
+    // Timber log palisade fence wrapping front, left, and right
+    const postMat = mats.get('#78350F', { roughness: 0.84 });
     const railMat = mats.get('#B45309', { roughness: 0.82 });
-    for (let fx = -4.9; fx <= 4.9; fx += 1.4) {
-      if (Math.abs(fx) < 1.8) continue;
-      const post = makeCyl(THREE, 0.16, 0.18, 1.35, 7, postMat);
-      post.position.set(fx, 0.72, 3.3);
+    for (let fx = -6.2; fx <= 6.2; fx += 1.24) {
+      if (Math.abs(fx) < 2.15) continue;
+      const post = makeCyl(THREE, 0.16, 0.18, 1.4, 7, postMat);
+      post.position.set(fx, 0.72, 4.0);
       g.add(post);
     }
-    [-3.5, 3.5].forEach((rx) => {
-      const hRail = makeBox(THREE, 2.8, 0.16, 0.14, railMat);
-      hRail.position.set(rx, 0.95, 3.3);
-      g.add(hRail);
+    [-4.35, 4.35].forEach((rx) => {
+      [0.58, 1.05].forEach((ry) => {
+        const hRail = makeBox(THREE, 4.0, 0.14, 0.12, railMat);
+        hRail.position.set(rx, ry, 4.0);
+        g.add(hRail);
+      });
+    });
+    [-6.4, 6.4].forEach((sx) => {
+      for (let fz = -4.2; fz <= 3.8; fz += 1.6) {
+        const sp = makeCyl(THREE, 0.15, 0.17, 1.35, 7, postMat);
+        sp.position.set(sx, 0.7, fz);
+        g.add(sp);
+      }
+      const sRail = makeBox(THREE, 0.12, 0.14, 8.2, railMat);
+      sRail.position.set(sx, 0.95, -0.2);
+      g.add(sRail);
     });
 
-    const leftPillar = makeBox(THREE, 0.92, 4.0, 0.92, mats.get('#78350F', { roughness: 0.8 }));
-    leftPillar.position.set(-2.5, 2.0, 2.4);
-    const rightPillar = makeBox(THREE, 0.92, 4.0, 0.92, mats.get('#78350F', { roughness: 0.8 }));
-    rightPillar.position.set(2.5, 2.0, 2.4);
-    const archBeam = makeBox(THREE, 6.8, 1.1, 1.15, mats.get('#15803D', { roughness: 0.6 }));
-    archBeam.position.set(0, 4.25, 2.4);
-    const archTrim = makeBox(THREE, 7.1, 0.22, 1.25, mats.get('#FACC15', { roughness: 0.5 }));
-    archTrim.position.set(0, 4.85, 2.4);
-    g.add(leftPillar, rightPillar, archBeam, archTrim);
+    // Grand Safari Entrance Gate with "ZOO" board & striped awning
+    const stonePillarMat = mats.get('#A8A29E', { roughness: 0.8 });
+    [-2.45, 2.45].forEach((px) => {
+      const base = makeBox(THREE, 1.15, 0.65, 1.15, stonePillarMat);
+      base.position.set(px, 0.35, 3.6);
+      const col = makeBox(THREE, 0.85, 3.8, 0.85, postMat);
+      col.position.set(px, 2.35, 3.6);
+      const cap = makeBox(THREE, 1.08, 0.28, 1.08, mats.get('#FACC15', { roughness: 0.45 }));
+      cap.position.set(px, 4.32, 3.6);
+      g.add(base, col, cap);
+    });
+    const archBeam = makeBox(THREE, 6.5, 1.18, 1.05, mats.get('#15803D', { roughness: 0.58 }));
+    archBeam.position.set(0, 4.88, 3.6);
+    const archTrim = makeBox(THREE, 6.85, 0.22, 1.2, mats.get('#FACC15', { roughness: 0.45 }));
+    archTrim.position.set(0, 5.5, 3.6);
+    g.add(archBeam, archTrim);
+    // "ZOO" CanvasTexture Plaque
+    const zCanvas = document.createElement('canvas');
+    zCanvas.width = 512;
+    zCanvas.height = 128;
+    const zc = zCanvas.getContext('2d');
+    if (zc) {
+      zc.fillStyle = '#14532D';
+      zc.fillRect(0, 0, 512, 128);
+      zc.strokeStyle = '#FACC15';
+      zc.lineWidth = 8;
+      zc.strokeRect(8, 8, 496, 112);
+      zc.fillStyle = '#FEF08A';
+      zc.font = 'bold 74px sans-serif';
+      zc.textAlign = 'center';
+      zc.textBaseline = 'middle';
+      zc.fillText('SAFARI ZOO', 256, 66);
+    }
+    const zTex = new THREE.CanvasTexture(zCanvas);
+    zTex.colorSpace = THREE.SRGBColorSpace;
+    const zPlaque = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 0.96), new THREE.MeshStandardMaterial({ map: zTex, roughness: 0.4 }));
+    zPlaque.position.set(0, 4.88, 4.14);
+    g.add(zPlaque);
+    for (let ai = 0; ai < 6; ai++) {
+      const aw = makeBox(THREE, 0.72, 0.18, 1.0, mats.get(ai % 2 === 0 ? '#EF4444' : '#FFFFFF', { roughness: 0.5 }));
+      aw.position.set(-1.8 + ai * 0.72, 3.95, 4.28);
+      aw.rotation.x = 0.35;
+      g.add(aw);
+    }
 
-    // Giraffe + Cute Elephant inside Zoo compound!
-    const gBody = makeBox(THREE, 0.9, 0.75, 1.35, mats.get('#FBBF24', { roughness: 0.7 }));
-    gBody.position.set(-2.7, 1.1, -0.7);
-    const gNeck = makeBox(THREE, 0.34, 1.85, 0.34, mats.get('#FBBF24', { roughness: 0.7 }));
-    gNeck.position.set(-2.7, 2.25, -0.15);
-    const gHead = makeBox(THREE, 0.5, 0.45, 0.68, mats.get('#F59E0B', { roughness: 0.7 }));
-    gHead.position.set(-2.7, 3.15, 0.08);
-    const eBody = makeSphere(THREE, 0.78, 10, 8, mats.get('#94A3B8', { roughness: 0.75 }));
-    eBody.scale.set(1.0, 0.9, 1.25);
-    eBody.position.set(0.3, 0.95, -1.2);
-    const eTrunk = makeCyl(THREE, 0.1, 0.16, 0.85, 8, mats.get('#94A3B8', { roughness: 0.75 }));
-    eTrunk.position.set(0.3, 0.85, -0.2);
-    eTrunk.rotation.x = 0.55;
-    g.add(gBody, gNeck, gHead, eBody, eTrunk);
+    // Acacia Safari Tree on Left
+    const aTrunk = makeCyl(THREE, 0.2, 0.32, 2.7, 7, postMat);
+    aTrunk.position.set(-4.9, 1.35, -2.5);
+    const aCanopy1 = makeCyl(THREE, 1.9, 1.2, 0.55, 10, mats.get('#16A34A', { roughness: 0.72 }));
+    aCanopy1.position.set(-4.9, 2.95, -2.5);
+    const aCanopy2 = makeCyl(THREE, 1.25, 0.85, 0.45, 9, mats.get('#4ADE80', { roughness: 0.7 }));
+    aCanopy2.position.set(-4.1, 3.25, -2.1);
+    g.add(aTrunk, aCanopy1, aCanopy2);
+
+    // 1. Detailed Spotted Giraffe (-3.2, z=0.2)
+    const girMat = mats.get('#FBBF24', { roughness: 0.65 });
+    const spotMat = mats.get('#92400E', { roughness: 0.75 });
+    const gBody = makeSphere(THREE, 0.58, 10, 8, girMat);
+    gBody.scale.set(0.88, 0.85, 1.4);
+    gBody.position.set(-3.4, 1.28, -0.2);
+    [[-3.7, 0.4], [-3.1, 0.4], [-3.7, -0.75], [-3.1, -0.75]].forEach(([lx, lz]) => {
+      const gl = makeCyl(THREE, 0.08, 0.07, 1.1, 7, girMat);
+      gl.position.set(lx, 0.62, lz);
+      g.add(gl);
+    });
+    const gNeck = makeCyl(THREE, 0.14, 0.22, 1.95, 8, girMat);
+    gNeck.position.set(-3.4, 2.35, 0.45);
+    gNeck.rotation.x = 0.18;
+    const gHead = makeSphere(THREE, 0.24, 10, 8, girMat);
+    gHead.scale.set(0.9, 0.85, 1.45);
+    gHead.position.set(-3.4, 3.32, 0.74);
+    [-0.08, 0.08].forEach((hx) => {
+      const oss = makeCyl(THREE, 0.03, 0.035, 0.22, 6, spotMat);
+      oss.position.set(-3.4 + hx, 3.55, 0.64);
+      g.add(oss);
+    });
+    [[-3.68, 1.4, 0.1], [-3.1, 1.35, -0.45], [-3.35, 2.25, 0.58], [-3.46, 2.75, 0.6]].forEach(([sx, sy, sz]) => {
+      const sp = makeSphere(THREE, 0.11, 7, 6, spotMat);
+      sp.position.set(sx, sy, sz);
+      g.add(sp);
+    });
+    g.add(gBody, gNeck, gHead);
+
+    // 2. Cute Grey Elephant with Big Ears, White Tusks & Curved Trunk (center-right)
+    const eleMat = mats.get('#94A3B8', { roughness: 0.7 });
+    const tuskMat = mats.get('#FFFBEB', { roughness: 0.35 });
+    const eBody = makeSphere(THREE, 0.72, 12, 9, eleMat);
+    eBody.scale.set(1.0, 0.92, 1.25);
+    eBody.position.set(0.35, 1.05, 0.15);
+    [[-0.02, 0.65], [0.72, 0.65], [-0.02, -0.35], [0.72, -0.35]].forEach(([lx, lz]) => {
+      const el = makeCyl(THREE, 0.17, 0.19, 0.72, 8, eleMat);
+      el.position.set(lx, 0.44, lz);
+      g.add(el);
+    });
+    const eHead = makeSphere(THREE, 0.5, 12, 9, eleMat);
+    eHead.position.set(0.35, 1.32, 0.92);
+    [-0.14, 0.84].forEach((ex) => {
+      const ear = makeCyl(THREE, 0.42, 0.38, 0.1, 10, eleMat);
+      ear.rotation.z = Math.PI / 2;
+      ear.rotation.y = ex < 0.35 ? 0.35 : -0.35;
+      ear.position.set(ex, 1.38, 0.82);
+      g.add(ear);
+    });
+    const eTrunk = new THREE.Mesh(
+      new THREE.TubeGeometry(
+        new THREE.CatmullRomCurve3([
+          new THREE.Vector3(0.35, 1.22, 1.35),
+          new THREE.Vector3(0.35, 0.98, 1.65),
+          new THREE.Vector3(0.35, 0.72, 1.55),
+          new THREE.Vector3(0.35, 0.82, 1.82),
+        ]),
+        10,
+        0.11,
+        7,
+        false
+      ),
+      eleMat
+    );
+    [-0.18, 0.18].forEach((tx) => {
+      const tusk = makeCone(THREE, 0.055, 0.36, 7, tuskMat);
+      tusk.rotation.x = Math.PI * 0.42;
+      tusk.position.set(0.35 + tx, 1.06, 1.46);
+      g.add(tusk);
+    });
+    g.add(eBody, eHead, eTrunk);
+
+    // 3. Golden-Maned Lion resting on Boulder (right)
+    const lionMat = mats.get('#F59E0B', { roughness: 0.65 });
+    const maneMat = mats.get('#9A3412', { roughness: 0.75 });
+    const lBody = makeSphere(THREE, 0.46, 10, 8, lionMat);
+    lBody.scale.set(0.95, 0.82, 1.35);
+    lBody.position.set(3.2, 0.86, -1.9);
+    const lMane = makeSphere(THREE, 0.44, 10, 8, maneMat);
+    lMane.position.set(3.2, 1.18, -1.28);
+    const lHead = makeSphere(THREE, 0.3, 10, 8, lionMat);
+    lHead.position.set(3.2, 1.18, -1.12);
+    g.add(lBody, lMane, lHead);
   } else if (type === 'church') {
-    // Clean Protestant Church: White sanctuary walls, pitched roof, ONLY "TIN LÀNH" sign on top + Cross above, NO pictures/statues
-    const whiteMat = mats.get('#FFFFFF', { roughness: 0.65 });
-    const trimMat = mats.get('#E2E8F0', { roughness: 0.7 });
-    const slateRoofMat = mats.get('#334155', { roughness: 0.72 });
-    const darkSignMat = mats.get('#0F172A', { roughness: 0.45 });
-    const brassMat = mats.get('#FACC15', { roughness: 0.25, metalness: 0.65 });
-    const doorWoodMat = mats.get('#78350F', { roughness: 0.72 });
+    // Clean Protestant Church across 4 architectural shapes:
+    // ONLY "TIN LÀNH" signboard at peak + empty Golden Cross directly above, ZERO images/icons/statues.
+    const whiteMat = mats.get('#FFFFFF', { roughness: 0.62 });
+    const creamStoneMat = mats.get('#F1F5F9', { roughness: 0.72 });
+    const trimMat = mats.get('#CBD5E1', { roughness: 0.68 });
+    const slateRoofMat = mats.get(
+      shape === 'modern' ? '#1E293B' : shape === 'pavilion' ? '#991B1B' : shape === 'castle' ? '#312E81' : '#334155',
+      { roughness: 0.68 }
+    );
+    const darkSignMat = mats.get('#0F172A', { roughness: 0.4 });
+    const brassMat = mats.get('#FACC15', { roughness: 0.22, metalness: 0.7 });
+    const doorWoodMat = mats.get('#78350F', { roughness: 0.68 });
+    const hedgeMat = mats.get('#16A34A', { roughness: 0.78 });
 
-    // Stone steps at front entrance
-    const step1 = makeBox(THREE, 3.6, 0.22, 1.4, trimMat);
-    step1.position.set(0, 0.18, 2.75);
-    const step2 = makeBox(THREE, 3.0, 0.22, 0.9, trimMat);
-    step2.position.set(0, 0.36, 2.45);
-    g.add(step1, step2);
+    // Larger stepped stone entrance & wide courtyard plinth
+    const basePad = makeBox(THREE, 12.0, 0.32, 7.6, creamStoneMat);
+    basePad.position.set(0, 0.22, -0.2);
+    const step1 = makeBox(THREE, 5.2, 0.22, 1.6, trimMat);
+    step1.position.set(0, 0.2, 3.7);
+    const step2 = makeBox(THREE, 4.2, 0.22, 1.1, trimMat);
+    step2.position.set(0, 0.4, 3.25);
+    g.add(basePad, step1, step2);
 
-    // Main sanctuary hall
-    const plinth = makeBox(THREE, 9.2, 0.52, 5.6, trimMat);
-    plinth.position.set(0, 0.35, -0.35);
-    const sanctuary = makeBox(THREE, 8.8, 4.3, 5.2, whiteMat);
-    sanctuary.position.set(0, 2.35, -0.35);
-    g.add(plinth, sanctuary);
+    // Main Sanctuary Hall (larger & grander)
+    const sanctuary = makeBox(THREE, 10.6, 4.9, 6.2, whiteMat);
+    sanctuary.position.set(0, 2.75, -0.45);
+    const cornice = makeBox(THREE, 11.1, 0.28, 6.65, trimMat);
+    cornice.position.set(0, 5.22, -0.45);
+    g.add(sanctuary, cornice);
 
-    // Pitched triangular gable roof
-    const gableRoof = makeCone(THREE, 4.9, 2.25, 4, slateRoofMat);
-    gableRoof.rotation.y = Math.PI / 4;
-    gableRoof.scale.set(1.42, 1.0, 0.92);
-    gableRoof.position.set(0, 5.55, -0.35);
-    g.add(gableRoof);
+    // Clear Frosted Lancet/Atrium Nave Windows (zero icons/images)
+    [-3.6, 3.6].forEach((wx) => {
+      addFramedWindow3D(THREE, mats, g, wx, 2.75, 2.66, 1.4, 2.6, slateRoofMat, winMat);
+      addFramedWindow3D(THREE, mats, g, wx > 0 ? 5.32 : -5.32, 2.75, -0.45, 1.35, 2.4, slateRoofMat, winMat, Math.PI / 2);
+    });
+    addRecessedDoor3D(THREE, mats, g, 0, 1.78, 2.66, 2.35, 2.75, darkSignMat, doorWoodMat);
 
-    // Clean front tower / peak supporting the "TIN LÀNH" sign & Cross
-    const peakWall = makeBox(THREE, 3.4, 2.2, 2.0, whiteMat);
-    peakWall.position.set(0, 5.35, 1.35);
-    const peakCap = makeBox(THREE, 3.65, 0.24, 2.2, slateRoofMat);
-    peakCap.position.set(0, 6.5, 1.35);
-    g.add(peakWall, peakCap);
+    // Flanking Cypress Hedges & Sanctuary Lamps
+    [-4.9, 4.9].forEach((hx) => {
+      const pot = makeBox(THREE, 0.9, 0.38, 0.9, trimMat);
+      pot.position.set(hx, 0.45, 3.3);
+      const cyp = makeCone(THREE, 0.42, 1.65, 8, hedgeMat);
+      cyp.position.set(hx, 1.38, 3.3);
+      const lampPost = makeCyl(THREE, 0.08, 0.11, 2.1, 7, darkSignMat);
+      lampPost.position.set(hx * 0.56, 1.3, 3.25);
+      const lampBulb = makeSphere(
+        THREE,
+        0.18,
+        8,
+        8,
+        mats.get(isNight ? '#FEF08A' : '#F8FAFC', {
+          emissive: isNight ? '#FDE047' : null,
+          emissiveIntensity: isNight ? 1.4 : 0,
+        }),
+        false,
+        false
+      );
+      lampBulb.position.set(hx * 0.56, 2.45, 3.25);
+      g.add(pot, cyp, lampPost, lampBulb);
+    });
 
-    // Plain double wooden entrance doors + clear frosted side lancet windows (zero images/icons)
-    addRecessedDoor3D(THREE, mats, g, 0, 1.55, 2.25, 1.95, 2.35, darkSignMat, doorWoodMat);
-    [-2.85, 2.85].forEach((wx) => addFramedWindow3D(THREE, mats, g, wx, 2.35, 2.25, 1.15, 2.1, slateRoofMat, winMat));
+    let signY = 7.95;
+    let signZ = 1.85;
+    let crossY = 9.4;
 
-    // Signboard on top peak: ONLY the 2 words "TIN LÀNH"
+    if (shape === 'modern') {
+      // Modern Glass Atrium + Asymmetrical Cantilever Canopy & Tall Minimalist Tower
+      const timberMat = mats.get('#B45309', { roughness: 0.65 });
+      const atriumGlass = makeBox(THREE, 4.4, 4.4, 0.45, winMat);
+      atriumGlass.position.set(0, 3.05, 2.58);
+      const canopyRoof = makeBox(THREE, 12.2, 0.34, 7.6, slateRoofMat);
+      canopyRoof.position.set(0, 5.48, -0.2);
+      canopyRoof.rotation.z = -0.045;
+      [-4.8, -2.2, 2.2, 4.8].forEach((bx) => {
+        const fin = makeBox(THREE, 0.3, 5.3, 0.65, timberMat);
+        fin.position.set(bx, 2.85, 2.85);
+        g.add(fin);
+      });
+      const tower = makeBox(THREE, 3.8, 3.0, 2.1, creamStoneMat);
+      tower.position.set(0, 6.75, 1.7);
+      const towerCap = makeBox(THREE, 4.2, 0.25, 2.4, slateRoofMat);
+      towerCap.position.set(0, 8.32, 1.7);
+      g.add(atriumGlass, canopyRoof, tower, towerCap);
+      signY = 8.95;
+      signZ = 1.9;
+      crossY = 10.45;
+    } else if (shape === 'pavilion') {
+      // Colonial Domed Sanctuary with Arched Portico Columns & Octagonal White Cupola
+      const porticoRoof = makeBox(THREE, 6.4, 0.32, 1.9, slateRoofMat);
+      porticoRoof.position.set(0, 4.45, 3.3);
+      [-2.5, -1.35, 1.35, 2.5].forEach((cx) => {
+        const col = makeCyl(THREE, 0.19, 0.22, 4.0, 10, whiteMat);
+        col.position.set(cx, 2.35, 3.85);
+        g.add(col);
+      });
+      const hipRoof = makeCone(THREE, 6.4, 2.0, 4, slateRoofMat);
+      hipRoof.rotation.y = Math.PI / 4;
+      hipRoof.scale.set(1.45, 1.0, 0.94);
+      hipRoof.position.set(0, 6.18, -0.45);
+      const drum = makeCyl(THREE, 2.15, 2.3, 1.85, 8, whiteMat);
+      drum.position.set(0, 7.15, 0.85);
+      const dome = makeSphere(THREE, 2.1, 14, 10, slateRoofMat);
+      dome.scale.set(1, 0.72, 1);
+      dome.position.set(0, 8.05, 0.85);
+      g.add(porticoRoof, hipRoof, drum, dome);
+      signY = 8.75;
+      signZ = 1.85;
+      crossY = 10.25;
+    } else if (shape === 'castle') {
+      // Twin-Spire Reformed Grand Sanctuary
+      const gable = makeCone(THREE, 5.8, 2.55, 4, slateRoofMat);
+      gable.rotation.y = Math.PI / 4;
+      gable.scale.set(1.46, 1.0, 0.92);
+      gable.position.set(0, 6.42, -0.45);
+      g.add(gable);
+      [-5.1, 5.1].forEach((tx) => {
+        const towerBody = makeBox(THREE, 1.75, 7.2, 2.1, creamStoneMat);
+        towerBody.position.set(tx, 3.85, 2.15);
+        const spire = makeCone(THREE, 1.35, 2.6, 4, slateRoofMat);
+        spire.rotation.y = Math.PI / 4;
+        spire.position.set(tx, 8.75, 2.15);
+        g.add(towerBody, spire);
+      });
+      const centerPeak = makeBox(THREE, 3.9, 2.6, 2.2, whiteMat);
+      centerPeak.position.set(0, 6.3, 1.65);
+      const centerRoof = makeCone(THREE, 2.7, 1.75, 4, slateRoofMat);
+      centerRoof.rotation.y = Math.PI / 4;
+      centerRoof.position.set(0, 8.4, 1.65);
+      g.add(centerPeak, centerRoof);
+      signY = 8.95;
+      signZ = 2.05;
+      crossY = 10.45;
+    } else {
+      // 'classic' — Columned White Front Portico + Pitched Nave + Stepped Spire Tower
+      [-2.35, -1.3, 1.3, 2.35].forEach((cx) => {
+        const col = makeCyl(THREE, 0.17, 0.21, 4.5, 10, whiteMat);
+        col.position.set(cx, 2.6, 3.15);
+        const cap = makeBox(THREE, 0.48, 0.2, 0.48, trimMat);
+        cap.position.set(cx, 4.9, 3.15);
+        g.add(col, cap);
+      });
+      const porticoLintel = makeBox(THREE, 5.8, 0.35, 1.35, whiteMat);
+      porticoLintel.position.set(0, 5.12, 3.05);
+      const gableRoof = makeCone(THREE, 5.8, 2.5, 4, slateRoofMat);
+      gableRoof.rotation.y = Math.PI / 4;
+      gableRoof.scale.set(1.45, 1.0, 0.94);
+      gableRoof.position.set(0, 6.4, -0.45);
+      const steepleBase = makeBox(THREE, 3.8, 2.4, 2.2, whiteMat);
+      steepleBase.position.set(0, 6.3, 1.55);
+      const steepleCap = makeBox(THREE, 4.1, 0.25, 2.45, slateRoofMat);
+      steepleCap.position.set(0, 7.55, 1.55);
+      const steepleUpper = makeBox(THREE, 2.6, 1.25, 1.75, creamStoneMat);
+      steepleUpper.position.set(0, 8.2, 1.55);
+      g.add(porticoLintel, gableRoof, steepleBase, steepleCap, steepleUpper);
+      signY = 8.45;
+      signZ = 1.85;
+      crossY = 9.95;
+    }
+
+    // Top Steeple Signboard: STRICTLY ONLY the 2 words "TIN LÀNH"
     const signCanvas = document.createElement('canvas');
     signCanvas.width = 512;
     signCanvas.height = 128;
@@ -1217,7 +1471,7 @@ function buildShopBuilding3D(THREE, mats, x, z, type, shape, isNight) {
       sCtx.fillStyle = '#0F172A';
       sCtx.fillRect(0, 0, 512, 128);
       sCtx.strokeStyle = '#FACC15';
-      sCtx.lineWidth = 6;
+      sCtx.lineWidth = 7;
       sCtx.strokeRect(8, 8, 496, 112);
       sCtx.fillStyle = '#FACC15';
       sCtx.font = 'bold 68px sans-serif';
@@ -1228,20 +1482,20 @@ function buildShopBuilding3D(THREE, mats, x, z, type, shape, isNight) {
     const signTex = new THREE.CanvasTexture(signCanvas);
     signTex.colorSpace = THREE.SRGBColorSpace;
     const signPlateMat = new THREE.MeshStandardMaterial({ map: signTex, roughness: 0.35 });
-    const signBack = makeBox(THREE, 3.45, 0.92, 0.22, darkSignMat);
-    signBack.position.set(0, 7.08, 1.55);
-    const signFront = new THREE.Mesh(new THREE.PlaneGeometry(3.3, 0.82), signPlateMat);
-    signFront.position.set(0, 7.08, 1.67);
-    const signRear = new THREE.Mesh(new THREE.PlaneGeometry(3.3, 0.82), signPlateMat);
+    const signBack = makeBox(THREE, 3.7, 0.98, 0.24, darkSignMat);
+    signBack.position.set(0, signY, signZ);
+    const signFront = new THREE.Mesh(new THREE.PlaneGeometry(3.52, 0.86), signPlateMat);
+    signFront.position.set(0, signY, signZ + 0.13);
+    const signRear = new THREE.Mesh(new THREE.PlaneGeometry(3.52, 0.86), signPlateMat);
     signRear.rotation.y = Math.PI;
-    signRear.position.set(0, 7.08, 1.43);
+    signRear.position.set(0, signY, signZ - 0.13);
     g.add(signBack, signFront, signRear);
 
-    // Plain Golden Cross (Thập tự giá) directly above "TIN LÀNH"
-    const crossVert = makeBox(THREE, 0.24, 1.75, 0.22, brassMat);
-    crossVert.position.set(0, 8.42, 1.55);
-    const crossHoriz = makeBox(THREE, 1.15, 0.24, 0.22, brassMat);
-    crossHoriz.position.set(0, 8.72, 1.55);
+    // Plain Golden Cross (Thập tự giá) directly above "TIN LÀNH" — zero images/icons/statues
+    const crossVert = makeBox(THREE, 0.26, 2.0, 0.24, brassMat);
+    crossVert.position.set(0, crossY, signZ);
+    const crossHoriz = makeBox(THREE, 1.32, 0.26, 0.24, brassMat);
+    crossHoriz.position.set(0, crossY + 0.35, signZ);
     g.add(crossVert, crossHoriz);
   }
   return g;
@@ -1255,47 +1509,287 @@ function buildOutdoorLandmark3D(THREE, mats, type, x, z) {
   g.position.set(x, 0, z);
 
   if (type === 'eng_park') {
-    const plaza = makeCyl(THREE, 4.0, 4.15, 0.16, 20, mats.get('#FEF08A', { roughness: 0.85 }), false, true);
-    plaza.position.y = 0.08;
-    const boardPostL = makeBox(THREE, 0.22, 2.3, 0.22, mats.get('#854D0E', { roughness: 0.85 }));
-    boardPostL.position.set(-1.55, 1.15, -0.7);
-    const boardPostR = makeBox(THREE, 0.22, 2.3, 0.22, mats.get('#854D0E', { roughness: 0.85 }));
-    boardPostR.position.set(1.55, 1.15, -0.7);
-    const boardFrame = makeBox(THREE, 3.85, 1.75, 0.22, mats.get('#B45309', { roughness: 0.7 }));
-    boardFrame.position.set(0, 1.95, -0.7);
-    const board = makeBox(THREE, 3.45, 1.4, 0.28, mats.get('#15803D', { roughness: 0.65 }));
-    board.position.set(0, 1.95, -0.7);
-    const bench = buildParkBench3D(THREE, mats, 0, 1.55, 0);
-    g.add(plaza, boardPostL, boardPostR, boardFrame, board, bench);
+    // Lush vibrant English Park: manicured lawn, stone circle plaza, octagonal gazebo, chalkboard, 5 varied trees, flowerbeds & butterflies
+    const lawn = makeCyl(THREE, 5.2, 5.35, 0.16, 24, mats.get('#4ADE80', { roughness: 0.88 }), false, true);
+    lawn.position.y = 0.08;
+    const innerPlaza = makeCyl(THREE, 3.65, 3.75, 0.2, 22, mats.get('#FEF3C7', { roughness: 0.82 }), false, true);
+    innerPlaza.position.y = 0.1;
+    const stoneTrim = new THREE.Mesh(new THREE.TorusGeometry(3.72, 0.14, 7, 24), mats.get('#CBD5E1', { roughness: 0.78 }));
+    stoneTrim.rotation.x = Math.PI / 2;
+    stoneTrim.position.y = 0.2;
+    g.add(lawn, innerPlaza, stoneTrim);
+
+    // Teal Octagonal Park Gazebo on Back Left
+    const gazX = -2.2;
+    const gazZ = -2.0;
+    const woodMat = mats.get('#92400E', { roughness: 0.75 });
+    const gazDeck = makeCyl(THREE, 1.75, 1.85, 0.28, 8, mats.get('#E2E8F0', { roughness: 0.78 }));
+    gazDeck.position.set(gazX, 0.24, gazZ);
+    g.add(gazDeck);
+    for (let i = 0; i < 6; i++) {
+      const ang = (i / 6) * Math.PI * 2;
+      const post = makeCyl(THREE, 0.08, 0.09, 2.25, 7, woodMat);
+      post.position.set(gazX + Math.cos(ang) * 1.45, 1.45, gazZ + Math.sin(ang) * 1.45);
+      g.add(post);
+    }
+    const gazRoof = makeCone(THREE, 2.05, 1.25, 8, mats.get('#0EA5E9', { roughness: 0.55 }));
+    gazRoof.position.set(gazX, 3.15, gazZ);
+    const gazFin = makeSphere(THREE, 0.16, 8, 8, mats.get('#FACC15', { roughness: 0.3 }));
+    gazFin.position.set(gazX, 3.82, gazZ);
+    g.add(gazDeck, gazRoof, gazFin);
+
+    // Readable "SPEAK ENGLISH!" Chalkboard Sign on Right
+    const boardPostL = makeBox(THREE, 0.2, 2.35, 0.2, woodMat);
+    boardPostL.position.set(0.3, 1.2, -1.2);
+    const boardPostR = makeBox(THREE, 0.2, 2.35, 0.2, woodMat);
+    boardPostR.position.set(3.1, 1.2, -1.2);
+    const boardFrame = makeBox(THREE, 3.25, 1.65, 0.2, mats.get('#B45309', { roughness: 0.7 }));
+    boardFrame.position.set(1.7, 2.0, -1.2);
+    const eCanvas = document.createElement('canvas');
+    eCanvas.width = 512;
+    eCanvas.height = 256;
+    const ec = eCanvas.getContext('2d');
+    if (ec) {
+      ec.fillStyle = '#14532D';
+      ec.fillRect(0, 0, 512, 256);
+      ec.fillStyle = '#FEF08A';
+      ec.font = 'bold 54px sans-serif';
+      ec.textAlign = 'center';
+      ec.fillText('ENGLISH PARK', 256, 98);
+      ec.fillStyle = '#FFFFFF';
+      ec.font = 'bold 36px sans-serif';
+      ec.fillText('Hello! Speak & Play', 256, 175);
+    }
+    const eTex = new THREE.CanvasTexture(eCanvas);
+    eTex.colorSpace = THREE.SRGBColorSpace;
+    const boardFace = new THREE.Mesh(new THREE.PlaneGeometry(2.9, 1.32), new THREE.MeshStandardMaterial({ map: eTex, roughness: 0.55 }));
+    boardFace.position.set(1.7, 2.0, -1.08);
+    g.add(boardPostL, boardPostR, boardFrame, boardFace);
+
+    // 5 Diverse Lush Trees & 4 Raised Flowerbeds + 2 Benches + 2 Park Lamps
+    [
+      [-4.2, 1.1, 'sakura'],
+      [4.2, -1.2, 'oak'],
+      [3.9, 2.4, 'orange'],
+      [-3.9, -3.5, 'pine'],
+      [1.2, -4.1, 'sakura'],
+    ].forEach(([tx, tz, tk]) => {
+      const tr = buildTree3D(THREE, mats, tk, tx, tz, false);
+      tr.scale.setScalar(0.88);
+      g.add(tr);
+    });
+    [
+      [-2.6, 2.7, '#F43F5E', 'tulip'],
+      [2.6, 2.7, '#FACC15', 'sunflower'],
+      [0, -3.3, '#A855F7', 'lavender'],
+    ].forEach(([fx, fz, col, kind]) => g.add(buildFlowerCluster3D(THREE, mats, fx, fz, col, kind)));
+    g.add(buildParkBench3D(THREE, mats, -0.4, 2.25, 0));
+    g.add(buildParkBench3D(THREE, mats, 2.6, 1.15, -Math.PI / 3));
+    g.add(buildStreetLamp3D(THREE, mats, -3.5, 3.0, false));
+    g.add(buildStreetLamp3D(THREE, mats, 3.6, 0.2, false));
+
+    // Animated fluttering butterflies
+    const butterflies = [];
+    ['#F472B6', '#FACC15', '#38BDF8', '#A855F7'].forEach((bCol, bi) => {
+      const bf = new THREE.Group();
+      const bMat = mats.get(bCol, { roughness: 0.35, side: THREE.DoubleSide });
+      const wL = makeBox(THREE, 0.16, 0.02, 0.12, bMat, false, false);
+      wL.position.x = -0.08;
+      const wR = makeBox(THREE, 0.16, 0.02, 0.12, bMat, false, false);
+      wR.position.x = 0.08;
+      bf.add(wL, wR);
+      bf.userData = { angle: bi * 1.6, radius: 1.5 + bi * 0.45, baseY: 1.45 + bi * 0.2 };
+      g.add(bf);
+      butterflies.push(bf);
+    });
+    g.userData.butterflies = butterflies;
   } else if (type === 'fountain_plaza') {
-    const plaza = makeCyl(THREE, 6.4, 6.6, 0.16, 24, mats.get('#FDEBD0', { roughness: 0.85 }), false, true);
-    plaza.position.y = 0.08;
-    const basinOuter = makeCyl(THREE, 3.0, 3.2, 0.62, 16, mats.get('#CBD5E1', { roughness: 0.65 }));
-    basinOuter.position.y = 0.38;
-    const water = makeCyl(THREE, 2.65, 2.65, 0.5, 16, mats.get('#38BDF8', { roughness: 0.12, metalness: 0.15, transparent: true, opacity: 0.86 }));
-    water.position.y = 0.42;
-    const bowl = makeCyl(THREE, 1.25, 0.55, 0.42, 14, mats.get('#E2E8F0', { roughness: 0.58 }));
-    bowl.position.y = 1.65;
-    const spire = makeCyl(THREE, 0.36, 0.65, 2.0, 12, mats.get('#E2E8F0', { roughness: 0.6 }));
-    spire.position.y = 1.2;
-    const spray = makeSphere(THREE, 0.65, 10, 8, mats.get('#E0F2FE', { roughness: 0.2, transparent: true, opacity: 0.85 }));
-    spray.position.y = 2.65;
-    g.userData.waterSpray = spray;
-    g.add(plaza, basinOuter, water, bowl, spire, spray);
+    // Grand 3-Tier Marble Fountain with arching water jets & rising/falling droplets
+    const plaza = makeCyl(THREE, 7.2, 7.45, 0.18, 28, mats.get('#FEF3C7', { roughness: 0.82 }), false, true);
+    plaza.position.y = 0.09;
+    const innerRing = makeCyl(THREE, 4.9, 4.9, 0.2, 28, mats.get('#E2E8F0', { roughness: 0.78 }), false, true);
+    innerRing.position.y = 0.1;
+    const marbleMat = mats.get('#F8FAFC', { roughness: 0.45 });
+    const stoneTrimMat = mats.get('#CBD5E1', { roughness: 0.58 });
+    const waterMat = mats.get('#0EA5E9', { roughness: 0.1, metalness: 0.15, transparent: true, opacity: 0.84 });
+    const streamMat = mats.get('#BAE6FD', { roughness: 0.08, emissive: '#38BDF8', emissiveIntensity: 0.42, transparent: true, opacity: 0.86 });
+
+    const basinOuter = makeCyl(THREE, 3.65, 3.9, 0.78, 22, stoneTrimMat);
+    basinOuter.position.y = 0.46;
+    const basinLip = new THREE.Mesh(new THREE.TorusGeometry(3.68, 0.16, 8, 24), marbleMat);
+    basinLip.rotation.x = Math.PI / 2;
+    basinLip.position.y = 0.86;
+    const waterPool = makeCyl(THREE, 3.4, 3.4, 0.62, 22, waterMat);
+    waterPool.position.y = 0.48;
+
+    // Central Column & 2 Upper Catch Bowls
+    const basePed = makeCyl(THREE, 0.72, 0.95, 1.55, 14, marbleMat);
+    basePed.position.y = 1.15;
+    const midBowl = makeCyl(THREE, 1.85, 0.72, 0.52, 18, marbleMat);
+    midBowl.position.y = 2.02;
+    const midWater = makeCyl(THREE, 1.65, 1.65, 0.16, 18, waterMat);
+    midWater.position.y = 2.24;
+    const upperPed = makeCyl(THREE, 0.42, 0.58, 1.25, 12, marbleMat);
+    upperPed.position.y = 2.82;
+    const topBowl = makeCyl(THREE, 1.05, 0.38, 0.38, 16, marbleMat);
+    topBowl.position.y = 3.45;
+    const topFinial = makeSphere(THREE, 0.34, 10, 8, mats.get('#E0F2FE', { roughness: 0.25 }));
+    topFinial.position.y = 3.72;
+    g.add(plaza, innerRing, basinOuter, basinLip, waterPool, basePed, midBowl, midWater, upperPed, topBowl, topFinial);
+
+    // Tall Central Vertical Water Jet Plume & Splash Froth
+    const mainPlume = makeCyl(THREE, 0.22, 0.12, 1.85, 10, streamMat, false, false);
+    mainPlume.position.y = 4.68;
+    const sprayCrown = makeSphere(THREE, 0.62, 10, 8, mats.get('#F0F9FF', { roughness: 0.15, emissive: '#BAE6FD', emissiveIntensity: 0.45, transparent: true, opacity: 0.88 }), false, false);
+    sprayCrown.position.y = 5.55;
+    g.userData.waterSpray = sprayCrown;
+    g.add(mainPlume, sprayCrown);
+
+    // Curved Parabolic Water Streams: 8 Top->Mid + 12 Mid->Pool
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const curve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(Math.cos(a) * 0.22, 3.85, Math.sin(a) * 0.22),
+        new THREE.Vector3(Math.cos(a) * 0.92, 4.35, Math.sin(a) * 0.92),
+        new THREE.Vector3(Math.cos(a) * 1.48, 2.28, Math.sin(a) * 1.48),
+      ]);
+      g.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 12, 0.052, 6, false), streamMat));
+    }
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2 + 0.15;
+      const curve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(Math.cos(a) * 1.68, 2.26, Math.sin(a) * 1.68),
+        new THREE.Vector3(Math.cos(a) * 2.45, 2.58, Math.sin(a) * 2.45),
+        new THREE.Vector3(Math.cos(a) * 2.95, 0.78, Math.sin(a) * 2.95),
+      ]);
+      g.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 12, 0.056, 6, false), streamMat));
+    }
+
+    // Animated Water Droplets & Ripple Rings
+    const waterDroplets = [];
+    for (let d = 0; d < 16; d++) {
+      const drop = makeSphere(THREE, 0.1, 7, 6, streamMat, false, false);
+      drop.userData = { phase: (d / 16) * Math.PI * 2, ang: (d / 16) * Math.PI * 2 * 3, radius: 0.45 + (d % 4) * 0.68 };
+      g.add(drop);
+      waterDroplets.push(drop);
+    }
+    g.userData.waterDroplets = waterDroplets;
+
+    const waterRipples = [1.85, 2.65].map((rr, ri) => {
+      const ring = new THREE.Mesh(new THREE.RingGeometry(rr, rr + 0.14, 24), streamMat);
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.y = 0.81;
+      ring.userData = { phase: ri * Math.PI };
+      g.add(ring);
+      return ring;
+    });
+    g.userData.waterRipples = waterRipples;
+
+    // 4 Benches + 4 Flower Urns + 4 Plaza Lamps around perimeter
     [0, Math.PI / 2, Math.PI, -Math.PI / 2].forEach((ang) => {
-      g.add(buildParkBench3D(THREE, mats, Math.sin(ang) * 4.55, Math.cos(ang) * 4.55, ang));
+      g.add(buildParkBench3D(THREE, mats, Math.sin(ang) * 5.65, Math.cos(ang) * 5.65, ang));
+    });
+    [Math.PI / 4, (3 * Math.PI) / 4, (5 * Math.PI) / 4, (7 * Math.PI) / 4].forEach((ang) => {
+      g.add(buildFlowerCluster3D(THREE, mats, Math.sin(ang) * 5.65, Math.cos(ang) * 5.65, '#F43F5E', 'tulip'));
+      g.add(buildStreetLamp3D(THREE, mats, Math.sin(ang) * 6.5, Math.cos(ang) * 6.5, false));
     });
   } else if (type === 'reading_corner') {
-    const deck = makeBox(THREE, 11.4, 0.18, 7.0, mats.get('#E6FFFA', { roughness: 0.85 }), false, true);
-    deck.position.y = 0.09;
-    const shelf = makeBox(THREE, 3.4, 2.5, 0.72, mats.get('#78350F', { roughness: 0.78 }));
-    shelf.position.set(-2.5, 1.32, -1.6);
-    const table = makeBox(THREE, 2.3, 0.75, 1.45, mats.get('#D97706', { roughness: 0.75 }));
-    table.position.set(1.8, 0.46, 0.3);
-    const openBook = makeBox(THREE, 0.95, 0.14, 0.62, mats.get('#FEF3C7', { roughness: 0.6 }));
-    openBook.position.set(1.8, 0.9, 0.3);
-    const bench = buildParkBench3D(THREE, mats, 1.8, 1.85, 0);
-    g.add(deck, shelf, table, openBook, bench);
+    // Rich Outdoor Reading Corner: Timber Pergola with climbing vines & fairy lights, stocked colorful Bookcase, Study Table with open book & mug, cushioned benches
+    const timberMat = mats.get('#B45309', { roughness: 0.78 });
+    const darkWoodMat = mats.get('#78350F', { roughness: 0.78 });
+    const deck = makeBox(THREE, 11.8, 0.2, 7.4, mats.get('#FDE68A', { roughness: 0.8 }), false, true);
+    deck.position.y = 0.1;
+    const deckTrim = makeBox(THREE, 12.2, 0.14, 7.8, timberMat, false, true);
+    deckTrim.position.y = 0.07;
+    const rug = makeBox(THREE, 6.2, 0.04, 4.4, mats.get('#99F6E4', { roughness: 0.88 }), false, true);
+    rug.position.set(0.4, 0.22, 0.4);
+    g.add(deckTrim, deck, rug);
+
+    // Timber Pergola Frame + Vines & Warm Fairy Bulbs
+    [[-4.4, -2.5], [4.4, -2.5], [-4.4, 2.5], [4.4, 2.5]].forEach(([px, pz]) => {
+      const post = makeBox(THREE, 0.28, 3.6, 0.28, darkWoodMat);
+      post.position.set(px, 1.9, pz);
+      g.add(post);
+    });
+    [-2.5, 2.5].forEach((rz) => {
+      const beam = makeBox(THREE, 9.6, 0.24, 0.28, darkWoodMat);
+      beam.position.set(0, 3.7, rz);
+      g.add(beam);
+    });
+    for (let rx = -4.0; rx <= 4.0; rx += 1.0) {
+      const rafter = makeBox(THREE, 0.16, 0.2, 5.6, timberMat);
+      rafter.position.set(rx, 3.9, 0);
+      g.add(rafter);
+      if (Math.abs(rx) % 2 === 0) {
+        const bulb = makeSphere(THREE, 0.11, 7, 6, mats.get('#FEF08A', { emissive: '#FACC15', emissiveIntensity: 0.9 }), false, false);
+        bulb.position.set(rx, 3.68, 2.45);
+        g.add(bulb);
+      }
+    }
+    // Climbing Vine Greenery across top
+    [[-3.6, 4.05, -1.6], [-2.2, 4.08, 1.2], [2.4, 4.08, -1.4], [3.5, 4.05, 1.5]].forEach(([vx, vy, vz]) => {
+      const vine = makeSphere(THREE, 0.62, 8, 6, mats.get('#22C55E', { roughness: 0.78 }));
+      vine.scale.set(1.5, 0.45, 1.2);
+      vine.position.set(vx, vy, vz);
+      g.add(vine);
+    });
+
+    // Multi-Shelf Bookcase Filled with Colorful Individual Books & Miniature Globe
+    const caseBody = makeBox(THREE, 3.6, 2.75, 0.78, darkWoodMat);
+    caseBody.position.set(-2.45, 1.55, -1.75);
+    g.add(caseBody);
+    const bookCols = ['#EF4444', '#3B82F6', '#FACC15', '#22C55E', '#A855F7', '#F97316', '#EC4899'];
+    [0.85, 1.55, 2.25].forEach((sy, rowIdx) => {
+      const shelfPlank = makeBox(THREE, 3.3, 0.08, 0.84, timberMat);
+      shelfPlank.position.set(-2.45, sy, -1.72);
+      g.add(shelfPlank);
+      for (let bi = 0; bi < 10; bi++) {
+        const bh = 0.4 + ((bi + rowIdx) % 3) * 0.08;
+        const book = makeBox(THREE, 0.24, bh, 0.42, mats.get(bookCols[(bi + rowIdx * 2) % bookCols.length], { roughness: 0.55 }));
+        book.position.set(-3.8 + bi * 0.3, sy + 0.04 + bh / 2, -1.52);
+        g.add(book);
+      }
+    });
+    const globeStand = makeCyl(THREE, 0.14, 0.18, 0.16, 8, mats.get('#FACC15', { roughness: 0.35 }));
+    globeStand.position.set(-3.4, 3.02, -1.75);
+    const globe = makeSphere(THREE, 0.28, 10, 8, mats.get('#0EA5E9', { roughness: 0.4 }));
+    globe.position.set(-3.4, 3.35, -1.75);
+    g.add(globeStand, globe);
+
+    // Study Table with Open Curved Book, Tea Mug & Warm Reading Lamp
+    const tableTop = makeBox(THREE, 2.8, 0.14, 1.65, mats.get('#D97706', { roughness: 0.65 }));
+    tableTop.position.set(1.85, 0.96, 0.25);
+    [[0.65, -0.45], [3.05, -0.45], [0.65, 0.95], [3.05, 0.95]].forEach(([lx, lz]) => {
+      const leg = makeCyl(THREE, 0.07, 0.07, 0.82, 7, darkWoodMat);
+      leg.position.set(lx, 0.55, lz);
+      g.add(leg);
+    });
+    const pageMat = mats.get('#FFFBEB', { roughness: 0.6 });
+    const coverMat = mats.get('#0284C7', { roughness: 0.55 });
+    const bookCover = makeBox(THREE, 1.04, 0.06, 0.72, coverMat);
+    bookCover.position.set(1.65, 1.06, 0.25);
+    [-0.24, 0.24].forEach((px) => {
+      const page = makeBox(THREE, 0.45, 0.08, 0.64, pageMat);
+      page.position.set(1.65 + px, 1.11, 0.25);
+      page.rotation.z = px < 0 ? 0.16 : -0.16;
+      g.add(page);
+    });
+    const lampBase = makeCyl(THREE, 0.14, 0.16, 0.08, 8, mats.get('#FACC15', { roughness: 0.35 }));
+    lampBase.position.set(2.75, 1.07, -0.2);
+    const lampNeck = makeCyl(THREE, 0.03, 0.03, 0.48, 6, mats.get('#FACC15', { roughness: 0.35 }));
+    lampNeck.position.set(2.75, 1.32, -0.2);
+    const lampShade = makeCone(THREE, 0.24, 0.24, 10, mats.get('#FDE047', { emissive: '#FACC15', emissiveIntensity: 0.55 }));
+    lampShade.position.set(2.68, 1.56, -0.15);
+    const mug = makeCyl(THREE, 0.1, 0.09, 0.18, 10, mats.get('#F43F5E', { roughness: 0.4 }));
+    mug.position.set(0.85, 1.12, 0.45);
+    g.add(tableTop, bookCover, lampBase, lampNeck, lampShade, mug);
+
+    // 2 Cushioned Benches + Potted Ferns
+    g.add(buildParkBench3D(THREE, mats, 1.85, 1.95, 0));
+    g.add(buildParkBench3D(THREE, mats, -2.3, 1.25, Math.PI * 0.25));
+    [[-5.0, 2.7, '#EC4899', 'hibiscus'], [5.0, -2.6, '#FACC15', 'sunflower']].forEach(([fx, fz, col, kind]) =>
+      g.add(buildFlowerCluster3D(THREE, mats, fx, fz, col, kind))
+    );
   } else if (type === 'soccer') {
     const W = 17.0;
     const D = 10.5;
@@ -1790,78 +2284,107 @@ function buildChibiCharacter3D(THREE, mats, shadowTex, member, isMe) {
     headGroup.add(stache);
   }
 
-  // ==================== SOFT SCULPTED NATURAL HAIRSTYLES (12 STYLES) ====================
+  // ==================== SOFT SCULPTED NATURAL HAIRSTYLES (12 STYLES — ABOVE BROWS/EYES) ====================
   const hStyle = member.hairStyle || 'short';
-  const hairCap = makeSphere(THREE, 0.495, 20, 14, hairMat);
-  hairCap.scale.set(1.09, 0.94, 1.06);
-  hairCap.position.set(0, 0.095, -0.045);
+  const hairCap = makeSphere(THREE, 0.485, 22, 16, hairMat);
+  hairCap.scale.set(1.04, 0.84, 1.02);
+  hairCap.position.set(0, 0.175, -0.09);
   headGroup.add(hairCap);
 
-  // Temple sideburns framing both cheeks smoothly (replaces boxy sides)
-  [-0.42, 0.42].forEach((tx) => {
-    const temple = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.18, 6, 10), hairMat);
-    temple.position.set(tx, 0.08, 0.14);
-    temple.rotation.z = tx < 0 ? 0.16 : -0.16;
-    temple.rotation.x = 0.14;
+  // Soft side temple strands tucked beside ears so face & eyes stay completely open
+  [-0.435, 0.435].forEach((tx) => {
+    const temple = new THREE.Mesh(
+      new THREE.TubeGeometry(
+        new THREE.CatmullRomCurve3([
+          new THREE.Vector3(tx * 0.88, 0.24, 0.12),
+          new THREE.Vector3(tx, 0.08, 0.05),
+          new THREE.Vector3(tx * 0.96, -0.08, 0.02),
+        ]),
+        8,
+        0.068,
+        8,
+        false
+      ),
+      hairMat
+    );
+    temple.castShadow = true;
     headGroup.add(temple);
   });
 
-  // Helper to build flowing arched bang locks (zero boxes!)
-  const addSoftBangLock = (bx, by, bz, len, r, rz, rx = 0.25) => {
-    const lock = new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 6, 10), hairMat);
-    lock.position.set(bx, by, bz);
-    lock.rotation.set(rx, 0, rz);
+  // Helper to build flowing arched bang locks kept cleanly at high hairline (y >= 0.24, zero eye overlap)
+  const addSoftArchStrand = (pts, radius = 0.075) => {
+    const curve = new THREE.CatmullRomCurve3(pts.map(([x, y, z]) => new THREE.Vector3(x, y, z)));
+    const lock = new THREE.Mesh(new THREE.TubeGeometry(curve, 12, radius, 8, false), hairMat);
     lock.castShadow = true;
     headGroup.add(lock);
   };
 
   if (hStyle === 'sidepart') {
-    const sweepCurve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(-0.34, 0.22, 0.34),
-      new THREE.Vector3(-0.06, 0.34, 0.39),
-      new THREE.Vector3(0.24, 0.32, 0.35),
-      new THREE.Vector3(0.4, 0.18, 0.21),
-    ]);
-    const sweep = new THREE.Mesh(new THREE.TubeGeometry(sweepCurve, 14, 0.11, 8, false), hairMat);
-    sweep.castShadow = true;
-    headGroup.add(sweep);
-    addSoftBangLock(-0.2, 0.27, 0.36, 0.18, 0.08, -0.58);
+    addSoftArchStrand(
+      [
+        [-0.36, 0.24, 0.25],
+        [-0.1, 0.35, 0.35],
+        [0.2, 0.34, 0.32],
+        [0.41, 0.2, 0.15],
+      ],
+      0.095
+    );
+    addSoftArchStrand(
+      [
+        [-0.14, 0.36, 0.31],
+        [-0.29, 0.29, 0.26],
+        [-0.41, 0.17, 0.13],
+      ],
+      0.072
+    );
   } else if (hStyle === 'undercut') {
     const quiffCurve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(-0.14, 0.38, -0.18),
-      new THREE.Vector3(-0.02, 0.5, 0.08),
-      new THREE.Vector3(0.1, 0.44, 0.34),
+      new THREE.Vector3(-0.08, 0.39, -0.18),
+      new THREE.Vector3(0.0, 0.51, 0.08),
+      new THREE.Vector3(0.08, 0.42, 0.32),
     ]);
-    const quiff = new THREE.Mesh(new THREE.TubeGeometry(quiffCurve, 12, 0.18, 10, false), hairMat);
-    quiff.scale.set(1.25, 0.88, 1.0);
+    const quiff = new THREE.Mesh(new THREE.TubeGeometry(quiffCurve, 12, 0.165, 10, false), hairMat);
+    quiff.scale.set(1.25, 0.86, 1.0);
     quiff.castShadow = true;
     headGroup.add(quiff);
   } else {
-    // Natural feathered curved forehead fringe
-    addSoftBangLock(-0.22, 0.27, 0.34, 0.16, 0.085, -0.45);
-    addSoftBangLock(0, 0.31, 0.38, 0.2, 0.092, Math.PI / 2);
-    addSoftBangLock(0.22, 0.27, 0.34, 0.16, 0.085, 0.45);
+    // Soft feathered parted curtain bangs arched smoothly away from center forehead (keeps brows/eyes 100% clear)
+    addSoftArchStrand(
+      [
+        [-0.02, 0.36, 0.33],
+        [-0.2, 0.32, 0.31],
+        [-0.39, 0.21, 0.16],
+      ],
+      0.078
+    );
+    addSoftArchStrand(
+      [
+        [0.02, 0.36, 0.33],
+        [0.2, 0.32, 0.31],
+        [0.39, 0.21, 0.16],
+      ],
+      0.078
+    );
+    const crownSoft = makeSphere(THREE, 0.16, 12, 10, hairMat);
+    crownSoft.scale.set(1.65, 0.65, 0.85);
+    crownSoft.position.set(0, 0.38, 0.18);
+    headGroup.add(crownSoft);
   }
 
   if (hStyle === 'short') {
     const backNape = makeSphere(THREE, 0.38, 14, 10, hairMat);
-    backNape.scale.set(1.12, 0.68, 0.72);
-    backNape.position.set(0, -0.05, -0.26);
+    backNape.scale.set(1.1, 0.68, 0.72);
+    backNape.position.set(0, -0.02, -0.26);
     headGroup.add(backNape);
   } else if (hStyle === 'spiky') {
+    // Smooth tapered swept-up hair locks (replaces rigid sharp cones)
     [
-      [-0.24, 0.48, 0.06, -0.42, 0.12],
-      [-0.08, 0.59, 0.14, -0.12, 0.14],
-      [0.12, 0.59, 0.12, 0.16, 0.135],
-      [0.26, 0.48, 0.04, 0.44, 0.12],
-      [0, 0.55, -0.16, 0, 0.13],
-    ].forEach(([sx, sy, sz, rz, rad]) => {
-      const tuft = new THREE.Mesh(new THREE.ConeGeometry(rad, 0.34, 10), hairMat);
-      tuft.position.set(sx, sy, sz);
-      tuft.rotation.set(0.15, 0, -rz);
-      tuft.castShadow = true;
-      headGroup.add(tuft);
-    });
+      [[-0.22, 0.38, 0.08], [-0.28, 0.52, 0.05], [-0.32, 0.62, -0.02]],
+      [[-0.07, 0.42, 0.16], [-0.08, 0.58, 0.14], [-0.09, 0.7, 0.04]],
+      [[0.1, 0.42, 0.15], [0.13, 0.58, 0.11], [0.16, 0.69, 0.01]],
+      [[0.24, 0.38, 0.06], [0.3, 0.52, 0.02], [0.34, 0.61, -0.05]],
+      [[0, 0.4, -0.14], [0, 0.56, -0.18], [0, 0.66, -0.24]],
+    ].forEach((pts) => addSoftArchStrand(pts, 0.088));
   } else if (hStyle === 'long' || hStyle === 'wavy' || hStyle === 'bob') {
     // Organic curved Lathe back veil + smooth side draping locks (zero square slabs!)
     const veilH = hStyle === 'bob' ? 0.52 : 0.88;
@@ -2826,16 +3349,19 @@ export function buildPet3D(THREE, mats, shadowTex, pet, species, resolvedColors)
   shadow.position.y = 0.03;
   root.add(shadow);
 
-  // Stage 4 legendary aura ring on ground
-  if (pet.hatched && pet.stage >= 4) {
-    const auraMat = mats.get('#FACC15', {
-      emissive: '#F59E0B',
-      emissiveIntensity: 0.65,
+  const variant = pet.variant || 'classic';
+  const auraHex = resolvedColors.auraColor || resolvedColors.primary || '#FACC15';
+
+  // Variant / Stage 4 aura ring on ground
+  if (pet.hatched && (pet.stage >= 4 || variant !== 'classic')) {
+    const auraMat = mats.get(auraHex, {
+      emissive: auraHex,
+      emissiveIntensity: pet.stage >= 4 ? 0.72 : 0.45,
       transparent: true,
-      opacity: 0.72,
+      opacity: pet.stage >= 4 ? 0.78 : 0.56,
       side: THREE.DoubleSide,
     });
-    const auraRing = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.7, 24), auraMat);
+    const auraRing = new THREE.Mesh(new THREE.RingGeometry(0.54, 0.72, 24), auraMat);
     auraRing.rotation.x = -Math.PI / 2;
     auraRing.position.y = 0.05;
     root.add(auraRing);
@@ -2847,15 +3373,21 @@ export function buildPet3D(THREE, mats, shadowTex, pet, species, resolvedColors)
   root.add(actor);
   root.userData.actor = actor;
 
-  const c1Mat = mats.get(resolvedColors.primary, { roughness: 0.58 });
-  const c2Mat = mats.get(resolvedColors.accent, { roughness: 0.62 });
+  const isGoldVariant = variant === 'golden';
+  const c1Mat = mats.get(resolvedColors.primary, { roughness: isGoldVariant ? 0.25 : 0.56, metalness: isGoldVariant ? 0.55 : 0.04 });
+  const cSecMat = mats.get(resolvedColors.secondary || resolvedColors.primary, { roughness: isGoldVariant ? 0.28 : 0.58, metalness: isGoldVariant ? 0.48 : 0.04 });
+  const c2Mat = mats.get(resolvedColors.accent, { roughness: 0.58 });
+  const cTrimMat = mats.get(resolvedColors.trim || '#FACC15', { roughness: 0.3, metalness: 0.45 });
   const whiteMat = mats.get('#FFFFFF', { roughness: 0.62 });
   const creamMat = mats.get('#FEF3C7', { roughness: 0.58 });
   const darkMat = mats.get('#1E293B', { roughness: 0.35 });
-  const eyeMat = mats.get('#0F172A', { roughness: 0.12 });
+  const eyeMat = variant === 'cosmic' ? mats.get('#22D3EE', { roughness: 0.12, emissive: '#06B6D4', emissiveIntensity: 0.55 }) : mats.get('#0F172A', { roughness: 0.12 });
   const pinkMat = mats.get('#F9A8D4', { roughness: 0.55 });
-  const goldMat = mats.get('#FACC15', { roughness: 0.25, metalness: 0.55 });
-  const flameMat = mats.get('#FB923C', { roughness: 0.38, emissive: '#EA580C', emissiveIntensity: 0.45 });
+  const goldMat = mats.get('#FACC15', { roughness: 0.24, metalness: 0.6 });
+  const flameMat = mats.get(
+    variant === 'cosmic' ? '#38BDF8' : variant === 'pastel' ? '#F472B6' : variant === 'royal' ? '#A855F7' : variant === 'golden' ? '#FDE047' : '#FB923C',
+    { roughness: 0.34, emissive: variant === 'cosmic' ? '#0284C7' : variant === 'royal' ? '#7C3AED' : '#EA580C', emissiveIntensity: 0.48 }
+  );
 
   // 1. Trứng chưa nở (có tổ rơm + họa tiết riêng theo loài)
   if (!pet.hatched) {
@@ -2889,6 +3421,21 @@ export function buildPet3D(THREE, mats, shadowTex, pet, species, resolvedColors)
         spot.position.set(sx, 0.65 + (i ? 0.1 : -0.05), 0.3);
         actor.add(spot);
       });
+    }
+    if (variant === 'royal') {
+      const miniCrown = makeCyl(THREE, 0.14, 0.11, 0.1, 8, goldMat);
+      miniCrown.position.set(0, 1.12, 0);
+      actor.add(miniCrown);
+    } else if (variant === 'cosmic') {
+      const eRing = new THREE.Mesh(new THREE.TorusGeometry(0.58, 0.032, 6, 20), cTrimMat);
+      eRing.rotation.set(1.25, 0.35, 0);
+      eRing.position.set(0, 0.58, 0);
+      actor.add(eRing);
+    } else if (variant === 'golden') {
+      const halo = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.03, 6, 18), goldMat);
+      halo.rotation.x = Math.PI / 2 - 0.2;
+      halo.position.set(0, 1.24, 0);
+      actor.add(halo);
     }
     return root;
   }
@@ -3321,7 +3868,7 @@ export function buildPet3D(THREE, mats, shadowTex, pet, species, resolvedColors)
     const wingSpan = stage >= 3 ? 0.74 : 0.48;
     const wingChord = stage >= 3 ? 0.44 : 0.3;
     const memGeo = getDragonMembraneGeo(THREE, wingSpan, wingChord);
-    const wingMemMat = mats.get('#FB923C', { roughness: 0.36, emissive: '#EA580C', emissiveIntensity: 0.38, side: THREE.DoubleSide });
+    const wingMemMat = mats.get(resolvedColors.trim || '#FB923C', { roughness: 0.34, emissive: resolvedColors.auraColor || '#EA580C', emissiveIntensity: 0.38, side: THREE.DoubleSide });
     attachWingPair(THREE, actor, root, {
       shoulderX: 0.27,
       shoulderY: 0.68,
@@ -3332,25 +3879,22 @@ export function buildPet3D(THREE, mats, shadowTex, pet, species, resolvedColors)
       flapSpeed: 0.0095,
       buildOneSide: (holder) => {
         const shoulder = makeSphere(THREE, 0.07, 8, 6, c1Mat);
-        // Xương cánh trên
         const armLen = wingSpan * 0.58;
-        const arm = makeCyl(THREE, 0.036, 0.028, armLen, 6, c1Mat);
+        const arm = makeCyl(THREE, 0.036, 0.028, armLen, 6, cSecMat);
         arm.rotation.z = -Math.PI * 0.38;
         arm.position.set(armLen * 0.44, armLen * 0.22, 0);
-        const elbow = makeSphere(THREE, 0.048, 7, 6, goldMat);
+        const elbow = makeSphere(THREE, 0.048, 7, 6, cTrimMat);
         elbow.position.set(armLen * 0.88, armLen * 0.44, 0);
-        const thumbClaw = new THREE.Mesh(new THREE.ConeGeometry(0.028, 0.11, 5), goldMat);
+        const thumbClaw = new THREE.Mesh(new THREE.ConeGeometry(0.028, 0.11, 5), cTrimMat);
         thumbClaw.position.set(armLen * 0.9, armLen * 0.54, 0.02);
-        // Nan xương ngoài cùng
         const tipLen = wingSpan * 0.62;
-        const tipBone = makeCyl(THREE, 0.028, 0.016, tipLen, 6, c1Mat);
+        const tipBone = makeCyl(THREE, 0.028, 0.016, tipLen, 6, cSecMat);
         tipBone.rotation.z = -Math.PI * 0.56;
         tipBone.position.set(armLen * 0.86 + tipLen * 0.48, armLen * 0.4, 0);
-        // 2 nan xương xòe màng
-        const rib1 = makeCyl(THREE, 0.02, 0.012, wingChord * 0.82, 5, c1Mat);
+        const rib1 = makeCyl(THREE, 0.02, 0.012, wingChord * 0.82, 5, cSecMat);
         rib1.rotation.z = -0.58;
         rib1.position.set(armLen * 0.86, armLen * 0.16, 0);
-        const rib2 = makeCyl(THREE, 0.018, 0.01, wingChord * 0.68, 5, c1Mat);
+        const rib2 = makeCyl(THREE, 0.018, 0.01, wingChord * 0.68, 5, cSecMat);
         rib2.rotation.z = -0.35;
         rib2.position.set(armLen * 0.56, armLen * 0.06, 0);
         const mem = new THREE.Mesh(memGeo, wingMemMat);
@@ -3515,25 +4059,24 @@ export function buildPet3D(THREE, mats, shadowTex, pet, species, resolvedColors)
     neckY = 0.74;
     neckZ = 0.1;
   } else if (sp === 'pet_panda') {
-    // Gấu trúc tròn mập trắng-đen với bệt mắt đen, má hồng, băng trán dải bay & gậy tre có đốt và lá xanh
-    const body = makeSphere(THREE, 0.42, 14, 10, whiteMat);
+    // Gấu trúc tròn mập dùng c1Mat (mình) & cSecMat (đai vai/tai/mắt/chân) nên biến thể đổi màu rõ nét!
+    const body = makeSphere(THREE, 0.42, 14, 10, c1Mat);
     body.scale.set(1.04, 1.0, 1.15);
     body.position.set(0, 0.48, 0);
-    const chestBand = makeCyl(THREE, 0.36, 0.4, 0.22, 12, darkMat);
+    const chestBand = makeCyl(THREE, 0.36, 0.4, 0.22, 12, cSecMat);
     chestBand.position.set(0, 0.62, 0.02);
-    addLegs(darkMat, darkMat, 0.15, 0.24, 0.21, 0.22, -0.22);
+    addLegs(cSecMat, cSecMat, 0.15, 0.24, 0.21, 0.22, -0.22);
 
-    const head = makeSphere(THREE, 0.38, 14, 10, whiteMat);
+    const head = makeSphere(THREE, 0.38, 14, 10, c1Mat);
     head.scale.set(1.08, 0.96, 1.0);
     head.position.set(0, 0.96, 0.2);
     [-0.28, 0.28].forEach((ex) => {
-      const ear = makeSphere(THREE, 0.13, 8, 8, darkMat);
+      const ear = makeSphere(THREE, 0.13, 8, 8, cSecMat);
       ear.position.set(ex, 1.28, 0.16);
       actor.add(ear);
     });
-    // Đốm mắt đen đặc trưng của gấu trúc + má hồng
     [-0.14, 0.14].forEach((ex) => {
-      const patch = makeSphere(THREE, 0.11, 10, 8, darkMat);
+      const patch = makeSphere(THREE, 0.11, 10, 8, cSecMat);
       patch.scale.set(1.05, 1.25, 0.45);
       patch.position.set(ex, 0.98, 0.52);
       patch.rotation.z = ex < 0 ? 0.25 : -0.25;
@@ -3546,9 +4089,9 @@ export function buildPet3D(THREE, mats, shadowTex, pet, species, resolvedColors)
       blush.position.set(ex * 1.45, 0.88, 0.51);
       actor.add(patch, iris, pupil, blush);
     });
-    const nose = makeSphere(THREE, 0.055, 8, 6, darkMat);
+    const nose = makeSphere(THREE, 0.055, 8, 6, cSecMat);
     nose.position.set(0, 0.89, 0.58);
-    const tail = makeSphere(THREE, 0.11, 8, 6, darkMat);
+    const tail = makeSphere(THREE, 0.11, 8, 6, cSecMat);
     tail.position.set(0, 0.44, -0.48);
     actor.add(body, chestBand, head, nose, tail);
 
@@ -3673,7 +4216,7 @@ export function buildPet3D(THREE, mats, shadowTex, pet, species, resolvedColors)
       actor.add(crest);
     });
 
-    // Cánh chim lửa 2 lớp lông vũ điêu khắc lộng lẫy + vỗ cánh mượt
+    // Cánh chim lửa 2 lớp lông vũ điêu khắc dùng bảng màu biến thể rõ rệt + vỗ cánh mượt
     const phSpan = stage >= 3 ? 0.78 : 0.52;
     const phChord = stage >= 3 ? 0.4 : 0.28;
     const phOuterGeo = getFeatheredWingGeo(THREE, phSpan, phChord, 0.045);
@@ -3687,8 +4230,8 @@ export function buildPet3D(THREE, mats, shadowTex, pet, species, resolvedColors)
       flapAmp: 0.28,
       flapSpeed: 0.01,
       buildOneSide: (holder) => {
-        const joint = makeSphere(THREE, 0.085, 8, 6, goldMat);
-        const outer = new THREE.Mesh(phOuterGeo, stage >= 2 ? goldMat : c1Mat);
+        const joint = makeSphere(THREE, 0.085, 8, 6, cTrimMat);
+        const outer = new THREE.Mesh(phOuterGeo, stage >= 2 ? cTrimMat : c1Mat);
         const inner = new THREE.Mesh(phMidGeo, flameMat);
         inner.position.set(0.02, 0.03, 0.012);
         holder.add(joint, outer, inner);
@@ -3698,7 +4241,7 @@ export function buildPet3D(THREE, mats, shadowTex, pet, species, resolvedColors)
     // Đuôi dải lụa lửa 3 nhánh uốn lượn
     const tailRibbonGeo = getTeardropFeatherGeo(THREE, 0.72, 0.15, 0.036);
     [-0.3, 0, 0.3].forEach((ang, idx) => {
-      const plume = new THREE.Mesh(tailRibbonGeo, idx === 1 ? goldMat : flameMat);
+      const plume = new THREE.Mesh(tailRibbonGeo, idx === 1 ? cTrimMat : flameMat);
       plume.position.set(0, 0.44, -0.34);
       plume.rotation.x = -Math.PI * 0.62;
       plume.rotation.z = ang;
@@ -3711,9 +4254,102 @@ export function buildPet3D(THREE, mats, shadowTex, pet, species, resolvedColors)
     neckZ = 0.16;
   }
 
+  // ==================== ĐẶC TRƯNG HÌNH DÁNG 3D RIÊNG CHO TỪNG BIẾN THỂ ====================
+  if (variant === 'pastel') {
+    // Pastel kẹo ngọt: vòng cổ mây bồng bềnh 6 múi + 2 ăng-ten kẹo tròn trên đầu
+    for (let pi = 0; pi < 6; pi++) {
+      const a = (pi / 6) * Math.PI * 2;
+      const puff = makeSphere(THREE, 0.11, 8, 6, pi % 2 === 0 ? c2Mat : cTrimMat);
+      puff.position.set(Math.sin(a) * 0.26, neckY - 0.02, neckZ + Math.cos(a) * 0.24);
+      actor.add(puff);
+    }
+    [-0.17, 0.17].forEach((ax, idx) => {
+      const stalk = makeCyl(THREE, 0.016, 0.02, 0.24, 6, c2Mat);
+      stalk.position.set(ax, headTopY + 0.08, headZ + 0.04);
+      stalk.rotation.z = ax < 0 ? 0.28 : -0.28;
+      const candy = makeSphere(THREE, 0.082, 9, 8, idx === 0 ? pinkMat : cTrimMat);
+      candy.position.set(ax * 1.32, headTopY + 0.22, headZ + 0.04);
+      actor.add(stalk, candy);
+    });
+  } else if (variant === 'royal') {
+    // Royal hoàng gia: áo choàng nhung tím viền vàng + vương miện hoàng gia đính hồng ngọc
+    const capeMat = mats.get('#4C1D95', { roughness: 0.48, side: THREE.DoubleSide });
+    const capeCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0, neckY + 0.02, neckZ - 0.15),
+      new THREE.Vector3(0, neckY - 0.22, neckZ - 0.56),
+      new THREE.Vector3(0, 0.14, -0.78),
+    ]);
+    const cape = new THREE.Mesh(new THREE.TubeGeometry(capeCurve, 10, 0.34, 8, false), capeMat);
+    cape.scale.set(1.25, 1.0, 0.22);
+    const clasp = makeSphere(THREE, 0.075, 8, 6, goldMat);
+    clasp.position.set(0, neckY - 0.02, neckZ + 0.26);
+    const crownBand = makeCyl(THREE, 0.18, 0.15, 0.13, 10, goldMat);
+    crownBand.position.set(0, headTopY + 0.05, headZ);
+    actor.add(cape, clasp, crownBand);
+    for (let c = 0; c < 6; c++) {
+      const ca = (c / 6) * Math.PI * 2;
+      const point = new THREE.Mesh(new THREE.ConeGeometry(0.044, 0.14, 5), goldMat);
+      point.position.set(Math.cos(ca) * 0.14, headTopY + 0.16, headZ + Math.sin(ca) * 0.14);
+      actor.add(point);
+    }
+    const ruby = new THREE.Mesh(new THREE.OctahedronGeometry(0.08, 0), mats.get('#EC4899', { roughness: 0.15, emissive: '#DB2777', emissiveIntensity: 0.35 }));
+    ruby.position.set(0, headTopY + 0.18, headZ);
+    actor.add(ruby);
+  } else if (variant === 'cosmic') {
+    // Cosmic ngân hà: vành đai Sao Thổ nghiêng phát sáng + 2 ngôi sao quay quanh + trăng lưỡi liềm trên trán
+    const orbitGrp = new THREE.Group();
+    orbitGrp.position.set(0, 0.62, 0);
+    const saturnRing = new THREE.Mesh(
+      new THREE.TorusGeometry(0.76, 0.036, 8, 28),
+      mats.get('#22D3EE', { roughness: 0.2, emissive: '#06B6D4', emissiveIntensity: 0.72 })
+    );
+    saturnRing.rotation.set(1.22, 0.32, 0);
+    orbitGrp.add(saturnRing);
+    [0, Math.PI].forEach((ang, si) => {
+      const star = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.095, 0),
+        mats.get(si === 0 ? '#FDE047' : '#38BDF8', { emissive: si === 0 ? '#FACC15' : '#0284C7', emissiveIntensity: 0.7 })
+      );
+      star.position.set(Math.cos(ang) * 0.8, Math.sin(ang) * 0.2, Math.sin(ang) * 0.8);
+      orbitGrp.add(star);
+    });
+    actor.add(orbitGrp);
+    root.userData.variantOrbit = orbitGrp;
+
+    const moonArc = new THREE.Mesh(
+      new THREE.TorusGeometry(0.11, 0.028, 7, 14, Math.PI * 1.25),
+      mats.get('#FEF08A', { emissive: '#FACC15', emissiveIntensity: 0.65 })
+    );
+    moonArc.position.set(0, headTopY + 0.11, headZ + 0.04);
+    moonArc.rotation.z = -0.35;
+    actor.add(moonArc);
+  } else if (variant === 'golden') {
+    // Golden hào quang mặt trời: bánh xe 8 tia sáng sau lưng quay chậm + vầng thái dương trên đầu
+    const wheelGrp = new THREE.Group();
+    wheelGrp.position.set(0, 0.78, -0.38);
+    const sunRing = new THREE.Mesh(
+      new THREE.TorusGeometry(0.54, 0.032, 8, 24),
+      mats.get('#FDE047', { roughness: 0.2, metalness: 0.6, emissive: '#F59E0B', emissiveIntensity: 0.55 })
+    );
+    wheelGrp.add(sunRing);
+    for (let r = 0; r < 8; r++) {
+      const ra = (r / 8) * Math.PI * 2;
+      const ray = new THREE.Mesh(new THREE.ConeGeometry(0.065, 0.24, 5), goldMat);
+      ray.position.set(Math.cos(ra) * 0.68, Math.sin(ra) * 0.68, 0);
+      ray.rotation.z = ra - Math.PI / 2;
+      wheelGrp.add(ray);
+    }
+    actor.add(wheelGrp);
+    root.userData.variantWheel = wheelGrp;
+
+    const sunGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.11, 0), mats.get('#FEF08A', { emissive: '#F59E0B', emissiveIntensity: 0.65 }));
+    sunGem.position.set(0, headTopY + 0.12, headZ + 0.04);
+    actor.add(sunGem);
+  }
+
   // ==================== VƯƠNG MIỆN CẤP 4 & 6 PHỤ KIỆN THÚ CƯNG ====================
   const acc = pet.accessoryId;
-  if (pet.stage >= 4 || acc === 'pacc_crown') {
+  if ((pet.stage >= 4 || acc === 'pacc_crown') && variant !== 'royal') {
     const crownBand = makeCyl(THREE, 0.17, 0.14, 0.12, 8, goldMat);
     crownBand.position.set(0, headTopY + 0.05, headZ);
     actor.add(crownBand);
@@ -4908,7 +5544,9 @@ export async function createScene3D(canvasEl) {
 
     // 4 Outdoor Landmarks
     const engPark = getLoc('eng_park', 175, 425);
-    grp.add(buildOutdoorLandmark3D(THREE, mats, 'eng_park', engPark.x * WORLD_SCALE, (engPark.y - 70) * WORLD_SCALE));
+    const engParkMesh = buildOutdoorLandmark3D(THREE, mats, 'eng_park', engPark.x * WORLD_SCALE, (engPark.y - 70) * WORLD_SCALE);
+    grp.add(engParkMesh);
+    animatedProps.push(engParkMesh);
     labelTargets.push({ x: engPark.x * WORLD_SCALE, y: 4.1, z: (engPark.y - 70) * WORLD_SCALE, text: '💬 Công Viên Tiếng Anh', kind: 'building' });
 
     const plaza = getLoc('fountain_plaza', 280, 1420);
@@ -5240,7 +5878,39 @@ export async function createScene3D(canvasEl) {
         obj.userData.barberPole.rotation.y = nowMs * 0.005;
       }
       if (obj.userData.waterSpray) {
-        obj.userData.waterSpray.position.y = 2.4 + Math.sin(nowMs * 0.007) * 0.25;
+        obj.userData.waterSpray.position.y = 5.45 + Math.sin(nowMs * 0.008) * 0.24;
+        obj.userData.waterSpray.scale.setScalar(0.92 + Math.sin(nowMs * 0.01) * 0.16);
+      }
+      if (obj.userData.waterDroplets) {
+        obj.userData.waterDroplets.forEach((drop) => {
+          const ud = drop.userData;
+          const cyc = ((nowMs * 0.0014 + ud.phase) % 1 + 1) % 1;
+          drop.position.set(
+            Math.cos(ud.ang) * (ud.radius + cyc * 1.15),
+            0.85 + Math.sin(cyc * Math.PI) * 3.1,
+            Math.sin(ud.ang) * (ud.radius + cyc * 1.15)
+          );
+          drop.scale.setScalar(0.65 + (1 - Math.abs(cyc - 0.5) * 2) * 0.55);
+        });
+      }
+      if (obj.userData.waterRipples) {
+        obj.userData.waterRipples.forEach((ring) => {
+          const s = 0.88 + (((nowMs * 0.0008 + ring.userData.phase) % 1) * 0.35);
+          ring.scale.setScalar(s);
+        });
+      }
+      if (obj.userData.butterflies) {
+        obj.userData.butterflies.forEach((bf) => {
+          const ud = bf.userData;
+          const t = nowMs * 0.0016 + ud.angle;
+          bf.position.set(Math.cos(t) * ud.radius, ud.baseY + Math.sin(t * 2.4) * 0.32, Math.sin(t) * ud.radius);
+          bf.rotation.y = -t;
+          if (bf.children[0] && bf.children[1]) {
+            const fl = Math.sin(nowMs * 0.022 + ud.angle) * 0.65;
+            bf.children[0].rotation.z = fl;
+            bf.children[1].rotation.z = -fl;
+          }
+        });
       }
       if (obj.userData.soccerBall) {
         obj.userData.soccerBall.position.x = Math.sin(nowMs * 0.0025) * 1.6;
@@ -5399,11 +6069,25 @@ export async function createScene3D(canvasEl) {
         if (Math.hypot(pdx, pdz) > 0.03) {
           pEntry.mesh.userData.actor.rotation.y = Math.atan2(pdx, pdz);
         }
+        const pud = pEntry.mesh.userData;
         const bounce = isMoving ? Math.abs(Math.sin(nowMs * 0.012)) * 0.25 : Math.sin(nowMs * 0.004) * 0.08;
-        pEntry.mesh.userData.actor.position.y = bounce;
-        if (pEntry.mesh.userData.auraRing) {
-          pEntry.mesh.userData.auraRing.rotation.z = nowMs * 0.0022;
-          pEntry.mesh.userData.auraRing.scale.setScalar(1 + Math.sin(nowMs * 0.005) * 0.08);
+        pud.actor.position.y = bounce;
+        if (pud.leftWingPivot && pud.rightWingPivot) {
+          const spd = pud.leftWingPivot.userData.flapSpeed || 0.009;
+          const amp = pud.leftWingPivot.userData.flapAmp || 0.24;
+          const fl = Math.sin(nowMs * spd) * amp;
+          pud.leftWingPivot.rotation.z = (pud.leftWingPivot.userData.baseZ || 0) - fl;
+          pud.rightWingPivot.rotation.z = (pud.rightWingPivot.userData.baseZ || 0) + fl;
+        }
+        if (pud.variantOrbit) {
+          pud.variantOrbit.rotation.y = nowMs * 0.0018;
+        }
+        if (pud.variantWheel) {
+          pud.variantWheel.rotation.z = nowMs * 0.0014;
+        }
+        if (pud.auraRing) {
+          pud.auraRing.rotation.z = nowMs * 0.0022;
+          pud.auraRing.scale.setScalar(1 + Math.sin(nowMs * 0.005) * 0.08);
         }
       } else if (petMeshes.has(m.id)) {
         actorsGroup.remove(petMeshes.get(m.id).mesh);

@@ -1008,97 +1008,250 @@ export function drawProtestantChurch2D(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  lighting: LightingInfo
+  lighting: LightingInfo,
+  shape: BuildingShape = 'classic'
 ) {
   ctx.save();
   ctx.lineWidth = 3;
   ctx.strokeStyle = '#1E293B';
 
-  // Soft ground shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  const roofColor =
+    shape === 'modern' ? '#1E293B' : shape === 'pavilion' ? '#991B1B' : shape === 'castle' ? '#312E81' : '#334155';
+  const trimFill = shape === 'modern' ? '#CBD5E1' : '#E2E8F0';
+  const glassFill = lighting.isNight ? '#FEF08A' : '#E0F2FE';
+
+  // Soft wide courtyard ground shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
   ctx.beginPath();
-  ctx.ellipse(x, y + 68, 108, 14, 0, 0, Math.PI * 2);
+  ctx.ellipse(x, y + 72, 134, 16, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Paved steps
+  // Wide marble entrance terrace & tiered steps
+  ctx.fillStyle = '#CBD5E1';
+  ctx.fillRect(x - 122, y + 52, 244, 12);
+  ctx.strokeRect(x - 122, y + 52, 244, 12);
   ctx.fillStyle = '#E2E8F0';
-  ctx.fillRect(x - 36, y + 54, 72, 12);
-  ctx.strokeRect(x - 36, y + 54, 72, 12);
-
-  // Clean white Protestant sanctuary walls
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillRect(x - 94, y - 58, 188, 114);
-  ctx.strokeRect(x - 94, y - 58, 188, 114);
-
-  // Gable roof (deep slate blue, crisp & simple)
-  ctx.fillStyle = '#334155';
-  ctx.beginPath();
-  ctx.moveTo(x - 104, y - 58);
-  ctx.lineTo(x, y - 114);
-  ctx.lineTo(x + 104, y - 58);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-
-  // White front gable triangle facade
+  ctx.fillRect(x - 46, y + 58, 92, 11);
+  ctx.strokeRect(x - 46, y + 58, 92, 11);
   ctx.fillStyle = '#F8FAFC';
-  ctx.beginPath();
-  ctx.moveTo(x - 86, y - 58);
-  ctx.lineTo(x, y - 104);
-  ctx.lineTo(x + 86, y - 58);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
+  ctx.fillRect(x - 38, y + 48, 76, 10);
+  ctx.strokeRect(x - 38, y + 48, 76, 10);
 
-  // Plain tall arched clear glass windows (no icons, pictures, or statues)
-  [-62, 42].forEach((wx) => {
-    ctx.fillStyle = lighting.isNight ? '#FEF08A' : '#E0F2FE';
+  // Main Sanctuary Hall (larger & richer proportions)
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(x - 110, y - 64, 220, 118);
+  ctx.strokeRect(x - 110, y - 64, 220, 118);
+
+  // Subtle horizontal stone cornice band
+  ctx.fillStyle = trimFill;
+  ctx.fillRect(x - 114, y - 66, 228, 9);
+  ctx.strokeRect(x - 114, y - 66, 228, 9);
+
+  let signY = y - 150;
+  let crossTopY = y - 198;
+
+  if (shape === 'modern') {
+    // Modern Reformed Sanctuary: Cantilever sloped architectural roof + timber fins + tall glass atrium
+    ctx.fillStyle = roofColor;
     ctx.beginPath();
-    ctx.roundRect(x + wx, y - 34, 20, 52, [10, 10, 2, 2]);
+    ctx.moveTo(x - 124, y - 62);
+    ctx.lineTo(x + 124, y - 78);
+    ctx.lineTo(x + 124, y - 65);
+    ctx.lineTo(x - 124, y - 50);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Tall central frosted glass atrium (plain grid panes, zero pictures)
+    ctx.fillStyle = glassFill;
+    ctx.fillRect(x - 34, y - 54, 68, 106);
+    ctx.strokeRect(x - 34, y - 54, 68, 106);
+    [-17, 0, 17].forEach((gx) => {
+      ctx.beginPath();
+      ctx.moveTo(x + gx, y - 54);
+      ctx.lineTo(x + gx, y + 52);
+      ctx.stroke();
+    });
+
+    // Clean warm timber architectural buttress fins
+    [-92, -44, 44, 92].forEach((fx) => {
+      ctx.fillStyle = '#B45309';
+      ctx.fillRect(x + fx - 5, y - 62, 10, 114);
+      ctx.strokeRect(x + fx - 5, y - 62, 10, 114);
+    });
+
+    // Minimalist modern central tower holding "TIN LÀNH"
+    ctx.fillStyle = '#F8FAFC';
+    ctx.fillRect(x - 40, y - 126, 80, 62);
+    ctx.strokeRect(x - 40, y - 126, 80, 62);
+    ctx.fillStyle = roofColor;
+    ctx.fillRect(x - 45, y - 134, 90, 9);
+    ctx.strokeRect(x - 45, y - 134, 90, 9);
+    signY = y - 148;
+    crossTopY = y - 196;
+  } else if (shape === 'pavilion') {
+    // Colonial Domed Sanctuary: Wide colonnade portico + octagonal cupola & dome
+    ctx.fillStyle = roofColor;
+    ctx.beginPath();
+    ctx.moveTo(x - 122, y - 64);
+    ctx.lineTo(x - 84, y - 96);
+    ctx.lineTo(x + 84, y - 96);
+    ctx.lineTo(x + 122, y - 64);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // White octagonal rotunda drum & dome
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(x - 46, y - 124, 92, 28);
+    ctx.strokeRect(x - 46, y - 124, 92, 28);
+    ctx.fillStyle = roofColor;
+    ctx.beginPath();
+    ctx.arc(x, y - 124, 42, Math.PI, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Front portico columns
+    [-58, -36, 36, 58].forEach((cx) => {
+      ctx.fillStyle = '#F8FAFC';
+      ctx.fillRect(x + cx - 5, y - 50, 10, 102);
+      ctx.strokeRect(x + cx - 5, y - 50, 10, 102);
+    });
+    signY = y - 166;
+    crossTopY = y - 212;
+  } else if (shape === 'castle') {
+    // Grand Twin-Spire Reformed Sanctuary
+    [-98, 98].forEach((tx) => {
+      ctx.fillStyle = '#F1F5F9';
+      ctx.fillRect(x + tx - 18, y - 94, 36, 148);
+      ctx.strokeRect(x + tx - 18, y - 94, 36, 148);
+      ctx.fillStyle = roofColor;
+      ctx.beginPath();
+      ctx.moveTo(x + tx - 22, y - 94);
+      ctx.lineTo(x + tx, y - 134);
+      ctx.lineTo(x + tx + 22, y - 94);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    });
+    // Central high gable & spire tower
+    ctx.fillStyle = roofColor;
+    ctx.beginPath();
+    ctx.moveTo(x - 82, y - 64);
+    ctx.lineTo(x, y - 118);
+    ctx.lineTo(x + 82, y - 64);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(x - 42, y - 134, 84, 52);
+    ctx.strokeRect(x - 42, y - 134, 84, 52);
+    signY = y - 150;
+    crossTopY = y - 198;
+  } else {
+    // 'classic' — Columned White Front Portico + Pitched Slate Roof + Stepped White Spire Tower
+    ctx.fillStyle = roofColor;
+    ctx.beginPath();
+    ctx.moveTo(x - 120, y - 64);
+    ctx.lineTo(x, y - 118);
+    ctx.lineTo(x + 120, y - 64);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#F8FAFC';
+    ctx.beginPath();
+    ctx.moveTo(x - 98, y - 64);
+    ctx.lineTo(x, y - 106);
+    ctx.lineTo(x + 98, y - 64);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Central White Steeple Tower
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(x - 42, y - 136, 84, 46);
+    ctx.strokeRect(x - 42, y - 136, 84, 46);
+    ctx.fillStyle = roofColor;
+    ctx.fillRect(x - 47, y - 142, 94, 8);
+    ctx.strokeRect(x - 47, y - 142, 94, 8);
+
+    // 4 Classical Portico Columns framing front doors
+    [-54, -34, 34, 54].forEach((cx) => {
+      ctx.fillStyle = '#F8FAFC';
+      ctx.fillRect(x + cx - 4.5, y - 54, 9, 106);
+      ctx.strokeRect(x + cx - 4.5, y - 54, 9, 106);
+    });
+    signY = y - 158;
+    crossTopY = y - 205;
+  }
+
+  // Plain tall arched clear windows (zero icons, zero pictures, zero statues)
+  [-82, 60].forEach((wx) => {
+    ctx.fillStyle = glassFill;
+    ctx.beginPath();
+    ctx.roundRect(x + wx, y - 42, 22, 62, [11, 11, 2, 2]);
     ctx.fill();
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(x + wx + 10, y - 34);
-    ctx.lineTo(x + wx + 10, y + 18);
-    ctx.moveTo(x + wx, y - 8);
-    ctx.lineTo(x + wx + 20, y - 8);
+    ctx.moveTo(x + wx + 11, y - 42);
+    ctx.lineTo(x + wx + 11, y + 20);
+    ctx.moveTo(x + wx, y - 14);
+    ctx.lineTo(x + wx + 22, y - 14);
     ctx.stroke();
   });
 
-  // Plain wooden double doors
+  // Plain paneled wooden double entrance doors
   ctx.fillStyle = '#78350F';
   ctx.beginPath();
-  ctx.roundRect(x - 20, y - 6, 40, 60, [6, 6, 0, 0]);
+  ctx.roundRect(x - 22, y - 10, 44, 62, [8, 8, 0, 0]);
   ctx.fill();
   ctx.stroke();
   ctx.beginPath();
-  ctx.moveTo(x, y - 6);
-  ctx.lineTo(x, y + 54);
+  ctx.moveTo(x, y - 10);
+  ctx.lineTo(x, y + 52);
   ctx.stroke();
 
-  // Top Steeple Signboard with ONLY the 2 words "TIN LÀNH"
+  // Flanking cypress hedges & courtyard lanterns
+  [-108, 108].forEach((hx) => {
+    ctx.fillStyle = '#16A34A';
+    ctx.beginPath();
+    ctx.ellipse(x + hx, y + 36, 9, 18, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  });
+  [-64, 64].forEach((lx) => {
+    ctx.fillStyle = '#1E293B';
+    ctx.fillRect(x + lx - 2, y + 24, 4, 28);
+    ctx.fillStyle = lighting.isNight ? '#FEF08A' : '#F8FAFC';
+    ctx.beginPath();
+    ctx.arc(x + lx, y + 21, 5.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  });
+
+  // Top Steeple Signboard with STRICTLY ONLY the 2 words "TIN LÀNH"
   ctx.fillStyle = '#0F172A';
   ctx.beginPath();
-  ctx.roundRect(x - 54, y - 134, 108, 28, 5);
+  ctx.roundRect(x - 58, signY - 15, 116, 30, 5);
   ctx.fill();
   ctx.stroke();
 
   ctx.fillStyle = '#FACC15';
-  ctx.font = 'bold 14px Fredoka, sans-serif';
+  ctx.font = 'bold 15px Fredoka, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('TIN LÀNH', x, y - 120);
+  ctx.fillText('TIN LÀNH', x, signY);
 
-  // Empty Cross (Thập tự giá) positioned directly above "TIN LÀNH"
+  // Empty Cross (Thập tự giá) directly above "TIN LÀNH" — zero pictures/icons/statues
   ctx.fillStyle = '#FACC15';
   ctx.strokeStyle = '#92400E';
-  ctx.lineWidth = 2;
-  // Vertical beam
-  ctx.fillRect(x - 4, y - 178, 8, 42);
-  ctx.strokeRect(x - 4, y - 178, 8, 42);
-  // Horizontal beam
-  ctx.fillRect(x - 16, y - 166, 32, 8);
-  ctx.strokeRect(x - 16, y - 166, 32, 8);
+  ctx.lineWidth = 2.2;
+  ctx.fillRect(x - 4.5, crossTopY, 9, signY - 16 - crossTopY);
+  ctx.strokeRect(x - 4.5, crossTopY, 9, signY - 16 - crossTopY);
+  ctx.fillRect(x - 18, crossTopY + 11, 36, 8.5);
+  ctx.strokeRect(x - 18, crossTopY + 11, 36, 8.5);
 
   ctx.restore();
 }
@@ -2190,7 +2343,7 @@ export function drawNeighborhoodWorld(
 
   // 12. NHÀ THỜ TIN LÀNH (Strict Protestant architecture: ONLY "TIN LÀNH" + Cross above, zero images/statues)
   const churchLoc = getLoc('church', 2345, 955);
-  drawProtestantChurch2D(ctx, churchLoc.x, churchLoc.y - 65, lighting);
+  drawProtestantChurch2D(ctx, churchLoc.x, churchLoc.y - 65, lighting, churchLoc.shape);
 
   const treeCoords: [number, number, TreeKind][] = [
     [60, 290, 'sakura'], [285, 290, 'pine'], [490, 315, 'orange'], [640, 320, 'oak'], [1065, 310, 'sakura'],

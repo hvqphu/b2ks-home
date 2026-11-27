@@ -2951,6 +2951,15 @@ export const ParentalDashboardModal: React.FC<Props> = ({ bridge, onClose }) => 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       {BUILDING_SHAPE_OPTIONS.map((opt) => {
                         const activeShape = (selectedLocation.shape || 'classic') === opt.id;
+                        const isChurch = selectedLocation.id === 'church';
+                        const churchLabels: Record<string, { label: string; desc: string }> = {
+                          classic: { label: '⛪ Cổ Điển (Tháp Trắng)', desc: 'Cột cổng trắng trang nghiêm + Thập tự giá vàng' },
+                          modern: { label: '🏛️ Hiện Đại Kính & Gỗ', desc: 'Mái nghiêng thanh lịch + mặt kính sáng thoáng' },
+                          pavilion: { label: '🕌 Đài Vòm Colonial', desc: 'Hành lang cột vòm cổ + tháp bát giác trắng' },
+                          castle: { label: '🏰 Lễ Đường Tháp Đôi', desc: 'Hai tháp chuông đối xứng + đại sảnh trang trọng' },
+                        };
+                        const labelText = isChurch ? churchLabels[opt.id]?.label || opt.label : `${opt.icon} ${opt.label}`;
+                        const descText = isChurch ? churchLabels[opt.id]?.desc || opt.desc : opt.desc;
                         return (
                           <button
                             key={opt.id}
@@ -2972,11 +2981,9 @@ export const ParentalDashboardModal: React.FC<Props> = ({ bridge, onClose }) => 
                                 : 'bg-white border-slate-300 text-slate-700 hover:border-indigo-400'
                             }`}
                           >
-                            <div className="text-xs font-extrabold">
-                              {opt.icon} {opt.label}
-                            </div>
+                            <div className="text-xs font-extrabold">{labelText}</div>
                             <div className={`text-[10px] mt-0.5 ${activeShape ? 'text-indigo-100' : 'text-slate-500'}`}>
-                              {opt.desc}
+                              {descText}
                             </div>
                           </button>
                         );
