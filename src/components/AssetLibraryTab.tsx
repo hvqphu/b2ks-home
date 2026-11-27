@@ -3,6 +3,7 @@ import {
   Bot,
   Building2,
   CheckCircle2,
+  Copy,
   Eye,
   FlaskConical,
   Hammer,
@@ -499,6 +500,7 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
   const [webglStatus, setWebglStatus] = useState<'loading' | 'ready' | 'lost' | 'error'>('loading');
 
   // Review tracking
+  const [exportedNotesText, setExportedNotesText] = useState<string | null>(null);
   const [reviews, setReviews] = useState<Record<string, AssetReviewRecord>>(() => {
     try {
       const raw = localStorage.getItem(REVIEW_STORAGE_KEY);
@@ -1403,24 +1405,93 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
     return { approved, needsUpgrade, total: allEntries.length };
   }, [allEntries, reviews]);
 
+  const buildNotesExportText = () => {
+    const entryMap = new Map(allEntries.map((e) => [e.key, e]));
+    const flagged: string[] = [];
+    Object.entries(reviews).forEach(([key, rec]) => {
+      const note = (rec?.note || '').trim();
+      if (rec?.status !== 'needs_upgrade' && !note) return;
+      const entry = entryMap.get(key);
+      const label = entry ? `${entry.name} (${entry.groupLabel})` : key;
+      const statusText = rec?.status === 'needs_upgrade' ? 'Cần sửa' : rec?.status === 'approved' ? 'Đã đạt' : 'Chưa duyệt';
+      flagged.push(`- [${key}] ${label} [${statusText}]${note ? `: ${note}` : ' (chưa ghi chi tiết)'}`);
+    });
+    if (flagged.length === 0) return '';
+    return `DANH SÁCH GHI CHÚ HÌNH ẢNH 2D & 3D (${flagged.length} mục):\n${flagged.join('\n')}`;
+  };
+
+  const handleCopyReviewNotes = async () => {
+    bridge.playClick();
+    const text = buildNotesExportText();
+    if (!text) {
+      bridge.showToast('ℹ️ Chưa có mục nào được đánh dấu "Cần nâng cấp" hoặc có ghi chú trong trình duyệt này.');
+      return;
+    }
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        bridge.playSuccess();
+        bridge.showToast('📋 Đã copy danh sách ghi chú! Bạn có thể dán gửi vào khung chat.');
+        setExportedNotesText(text);
+        return;
+      }
+    } catch {
+      // fallback to manual copy panel below
+    }
+    setExportedNotesText(text);
+    bridge.showToast('📋 Đã tổng hợp danh sách ghi chú bên dưới để bạn copy.');
+  };
+
   return (
     <div className="space-y-3">
       {/* Top Info + Review Summary */}
-      <div className="rounded-xl border-2 border-sky-300 bg-sky-50 p-3 flex flex-wrap items-center justify-between gap-2 text-xs text-sky-950">
-        <div>
-          <b>🎨 Kho Kiểm Định Hình Ảnh 2D &amp; 3D Toàn Hệ Thống:</b> So sánh trực tiếp hình minh họa 2D và mô hình 3D WebGL xoay 360° của vật phẩm, Phòng Thí Nghiệm, 10 Thú cưng, công trình Building, nhân vật trên bản đồ &amp; Robot nhắc nhở.
+      <div className="rounded-xl border-2 border-sky-300 bg-sky-50 p-3 space-y-2 text-xs text-sky-950">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <b>🎨 Kho Kiểm Định Hình Ảnh 2D &amp; 3D Toàn Hệ Thống:</b> So sánh trực tiếp hình minh họa 2D và mô hình 3D WebGL xoay 360° của vật phẩm, Phòng Thí Nghiệm, 10 Thú cưng, công trình Building, nhân vật trên bản đồ &amp; Robot nhắc nhở.
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5 font-bold">
+            <span className="px-2 py-0.5 rounded-full bg-white border border-slate-300">
+              Tổng: {countsByStatus.total}
+            </span>
+            <span className="px-2 py-0.5 rounded-full bg-emerald-100 border border-emerald-400 text-emerald-800">
+              ✅ Đạt: {countsByStatus.approved}
+            </span>
+            <span className="px-2 py-0.5 rounded-full bg-amber-100 border border-amber-400 text-amber-900">
+              🔧 Cần sửa: {countsByStatus.needsUpgrade}
+            </span>
+            <button
+              type="button"
+              onClick={handleCopyReviewNotes}
+              className="px-2.5 py-0.5 rounded-full bg-amber-500 hover:bg-amber-600 text-white border border-amber-800 flex items-center gap-1 cursor-pointer shadow-xs"
+              title="Copy toàn bộ danh sách hình ảnh đã đánh dấu Cần sửa / có ghi chú để gửi sửa"
+            >
+              <Copy className="w-3 h-3" />
+              <span>Copy ghi chú cần sửa</span>
+            </button>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-1.5 font-bold">
-          <span className="px-2 py-0.5 rounded-full bg-white border border-slate-300">
-            Tổng: {countsByStatus.total}
-          </span>
-          <span className="px-2 py-0.5 rounded-full bg-emerald-100 border border-emerald-400 text-emerald-800">
-            ✅ Đạt: {countsByStatus.approved}
-          </span>
-          <span className="px-2 py-0.5 rounded-full bg-amber-100 border border-amber-400 text-amber-900">
-            🔧 Cần sửa: {countsByStatus.needsUpgrade}
-          </span>
-        </div>
+        {exportedNotesText && (
+          <div className="rounded-lg border border-amber-300 bg-white p-2 space-y-1">
+            <div className="flex items-center justify-between text-[11px] font-bold text-amber-900">
+              <span>📝 Danh sách ghi chú đã tổng hợp (chọn &amp; dán vào chat để yêu cầu chỉnh sửa):</span>
+              <button
+                type="button"
+                onClick={() => setExportedNotesText(null)}
+                className="text-slate-500 hover:text-slate-800 cursor-pointer px-1.5"
+              >
+                ✖ Ẩn
+              </button>
+            </div>
+            <textarea
+              readOnly
+              value={exportedNotesText}
+              rows={Math.min(6, Math.max(2, exportedNotesText.split('\n').length))}
+              onFocus={(e) => e.currentTarget.select()}
+              className="w-full rounded border border-slate-300 bg-slate-50 p-1.5 font-mono text-[11px] text-slate-800"
+            />
+          </div>
+        )}
       </div>
 
       {/* Category & Search Toolbar */}

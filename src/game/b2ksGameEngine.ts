@@ -2208,6 +2208,7 @@ export function initB2KSGameEngine() {
   const MSG_RETENTION_MS = 72 * 60 * 60 * 1000;
   let smartphoneCurrentView: 'home' | 'messenger' | 'tasks' | 'maps' | 'robot' = 'home';
   let smartphoneChatTargetId = 'family_group';
+  let smartphoneChannelMenuOpen = false;
   let smartphoneRobotChildId = '';
   let activeNavTargetId: string | null = null;
   let petShopTab: 'eggs' | 'food' | 'accessories' | 'my_pets' = 'eggs';
@@ -4525,6 +4526,12 @@ export function initB2KSGameEngine() {
 
     if (smartphoneCurrentView === 'messenger') {
       pruneExpiredFamilyMessages();
+      if (
+        smartphoneChatTargetId !== 'family_group' &&
+        !state.members.some((m) => m.id !== me.id && m.id === smartphoneChatTargetId)
+      ) {
+        smartphoneChatTargetId = 'family_group';
+      }
       // Compute unread channels & newly read bubbles BEFORE marking current channel read
       const beforeSummary = getUnreadSummaryByChannel(me);
       const newlyReadIds = new Set<string>();
@@ -4554,13 +4561,18 @@ export function initB2KSGameEngine() {
         { id: 'family_group', label: '👨‍👩‍👧‍👦 Nhóm Gia Đình' },
         ...state.members.filter((m) => m.id !== me.id).map((m) => ({ id: m.id, label: `${m.outfit || getRoleEmoji(m.role)} ${m.name}` }))
       ];
+      const activeChannel = channels.find((ch) => ch.id === smartphoneChatTargetId) || channels[0];
       const otherUnreadChannels = channels.filter(
-        (ch) => ch.id !== smartphoneChatTargetId && (beforeSummary.channelUnreadCount[ch.id] || 0) > 0
+        (ch) => ch.id !== activeChannel.id && (beforeSummary.channelUnreadCount[ch.id] || 0) > 0
+      );
+      const otherUnreadTotal = otherUnreadChannels.reduce(
+        (sum, ch) => sum + (beforeSummary.channelUnreadCount[ch.id] || 0),
+        0
       );
       const msgs = (state.familyMessages as any[]).filter((msg) =>
-        smartphoneChatTargetId === 'family_group'
+        activeChannel.id === 'family_group'
           ? msg.recipientId === 'family_group'
-          : (msg.senderId === me.id && msg.recipientId === smartphoneChatTargetId) || (msg.senderId === smartphoneChatTargetId && msg.recipientId === me.id)
+          : (msg.senderId === me.id && msg.recipientId === activeChannel.id) || (msg.senderId === activeChannel.id && msg.recipientId === me.id)
       );
 
       body.innerHTML = `
@@ -4569,24 +4581,52 @@ export function initB2KSGameEngine() {
           <b style="font-size:14px; color:#006AFF;">💬 Family Messenger</b>
           <span class="tag" style="background:#D6EAF8; font-size:10px;">Lưu 72h</span>
         </div>
-        <div style="display:flex; gap:5px; overflow-x:auto; padding-bottom:6px; margin-bottom:6px;">
-          ${channels
-            .map((ch) => {
-              const active = smartphoneChatTargetId === ch.id;
-              const unreadForCh = active ? 0 : (beforeSummary.channelUnreadCount[ch.id] || 0);
-              const sendersForCh = beforeSummary.channelSenders[ch.id] || [];
-              const extraLabel =
-                unreadForCh > 0
-                  ? ch.id === 'family_group' && sendersForCh.length > 0
-                    ? ` 🔴${unreadForCh} (${sendersForCh.join(', ')})`
-                    : ` 🔴${unreadForCh}`
-                  : '';
-              return `<button type="button" class="btn btn-sm ${active ? 'btn-primary' : unreadForCh > 0 ? 'phone-unread-channel' : ''}" style="${active ? '' : unreadForCh > 0 ? '' : 'background:#FFF; color:#2C3E50;'} flex-shrink:0;" onclick="switchSmartphoneView('messenger', '${ch.id}')">${escapeHtml(ch.label + extraLabel)}</button>`;
-            })
-            .join('')}
+        <div style="position:relative; margin-bottom:6px; z-index:25;">
+          <button
+            type="button"
+            id="phone-channel-dropdown-btn"
+            class="btn btn-sm ${otherUnreadTotal > 0 ? 'phone-unread-channel' : ''}"
+            style="width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:7px 10px; ${otherUnreadTotal > 0 ? '' : 'background:#FFFFFF; color:#0F172A; border-color:#2C3E50;'} text-align:left;"
+            aria-expanded="${smartphoneChannelMenuOpen ? 'true' : 'false'}"
+            onclick="toggleSmartphoneChannelMenu()"
+          >
+            <span style="display:flex; align-items:center; gap:6px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+              <span style="font-size:10.5px; font-weight:700; opacity:0.75; flex-shrink:0;">Kênh:</span>
+              <span style="font-weight:800; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(activeChannel.label)}</span>
+            </span>
+            <span style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+              ${otherUnreadTotal > 0 ? `<span style="background:#DC2626; color:#FFFFFF; border-radius:999px; padding:1px 7px; font-size:10.5px; font-weight:800; line-height:1.4;">🔴 ${otherUnreadTotal} mới</span>` : ''}
+              <span style="font-size:12px; font-weight:800;">${smartphoneChannelMenuOpen ? '▲' : '▾'}</span>
+            </span>
+          </button>
+          ${smartphoneChannelMenuOpen ? `
+            <div id="phone-channel-dropdown-menu" style="position:absolute; top:calc(100% + 5px); left:0; right:0; z-index:40; background:#FFFFFF; border:2.5px solid #2C3E50; border-radius:12px; box-shadow:0 10px 22px rgba(15,23,42,0.22); max-height:210px; overflow-y:auto; padding:5px; display:flex; flex-direction:column; gap:4px;">
+              ${channels
+                .map((ch) => {
+                  const active = activeChannel.id === ch.id;
+                  const unreadForCh = active ? 0 : (beforeSummary.channelUnreadCount[ch.id] || 0);
+                  const sendersForCh = beforeSummary.channelSenders[ch.id] || [];
+                  const unreadBadge =
+                    unreadForCh > 0
+                      ? ch.id === 'family_group' && sendersForCh.length > 0
+                        ? `🔴 ${unreadForCh} (${sendersForCh.join(', ')})`
+                        : `🔴 ${unreadForCh}`
+                      : '';
+                  return `<button type="button" class="btn btn-sm ${active ? 'btn-primary' : unreadForCh > 0 ? 'phone-unread-channel' : ''}" style="width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 9px; text-align:left; ${active ? '' : unreadForCh > 0 ? '' : 'background:#F8FAFC; color:#0F172A; border-color:#CBD5E1; box-shadow:none;'}" onclick="switchSmartphoneView('messenger', '${ch.id}')">
+                    <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(ch.label)}</span>
+                    ${active
+                      ? '<span style="font-size:10px; font-weight:800; background:rgba(255,255,255,0.22); padding:1px 6px; border-radius:999px; flex-shrink:0;">✓ Đang xem</span>'
+                      : unreadBadge
+                        ? `<span style="font-size:10.5px; font-weight:800; color:#B91C1C; flex-shrink:0;">${escapeHtml(unreadBadge)}</span>`
+                        : ''}
+                  </button>`;
+                })
+                .join('')}
+            </div>
+          ` : ''}
         </div>
         ${otherUnreadChannels.length > 0 ? `
-          <div style="background:#FEF2F2; border:2px solid #EF4444; border-radius:10px; padding:6px 8px; margin-bottom:6px; font-size:11.5px; color:#991B1B; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <div id="phone-unread-notice-banner" style="background:#FEF2F2; border:2px solid #EF4444; border-radius:10px; padding:6px 8px; margin-bottom:6px; font-size:11.5px; color:#991B1B; display:flex; align-items:center; gap:6px; flex-wrap:wrap; box-shadow:0 2px 6px rgba(239,68,68,0.18);">
             <span>🔔 <b>Tin nhắn mới từ:</b></span>
             ${otherUnreadChannels
               .map((ch) => {
@@ -4897,6 +4937,7 @@ export function initB2KSGameEngine() {
     AudioEngine.playClick();
     pruneExpiredFamilyMessages();
     smartphoneCurrentView = initialView;
+    smartphoneChannelMenuOpen = false;
     const modal = document.getElementById('smartphone-modal');
     if (modal) modal.style.display = 'flex';
     renderSmartphoneScreen();
@@ -5367,9 +5408,15 @@ export function initB2KSGameEngine() {
     }
   };
   w.openSmartphoneModal = openSmartphoneModal;
+  w.toggleSmartphoneChannelMenu = () => {
+    AudioEngine.playClick();
+    smartphoneChannelMenuOpen = !smartphoneChannelMenuOpen;
+    renderSmartphoneScreen();
+  };
   w.switchSmartphoneView = (viewName: 'home' | 'messenger' | 'tasks' | 'maps' | 'robot', targetId?: string) => {
     AudioEngine.playClick();
     smartphoneCurrentView = viewName;
+    smartphoneChannelMenuOpen = false;
     if (targetId) {
       if (viewName === 'robot') smartphoneRobotChildId = targetId;
       else smartphoneChatTargetId = targetId;

@@ -13,7 +13,7 @@ import {
 import { GLOBAL_SUCCESS_ENGLISH_BANK } from './englishCurriculum';
 
 export const APP_VERSION = 'v2.6.0';
-export const APP_UPDATED_AT = '26/11/2026 — 21:50';
+export const APP_UPDATED_AT = '27/11/2026 — 06:45';
 export const MAX_PARENT_POINTS = 500;
 export const DAILY_PARENT_ALLOWANCE = 150;
 export const DEFAULT_FIREBASE_URL = 'https://b2ks-home-default-rtdb.asia-southeast1.firebasedatabase.app';
