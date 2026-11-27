@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Bot,
+  Building2,
   CheckCircle2,
   Eye,
   FlaskConical,
@@ -9,18 +11,26 @@ import {
   RotateCcw,
   RotateCw,
   Search,
+  Users,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
 import {
   B2KSBridge,
+  BuildingShape,
   CustomLabItem,
   LabItemSpec,
+  Member,
   PetSpeciesDef,
   PetStage,
   PetVariantId,
+  RobotSkinId,
 } from '../types/b2ks';
 import {
+  BUILDING_SHAPE_OPTIONS,
+  formatFamilyBrand,
+  HAIR_COLORS,
+  HAIR_STYLES_VISUAL,
   LEGACY_VOUCHERS,
   PET_ACCESSORY_CATALOG,
   PET_FOOD_CATALOG,
@@ -37,11 +47,24 @@ import {
   getPetResolvedColors,
   renderPetArtSVG,
 } from '../game/petSystem';
+import { ROBOT_SKIN_OPTIONS } from '../game/speakingAndAchievements';
+import {
+  renderBuilding2DDataUrl,
+  renderCharacter2DDataUrl,
+  renderHelperRobotSVG,
+  renderOutdoorLandmarkSVG,
+} from '../game/assetLibraryPreviews';
 import { renderItemIllustrationSVG } from '../game/svgHelpers';
 import {
   buildCatalogItem3D,
+  buildChibiCharacter3D,
+  buildForeignNpc3D,
+  buildHelperRobot3D,
+  buildOutdoorLandmark3D,
   buildPet3D,
   buildProceduralLabItem3D,
+  buildShopBuilding3D,
+  buildTownhouse3D,
   createMaterialCache,
   createProceduralTextures,
   detectSoftwareWebGL,
@@ -51,7 +74,15 @@ interface Props {
   bridge: B2KSBridge;
 }
 
-type LibraryCategory = 'all' | 'catalog' | 'lab_shapes' | 'lab_crafted' | 'pets';
+type LibraryCategory =
+  | 'all'
+  | 'catalog'
+  | 'lab_shapes'
+  | 'lab_crafted'
+  | 'pets'
+  | 'buildings'
+  | 'characters'
+  | 'robots';
 type ReviewStatus = 'unreviewed' | 'approved' | 'needs_upgrade';
 
 interface AssetReviewRecord {
@@ -97,11 +128,51 @@ interface PetAssetEntry {
   groupLabel: string;
 }
 
+interface BuildingAssetEntry {
+  key: string;
+  kind: 'building';
+  buildingId: string;
+  subkind: 'townhouse' | 'shop' | 'outdoor';
+  name: string;
+  groupLabel: string;
+  desc: string;
+  defaultShape: BuildingShape;
+}
+
+interface CharacterAssetEntry {
+  key: string;
+  kind: 'character';
+  isNpc: boolean;
+  member: Partial<Member> & { id: string; name: string };
+  npcGender?: 'male' | 'female';
+  name: string;
+  groupLabel: string;
+  desc: string;
+}
+
+interface RobotAssetEntry {
+  key: string;
+  kind: 'robot';
+  skin: RobotSkinId;
+  icon: string;
+  badgeColor: string;
+  name: string;
+  groupLabel: string;
+  desc: string;
+}
+
+function normalizeHouseStyle(s?: string): 'warm' | 'modern' | 'pastel' {
+  return s === 'modern' || s === 'pastel' ? s : 'warm';
+}
+
 type AssetEntry =
   | CatalogAssetEntry
   | LabShapeAssetEntry
   | LabCraftedAssetEntry
-  | PetAssetEntry;
+  | PetAssetEntry
+  | BuildingAssetEntry
+  | CharacterAssetEntry
+  | RobotAssetEntry;
 
 const REVIEW_STORAGE_KEY = 'b2ks_admin_asset_reviews_v1';
 
@@ -196,6 +267,145 @@ const LAB_TRAIT_TOGGLES: Array<{ key: keyof LabItemSpec; label: string }> = [
   { key: 'isRainbow', label: '🌈 Cầu vồng' },
 ];
 
+const BUILDING_CATALOG_DEFS: Array<{
+  id: string;
+  subkind: 'townhouse' | 'shop' | 'outdoor';
+  name: string;
+  groupLabel: string;
+  desc: string;
+}> = [
+  {
+    id: 'house',
+    subkind: 'townhouse',
+    name: '🏡 Nhà Phố Gia Đình B2KS',
+    groupLabel: 'Nhà ở (Townhouse)',
+    desc: 'Ngôi nhà nhiều tầng của gia đình với mái ngói, cửa sổ sáng đèn & ban công',
+  },
+  {
+    id: 'supermarket',
+    subkind: 'shop',
+    name: '🏪 Siêu Thị Gia Đình B2KS',
+    groupLabel: 'Công trình Khu phố',
+    desc: 'Siêu thị mái sọc đỏ trắng bày bán nội thất 3D, đồ dùng & thẻ TV',
+  },
+  {
+    id: 'cross_world',
+    subkind: 'shop',
+    name: '🌌 Trung Tâm Xuyên Thế Giới',
+    groupLabel: 'Công trình Khu phố',
+    desc: 'Cổng dịch chuyển tím-vàng quy đổi điểm sao thành phần thưởng thực tế',
+  },
+  {
+    id: 'pet_shop',
+    subkind: 'shop',
+    name: '🐾 Cửa Hàng Thú Cưng B2KS',
+    groupLabel: 'Công trình Khu phố',
+    desc: 'Shop thú cưng bán trứng 10 loài Pet, thức ăn dinh dưỡng & phụ kiện',
+  },
+  {
+    id: 'arcade',
+    subkind: 'shop',
+    name: '🕹️ Khu Vui Chơi Arcade Online',
+    groupLabel: 'Công trình Khu phố',
+    desc: 'Đấu trường 6 mini-game Online 2 người (Caro, Đua tàu, Cờ vua, Bắn phi thuyền...)',
+  },
+  {
+    id: 'lab',
+    subkind: 'shop',
+    name: '🧪 Phòng Thí Nghiệm Sáng Tạo',
+    groupLabel: 'Công trình Khu phố',
+    desc: 'Xưởng chế tạo đồ vật 2D & 3D theo mô tả trí tưởng tượng của bé',
+  },
+  {
+    id: 'flea_market',
+    subkind: 'shop',
+    name: '🎪 Chợ Trời B2KS',
+    groupLabel: 'Công trình Khu phố',
+    desc: 'Gian hàng sạp bạt mua bán trao đổi vật phẩm giữa các thành viên',
+  },
+  {
+    id: 'english',
+    subkind: 'shop',
+    name: '🎓 Trung Tâm Tiếng Anh B2KS',
+    groupLabel: 'Công trình Khu phố',
+    desc: 'Học viện luyện từ vựng, trắc nghiệm lớp 6-9 & luyện phát âm Speaking',
+  },
+  {
+    id: 'fashion',
+    subkind: 'shop',
+    name: '👗 Cửa Hàng Thời Trang',
+    groupLabel: 'Công trình Khu phố',
+    desc: 'Boutique thời trang với các bộ trang phục, áo quần, váy & mũ vương miện',
+  },
+  {
+    id: 'salon',
+    subkind: 'shop',
+    name: '💇 Salon Tóc Nghệ Thuật',
+    groupLabel: 'Công trình Khu phố',
+    desc: 'Tiệm làm tóc thiết kế 12 kiểu tóc & 10 màu nhuộm cá tính cho nhân vật',
+  },
+  {
+    id: 'church',
+    subkind: 'shop',
+    name: '⛪ Nhà Thờ Tin Lành',
+    groupLabel: 'Công trình Khu phố',
+    desc: 'Kiến trúc Tin Lành trang nghiêm với bảng chữ TIN LÀNH & Thập tự giá trên đỉnh',
+  },
+  {
+    id: 'zoo',
+    subkind: 'shop',
+    name: '🦁 Sở Thú Ảo B2KS Zoo',
+    groupLabel: 'Công trình Khu phố',
+    desc: 'Khu khám phá thế giới động vật hoang dã kèm phát âm tên Tiếng Anh',
+  },
+  {
+    id: 'eng_park',
+    subkind: 'outdoor',
+    name: '💬 Công Viên Tiếng Anh',
+    groupLabel: 'Khu vực Ngoài trời',
+    desc: 'Khu trò chuyện Tiếng Anh ngoài trời cùng Mr. Alex & Ms. Emma',
+  },
+  {
+    id: 'fountain_plaza',
+    subkind: 'outdoor',
+    name: '⛲ Quảng Trường Đài Phun Nước',
+    groupLabel: 'Khu vực Ngoài trời',
+    desc: 'Đài phun nước đá cẩm thạch nhiều tầng nơi cả nhà dạo chơi & nghỉ chân',
+  },
+  {
+    id: 'reading_corner',
+    subkind: 'outdoor',
+    name: '📚 Góc Đọc Sách Ngoài Trời',
+    groupLabel: 'Khu vực Ngoài trời',
+    desc: 'Giàn gỗ pergolas thư giãn đọc truyện tranh Tiếng Anh dưới tán cây',
+  },
+  {
+    id: 'soccer',
+    subkind: 'outdoor',
+    name: '⚽ Sân Bóng Đá Luân Lưu B2KS',
+    groupLabel: 'Khu vực Ngoài trời',
+    desc: 'Sân cỏ xanh mini với 2 khung thành nơi thi đấu đá luân lưu Online',
+  },
+];
+
+const ROBOT_DESCS: Record<RobotSkinId, string> = {
+  doraemon: 'Mèo máy xanh thân tròn trĩnh, chuông vàng & chong chóng tre xoay trên đỉnh đầu',
+  doraemi: 'Mèo máy vàng nơ đỏ khổng lồ trên đầu, cổ xanh chuông vàng, túi hồng & đuôi hoa tulip',
+  gundam: 'Chiến binh Mecha SD bo tròn phong cách hoạt hình, vây chữ V vàng & kính xanh phát sáng',
+  walle: 'Robot WALL-E bánh xích ấm áp, cổ thiên nga cong & đôi mắt ống nhòm nghiêng biểu cảm',
+};
+
+const CHAR_ACCESSORY_OPTIONS = [
+  { id: '', label: 'Mặc định / Không' },
+  { id: '👑', label: '👑 Vương miện' },
+  { id: '🧢', label: '🧢 Mũ lưỡi trai' },
+  { id: '🎩', label: '🎩 Mũ ảo thuật' },
+  { id: '🎀', label: '🎀 Nơ hồng' },
+  { id: '🕶️', label: '🕶️ Kính râm' },
+  { id: '🧣', label: '🧣 Khăn ấm' },
+  { id: '🎒', label: '🎒 Ba lô' },
+];
+
 function disposeObject3D(THREE: any, obj: any) {
   if (!obj) return;
   obj.traverse((child: any) => {
@@ -214,6 +424,30 @@ function disposeObject3D(THREE: any, obj: any) {
   void THREE;
 }
 
+function createPreviewBannerTexture(THREE: any, text: string) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 112;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = '#0F172A';
+    ctx.fillRect(0, 0, 512, 112);
+    ctx.strokeStyle = '#FACC15';
+    ctx.lineWidth = 6;
+    ctx.strokeRect(4, 4, 504, 104);
+    ctx.fillStyle = '#FEF08A';
+    ctx.font = 'bold 34px Fredoka, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, 256, 56);
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
   const [category, setCategory] = useState<LibraryCategory>('all');
   const [searchText, setSearchText] = useState('');
@@ -221,7 +455,7 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
   const [selectedKey, setSelectedKey] = useState<string>('catalog:d_guitar');
 
   // Lab interactive preview overrides (for lab_shape entries)
-  const [labMaterialIdx, setLabMaterialIdx] = useState<number>(2); // gold default
+  const [labMaterialIdx, setLabMaterialIdx] = useState<number>(2);
   const [labTraits, setLabTraits] = useState<Partial<LabItemSpec>>({
     hasWings: false,
     hasWheels: false,
@@ -243,6 +477,20 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
   const [petStage, setPetStage] = useState<PetStage>(3);
   const [petVariant, setPetVariant] = useState<PetVariantId>('classic');
   const [petAccessoryId, setPetAccessoryId] = useState<string>('');
+
+  // Building interactive preview overrides
+  const [bldgShape, setBldgShape] = useState<BuildingShape>('classic');
+  const [bldgHouseStyle, setBldgHouseStyle] = useState<'warm' | 'modern' | 'pastel'>('warm');
+  const [bldgIsNight, setBldgIsNight] = useState<boolean>(false);
+
+  // Character interactive preview overrides
+  const [charHairStyle, setCharHairStyle] = useState<string>('');
+  const [charHairColor, setCharHairColor] = useState<string>('');
+  const [charAccessory, setCharAccessory] = useState<string>('__default__');
+  const [charWalking, setCharWalking] = useState<boolean>(true);
+
+  // Helper Robot interactive preview toggle
+  const [robotFollowingMode, setRobotFollowingMode] = useState<boolean>(true);
 
   // 3D viewport state
   const [autoRotate, setAutoRotate] = useState(true);
@@ -267,8 +515,13 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
   autoRotateRef.current = autoRotate;
   const zoomFactorRef = useRef(zoomFactor);
   zoomFactorRef.current = zoomFactor;
+  const charWalkingRef = useRef(charWalking);
+  charWalkingRef.current = charWalking;
+  const robotFollowingRef = useRef(robotFollowingMode);
+  robotFollowingRef.current = robotFollowingMode;
 
   const state = bridge.getState();
+  const brand = state.familyName || 'B2KS';
 
   const allEntries = useMemo<AssetEntry[]>(() => {
     const out: AssetEntry[] = [];
@@ -331,7 +584,7 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
       });
     });
 
-    // 2. Member-crafted Lab Items (from both bag and placed roomSlotSpecs / roomDecorSpecs)
+    // 2. Member-crafted Lab Items
     const seenLabIds = new Set<string>();
     state.members.forEach((m) => {
       (m.customLabItems || []).forEach((item) => {
@@ -375,7 +628,7 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
       });
     });
 
-    // 3. Procedural Lab Shape Archetypes (deduplicated by shape)
+    // 3. Procedural Lab Shape Archetypes
     const seenShapes = new Set<string>();
     SHAPE_LIBRARY.forEach((entry) => {
       if (seenShapes.has(entry.shape)) return;
@@ -402,8 +655,97 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
       });
     });
 
+    // 5. Buildings & Outdoor Map Zones
+    const buildingLayouts = state.buildingLayouts || {};
+    BUILDING_CATALOG_DEFS.forEach((b) => {
+      const layoutKey = b.id === 'english' ? 'english_center' : b.id;
+      const savedShape = buildingLayouts[layoutKey]?.shape || 'classic';
+      out.push({
+        key: `building:${b.id}`,
+        kind: 'building',
+        buildingId: b.id,
+        subkind: b.subkind,
+        name: formatFamilyBrand(b.name, brand),
+        groupLabel: b.groupLabel,
+        desc: b.desc,
+        defaultShape: savedShape,
+      });
+    });
+
+    // 6. Characters on the Map (Family members + Foreign Speaking NPCs)
+    state.members.forEach((m) => {
+      out.push({
+        key: `character:${m.id}`,
+        kind: 'character',
+        isNpc: false,
+        member: m,
+        name: `${m.name} (${m.role})`,
+        groupLabel: `Thành viên (${m.role})`,
+        desc: `Nhân vật thành viên ${m.name} — Tóc: ${m.hairStyle || 'short'}, Trang phục: ${m.pantsStyle || 'pants'}`,
+      });
+    });
+
+    out.push(
+      {
+        key: 'character:npc_alex',
+        kind: 'character',
+        isNpc: true,
+        npcGender: 'male',
+        member: {
+          id: 'npc_alex',
+          name: 'Mr. Alex',
+          role: 'Bố',
+          hairStyle: 'sidepart',
+          hairColor: '#CA8A04',
+          shirtColor: '#2563EB',
+          shirtPattern: 'collar',
+          pantsColor: '#78716C',
+          pantsStyle: 'pants',
+          outfit: '🕶️',
+        },
+        name: 'Mr. Alex (NPC Tiếng Anh)',
+        groupLabel: 'NPC Dạo phố Speaking',
+        desc: 'Giáo viên bản ngữ đi dạo khu vực Tây Khu phố để luyện nói Tiếng Anh',
+      },
+      {
+        key: 'character:npc_emma',
+        kind: 'character',
+        isNpc: true,
+        npcGender: 'female',
+        member: {
+          id: 'npc_emma',
+          name: 'Ms. Emma',
+          role: 'Mẹ',
+          hairStyle: 'wavy',
+          hairColor: '#B45309',
+          shirtColor: '#EC4899',
+          shirtPattern: 'heart',
+          pantsColor: '#F8FAFC',
+          pantsStyle: 'skirt',
+          outfit: '🎀',
+        },
+        name: 'Ms. Emma (NPC Tiếng Anh)',
+        groupLabel: 'NPC Dạo phố Speaking',
+        desc: 'Giáo viên bản ngữ đi dạo khu vực Đông Khu phố để luyện nói Tiếng Anh',
+      }
+    );
+
+    // 7. Helper Robot Skins
+    ROBOT_SKIN_OPTIONS.forEach((sk) => {
+      out.push({
+        key: `robot:${sk.id}`,
+        kind: 'robot',
+        skin: sk.id,
+        icon: sk.icon,
+        badgeColor: sk.badgeColor,
+        name: `${sk.icon} ${sk.name}`,
+        groupLabel: 'Robot Nhắc Nhở 3D',
+        desc: ROBOT_DESCS[sk.id] || sk.name,
+      });
+    });
+
     return out;
-  }, [state.members]);
+  }, [state.members, state.buildingLayouts, brand]);
 
   const filteredEntries = useMemo(() => {
     const q = searchText.trim().toLowerCase();
@@ -413,6 +755,9 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
         if (category === 'lab_shapes' && entry.kind !== 'lab_shape') return false;
         if (category === 'lab_crafted' && entry.kind !== 'lab_crafted') return false;
         if (category === 'pets' && entry.kind !== 'pet') return false;
+        if (category === 'buildings' && entry.kind !== 'building') return false;
+        if (category === 'characters' && entry.kind !== 'character') return false;
+        if (category === 'robots' && entry.kind !== 'robot') return false;
       }
       if (reviewFilter !== 'all') {
         const st = reviews[entry.key]?.status || 'unreviewed';
@@ -431,11 +776,82 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
     [allEntries, filteredEntries, selectedKey]
   );
 
-  // Sync note draft when selection changes
+  // Sync per-type default controls & note draft when selection changes
   useEffect(() => {
     if (!selectedEntry) return;
     setNoteDraft(reviews[selectedEntry.key]?.note || '');
+    if (selectedEntry.kind === 'building') {
+      setBldgShape(selectedEntry.defaultShape || 'classic');
+      setBldgHouseStyle(normalizeHouseStyle(state.house?.style));
+    } else if (selectedEntry.kind === 'character') {
+      setCharHairStyle(selectedEntry.member.hairStyle || 'short');
+      setCharHairColor(selectedEntry.member.hairColor || '#1A252F');
+      setCharAccessory('__default__');
+    }
   }, [selectedEntry?.key]);
+
+  // Pre-cache thumbnail visuals for fast scrolling
+  const thumbnailMap = useMemo(() => {
+    const map = new Map<string, { type: 'svg' | 'img'; content: string }>();
+    const houseStyle = normalizeHouseStyle(state.house?.style);
+    allEntries.forEach((entry) => {
+      if (entry.kind === 'catalog') {
+        map.set(entry.key, {
+          type: 'svg',
+          content: renderItemIllustrationSVG(entry.itemId, 38, bridge.findCatalogItem),
+        });
+      } else if (entry.kind === 'lab_crafted') {
+        map.set(entry.key, {
+          type: 'svg',
+          content: renderItemIllustrationSVG(entry.item.id, 38, bridge.findCatalogItem),
+        });
+      } else if (entry.kind === 'lab_shape') {
+        map.set(entry.key, {
+          type: 'svg',
+          content: buildLabSVGMarkup({
+            primaryShape: entry.shape,
+            color: '#0284C7',
+            accent: '#FACC15',
+            material: 'metal',
+            sizeTier: 'medium',
+            sizeScale: 1,
+            seed: 7,
+          }),
+        });
+      } else if (entry.kind === 'pet') {
+        map.set(entry.key, {
+          type: 'svg',
+          content: renderPetArtSVG(entry.species.id, 2, 38, { variant: 'classic' }),
+        });
+      } else if (entry.kind === 'robot') {
+        map.set(entry.key, {
+          type: 'svg',
+          content: renderHelperRobotSVG(entry.skin, 38),
+        });
+      } else if (entry.kind === 'building') {
+        if (entry.subkind === 'outdoor') {
+          map.set(entry.key, {
+            type: 'svg',
+            content: renderOutdoorLandmarkSVG(
+              entry.buildingId as 'eng_park' | 'fountain_plaza' | 'reading_corner' | 'soccer',
+              38
+            ),
+          });
+        } else {
+          map.set(entry.key, {
+            type: 'img',
+            content: renderBuilding2DDataUrl(entry.buildingId, entry.defaultShape, houseStyle, false, brand),
+          });
+        }
+      } else if (entry.kind === 'character') {
+        map.set(entry.key, {
+          type: 'img',
+          content: renderCharacter2DDataUrl(entry.member),
+        });
+      }
+    });
+    return map;
+  }, [allEntries, state.house?.style, brand, bridge]);
 
   // Build active LabSpec when inspecting a Lab Shape archetype
   const activeLabSpec = useMemo<LabItemSpec | null>(() => {
@@ -462,26 +878,103 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
     return null;
   }, [selectedEntry, labMaterialIdx, labTraits]);
 
-  // Build 2D SVG markup for currently selected entry
-  const previewSvg2D = useMemo(() => {
-    if (!selectedEntry) return '';
+  // Effective character object combining member + live hair/accessory overrides
+  const activeCharacterPreview = useMemo(() => {
+    if (!selectedEntry || selectedEntry.kind !== 'character') return null;
+    const base = selectedEntry.member;
+    return {
+      ...base,
+      hairStyle: charHairStyle || base.hairStyle || 'short',
+      hairColor: charHairColor || base.hairColor || '#1A252F',
+      outfit: charAccessory === '__default__' ? base.outfit || '' : charAccessory,
+    };
+  }, [selectedEntry, charHairStyle, charHairColor, charAccessory]);
+
+  // Build 2D Visual (SVG string or Canvas data URL) for selected entry
+  const preview2D = useMemo<{ type: 'svg' | 'img'; content: string; label2D: string }>(() => {
+    if (!selectedEntry) return { type: 'svg', content: '', label2D: '148×148' };
     if (selectedEntry.kind === 'catalog') {
-      return renderItemIllustrationSVG(selectedEntry.itemId, 148, bridge.findCatalogItem);
+      return {
+        type: 'svg',
+        content: renderItemIllustrationSVG(selectedEntry.itemId, 148, bridge.findCatalogItem),
+        label2D: 'SVG 148×148',
+      };
     }
     if (selectedEntry.kind === 'lab_crafted') {
-      return buildLabSVGMarkup(selectedEntry.item.labSpec);
+      return {
+        type: 'svg',
+        content: buildLabSVGMarkup(selectedEntry.item.labSpec),
+        label2D: 'Lab SVG',
+      };
     }
     if (selectedEntry.kind === 'lab_shape' && activeLabSpec) {
-      return buildLabSVGMarkup(activeLabSpec);
+      return {
+        type: 'svg',
+        content: buildLabSVGMarkup(activeLabSpec),
+        label2D: 'Lab SVG',
+      };
     }
     if (selectedEntry.kind === 'pet') {
-      return renderPetArtSVG(selectedEntry.species.id, petStage, 148, {
-        variant: petVariant,
-        accessoryId: petAccessoryId || null,
-      });
+      return {
+        type: 'svg',
+        content: renderPetArtSVG(selectedEntry.species.id, petStage, 148, {
+          variant: petVariant,
+          accessoryId: petAccessoryId || null,
+        }),
+        label2D: 'Pet SVG',
+      };
     }
-    return '';
-  }, [selectedEntry, activeLabSpec, petStage, petVariant, petAccessoryId, bridge]);
+    if (selectedEntry.kind === 'robot') {
+      return {
+        type: 'svg',
+        content: renderHelperRobotSVG(selectedEntry.skin, 148),
+        label2D: 'Robot 2D SVG',
+      };
+    }
+    if (selectedEntry.kind === 'building') {
+      if (selectedEntry.subkind === 'outdoor') {
+        return {
+          type: 'svg',
+          content: renderOutdoorLandmarkSVG(
+            selectedEntry.buildingId as 'eng_park' | 'fountain_plaza' | 'reading_corner' | 'soccer',
+            148
+          ),
+          label2D: 'Khu vực 2D SVG',
+        };
+      }
+      return {
+        type: 'img',
+        content: renderBuilding2DDataUrl(
+          selectedEntry.buildingId,
+          bldgShape,
+          bldgHouseStyle,
+          bldgIsNight,
+          brand
+        ),
+        label2D: bldgIsNight ? 'Canvas 2D (Đêm)' : 'Canvas 2D (Ngày)',
+      };
+    }
+    if (selectedEntry.kind === 'character' && activeCharacterPreview) {
+      return {
+        type: 'img',
+        content: renderCharacter2DDataUrl(activeCharacterPreview),
+        label2D: 'Chibi 2D Canvas',
+      };
+    }
+    return { type: 'svg', content: '', label2D: '148×148' };
+  }, [
+    selectedEntry,
+    activeLabSpec,
+    petStage,
+    petVariant,
+    petAccessoryId,
+    bldgShape,
+    bldgHouseStyle,
+    bldgIsNight,
+    brand,
+    activeCharacterPreview,
+    bridge,
+  ]);
 
   // Persistent 3D WebGL Turntable Scene
   const sceneCtxRef = useRef<{
@@ -492,8 +985,13 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
     mats: any;
     textures: any;
     modelHolder: any;
+    disc: any;
+    ring: any;
     currentMesh: any;
     petGroup: any;
+    charGroup: any;
+    robotGroup: any;
+    robotBannerTex: any;
     camBaseDist: number;
     camTargetY: number;
   } | null>(null);
@@ -542,7 +1040,7 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
           pmrem.dispose();
         }
 
-        const camera = new THREE.PerspectiveCamera(38, cw / ch, 0.05, 120);
+        const camera = new THREE.PerspectiveCamera(38, cw / ch, 0.05, 160);
         const hemi = new THREE.HemisphereLight('#FFFFFF', '#94A3B8', 0.85);
         scene.add(hemi);
 
@@ -589,8 +1087,13 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
           mats,
           textures,
           modelHolder,
+          disc,
+          ring,
           currentMesh: null,
           petGroup: null,
+          charGroup: null,
+          robotGroup: null,
+          robotBannerTex: null,
           camBaseDist: 4.5,
           camTargetY: 0.7,
         };
@@ -634,6 +1137,47 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
             }
           }
 
+          if (ctx.charGroup && ctx.charGroup.userData?.leftLegPivot) {
+            const cud = ctx.charGroup.userData;
+            if (charWalkingRef.current) {
+              const sw = Math.sin(now * 0.0085) * 0.52;
+              cud.leftLegPivot.rotation.x = sw;
+              cud.rightLegPivot.rotation.x = -sw;
+              cud.leftArmPivot.rotation.x = -sw * 0.72;
+              cud.rightArmPivot.rotation.x = sw * 0.72;
+              cud.bodyRoot.position.y = Math.abs(Math.sin(now * 0.0085)) * 0.08;
+            } else {
+              cud.leftLegPivot.rotation.x = 0;
+              cud.rightLegPivot.rotation.x = 0;
+              cud.leftArmPivot.rotation.x = 0;
+              cud.rightArmPivot.rotation.x = 0;
+              cud.bodyRoot.position.y = Math.sin(now * 0.003) * 0.025;
+            }
+          }
+
+          if (ctx.robotGroup && ctx.robotGroup.userData?.actor) {
+            const rud = ctx.robotGroup.userData;
+            const follow = robotFollowingRef.current;
+            if (ctx.robotBannerTex) {
+              ctx.robotBannerTex.offset.x = (now * 0.00028) % 1;
+            }
+            rud.bannerHolder.visible = follow;
+            rud.bannerHolder.rotation.y = orb.yaw;
+            rud.actor.position.y = follow
+              ? Math.abs(Math.sin(now * 0.0095)) * 0.11
+              : Math.sin(now * 0.003) * 0.04;
+            rud.actor.rotation.x = follow ? 0.075 : 0;
+            if (rud.propeller) {
+              rud.propeller.rotation.y += dt * (follow ? 14 : 4.5);
+            }
+            if (rud.ribbonBow) {
+              rud.ribbonBow.rotation.z = Math.sin(now * (follow ? 0.01 : 0.004)) * (follow ? 0.14 : 0.06);
+            }
+            const targetArmX = follow ? -2.55 : 0;
+            rud.leftArmPivot.rotation.x = THREE.MathUtils.damp(rud.leftArmPivot.rotation.x, targetArmX, 12, dt);
+            rud.rightArmPivot.rotation.x = THREE.MathUtils.damp(rud.rightArmPivot.rotation.x, targetArmX, 12, dt);
+          }
+
           const dist = ctx.camBaseDist / Math.max(0.45, Math.min(2.6, zoomFactorRef.current));
           const cosP = Math.cos(orb.pitch);
           camera.position.set(
@@ -665,6 +1209,9 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
           if (sceneCtxRef.current?.currentMesh) {
             disposeObject3D(THREE, sceneCtxRef.current.currentMesh);
           }
+          if (sceneCtxRef.current?.robotBannerTex) {
+            sceneCtxRef.current.robotBannerTex.dispose();
+          }
           discGeo.dispose();
           discMat.dispose();
           ringGeo.dispose();
@@ -691,18 +1238,29 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
     };
   }, []);
 
-  // Rebuild 3D mesh whenever selected asset or pet/lab controls change
+  // Rebuild 3D mesh whenever selected asset or controls change
   useEffect(() => {
     const ctx = sceneCtxRef.current;
     if (!ctx || !selectedEntry || webglStatus !== 'ready') return;
-    const { THREE, mats, textures, modelHolder } = ctx;
+    const { THREE, scene, mats, textures, modelHolder, disc, ring } = ctx;
 
     if (ctx.currentMesh) {
       modelHolder.remove(ctx.currentMesh);
       disposeObject3D(THREE, ctx.currentMesh);
       ctx.currentMesh = null;
       ctx.petGroup = null;
+      ctx.charGroup = null;
+      ctx.robotGroup = null;
     }
+    if (ctx.robotBannerTex) {
+      ctx.robotBannerTex.dispose();
+      ctx.robotBannerTex = null;
+    }
+
+    const nightMode = selectedEntry.kind === 'building' && bldgIsNight;
+    scene.background = new THREE.Color(nightMode ? '#0F172A' : '#EEF6FF');
+    disc.visible = selectedEntry.kind !== 'building';
+    ring.visible = selectedEntry.kind !== 'building';
 
     let built: any = null;
     if (selectedEntry.kind === 'catalog') {
@@ -735,6 +1293,30 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
       };
       built = buildPet3D(THREE, mats, textures.shadowTex, fakePet, selectedEntry.species, col);
       ctx.petGroup = built;
+    } else if (selectedEntry.kind === 'building') {
+      if (selectedEntry.subkind === 'townhouse') {
+        built = buildTownhouse3D(THREE, mats, 0, 0, bldgHouseStyle, bldgShape, bldgIsNight);
+      } else if (selectedEntry.subkind === 'shop') {
+        built = buildShopBuilding3D(THREE, mats, 0, 0, selectedEntry.buildingId, bldgShape, bldgIsNight);
+      } else {
+        built = buildOutdoorLandmark3D(THREE, mats, selectedEntry.buildingId, 0, 0);
+      }
+    } else if (selectedEntry.kind === 'character' && activeCharacterPreview) {
+      if (selectedEntry.isNpc && charHairStyle === (selectedEntry.member.hairStyle || '') && charHairColor === (selectedEntry.member.hairColor || '') && charAccessory === '__default__') {
+        built = buildForeignNpc3D(THREE, mats, textures.shadowTex, {
+          id: selectedEntry.member.id,
+          name: selectedEntry.member.name,
+          gender: selectedEntry.npcGender || 'male',
+        });
+      } else {
+        built = buildChibiCharacter3D(THREE, mats, textures.shadowTex, activeCharacterPreview, false);
+      }
+      ctx.charGroup = built;
+    } else if (selectedEntry.kind === 'robot') {
+      const bTex = createPreviewBannerTexture(THREE, '📢 Nhắc nhở: Học bài & dọn phòng đúng giờ!');
+      ctx.robotBannerTex = bTex;
+      built = buildHelperRobot3D(THREE, mats, textures.shadowTex, selectedEntry.skin, bTex);
+      ctx.robotGroup = built;
     }
 
     if (built) {
@@ -751,8 +1333,8 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
         built.position.z -= center.z;
         built.position.y -= box.min.y;
         const maxDim = Math.max(0.65, size.x, size.y, size.z);
-        ctx.camTargetY = Math.max(0.3, size.y * 0.48);
-        ctx.camBaseDist = Math.max(2.6, maxDim * 2.15);
+        ctx.camTargetY = Math.max(0.3, size.y * 0.45);
+        ctx.camBaseDist = Math.max(2.6, maxDim * (selectedEntry.kind === 'building' ? 1.85 : 2.15));
       } else {
         ctx.camTargetY = 0.65;
         ctx.camBaseDist = 3.8;
@@ -760,7 +1342,22 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
       modelHolder.add(wrapper);
       ctx.currentMesh = wrapper;
     }
-  }, [selectedEntry, activeLabSpec, petStage, petVariant, petAccessoryId, webglStatus, bridge]);
+  }, [
+    selectedEntry,
+    activeLabSpec,
+    petStage,
+    petVariant,
+    petAccessoryId,
+    bldgShape,
+    bldgHouseStyle,
+    bldgIsNight,
+    activeCharacterPreview,
+    charHairStyle,
+    charHairColor,
+    charAccessory,
+    webglStatus,
+    bridge,
+  ]);
 
   // Reset orbit camera when button pressed
   useEffect(() => {
@@ -806,33 +1403,12 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
     return { approved, needsUpgrade, total: allEntries.length };
   }, [allEntries, reviews]);
 
-  const renderThumbnailSvg = (entry: AssetEntry) => {
-    if (entry.kind === 'catalog') {
-      return renderItemIllustrationSVG(entry.itemId, 38, bridge.findCatalogItem);
-    }
-    if (entry.kind === 'lab_crafted') {
-      return renderItemIllustrationSVG(entry.item.id, 38, bridge.findCatalogItem);
-    }
-    if (entry.kind === 'lab_shape') {
-      return buildLabSVGMarkup({
-        primaryShape: entry.shape,
-        color: '#0284C7',
-        accent: '#FACC15',
-        material: 'metal',
-        sizeTier: 'medium',
-        sizeScale: 1,
-        seed: 7,
-      });
-    }
-    return renderPetArtSVG(entry.species.id, 2, 38, { variant: 'classic' });
-  };
-
   return (
     <div className="space-y-3">
       {/* Top Info + Review Summary */}
       <div className="rounded-xl border-2 border-sky-300 bg-sky-50 p-3 flex flex-wrap items-center justify-between gap-2 text-xs text-sky-950">
         <div>
-          <b>🎨 Kho Kiểm Định Hình Ảnh 2D &amp; 3D Toàn Hệ Thống:</b> So sánh trực tiếp hình minh họa 2D (SVG) và mô hình 3D WebGL xoay 360° của vật phẩm, hình mẫu Phòng Thí Nghiệm và 10 loài Thú cưng.
+          <b>🎨 Kho Kiểm Định Hình Ảnh 2D &amp; 3D Toàn Hệ Thống:</b> So sánh trực tiếp hình minh họa 2D và mô hình 3D WebGL xoay 360° của vật phẩm, Phòng Thí Nghiệm, 10 Thú cưng, công trình Building, nhân vật trên bản đồ &amp; Robot nhắc nhở.
         </div>
         <div className="flex flex-wrap gap-1.5 font-bold">
           <span className="px-2 py-0.5 rounded-full bg-white border border-slate-300">
@@ -852,6 +1428,9 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
         <div className="flex flex-wrap gap-1.5 flex-1">
           {[
             { id: 'all', label: 'Tất cả', icon: <Eye className="w-3.5 h-3.5" /> },
+            { id: 'buildings', label: 'Building & Khu phố', icon: <Building2 className="w-3.5 h-3.5" /> },
+            { id: 'characters', label: 'Nhân vật bản đồ', icon: <Users className="w-3.5 h-3.5" /> },
+            { id: 'robots', label: 'Robot nhắc nhở', icon: <Bot className="w-3.5 h-3.5" /> },
             { id: 'catalog', label: 'Vật phẩm & Đồ dùng', icon: <Package className="w-3.5 h-3.5" /> },
             { id: 'lab_shapes', label: 'Hình mẫu Lab', icon: <FlaskConical className="w-3.5 h-3.5" /> },
             { id: 'lab_crafted', label: 'Đồ Lab thành viên', icon: <Hammer className="w-3.5 h-3.5" /> },
@@ -911,6 +1490,7 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
             filteredEntries.map((entry) => {
               const isSelected = selectedEntry?.key === entry.key;
               const rev = reviews[entry.key];
+              const thumb = thumbnailMap.get(entry.key);
               return (
                 <button
                   key={entry.key}
@@ -925,10 +1505,16 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
                       : 'border-slate-200 bg-white hover:border-slate-400'
                   }`}
                 >
-                  <div
-                    className="w-11 h-11 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center shrink-0 overflow-hidden [&>svg]:w-9 [&>svg]:h-9"
-                    dangerouslySetInnerHTML={{ __html: renderThumbnailSvg(entry) }}
-                  />
+                  {thumb?.type === 'img' ? (
+                    <div className="w-11 h-11 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center shrink-0 overflow-hidden">
+                      <img src={thumb.content} alt={entry.name} className="w-full h-full object-contain" />
+                    </div>
+                  ) : (
+                    <div
+                      className="w-11 h-11 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center shrink-0 overflow-hidden [&>svg]:w-9 [&>svg]:h-9"
+                      dangerouslySetInnerHTML={{ __html: thumb?.content || '' }}
+                    />
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="font-bold text-xs text-slate-900 truncate">{entry.name}</div>
                     <div className="text-[10.5px] text-slate-500 truncate">{entry.groupLabel}</div>
@@ -1018,18 +1604,33 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
                 {/* 2D Panel */}
                 <div className="rounded-xl border-2 border-slate-200 bg-gradient-to-b from-slate-50 to-white p-3 flex flex-col items-center justify-between">
                   <div className="w-full flex items-center justify-between text-xs font-extrabold text-slate-700 mb-2">
-                    <span>🖼️ Hình ảnh 2D (SVG / Túi đồ)</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">148×148</span>
+                    <span>🖼️ Hình ảnh 2D</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">
+                      {preview2D.label2D}
+                    </span>
                   </div>
-                  <div
-                    className="w-44 h-44 rounded-xl border border-slate-200 bg-white flex items-center justify-center shadow-inner [&>svg]:w-36 [&>svg]:h-36"
-                    dangerouslySetInnerHTML={{ __html: previewSvg2D }}
-                  />
+                  {preview2D.type === 'img' ? (
+                    <div className="w-44 h-44 rounded-xl border border-slate-200 bg-white flex items-center justify-center shadow-inner overflow-hidden p-1.5">
+                      <img
+                        src={preview2D.content}
+                        alt={selectedEntry.name}
+                        className="w-full h-full object-contain rounded-lg"
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      className="w-44 h-44 rounded-xl border border-slate-200 bg-white flex items-center justify-center shadow-inner [&>svg]:w-36 [&>svg]:h-36"
+                      dangerouslySetInnerHTML={{ __html: preview2D.content }}
+                    />
+                  )}
                   <div className="w-full mt-2 text-[11px] text-slate-600 text-center min-h-[28px]">
                     {selectedEntry.kind === 'catalog' && selectedEntry.desc}
                     {selectedEntry.kind === 'lab_crafted' && `"${selectedEntry.item.prompt}"`}
                     {selectedEntry.kind === 'lab_shape' && `Từ khóa: ${selectedEntry.keys.slice(0, 5).join(', ')}`}
                     {selectedEntry.kind === 'pet' && selectedEntry.species.desc}
+                    {selectedEntry.kind === 'building' && selectedEntry.desc}
+                    {selectedEntry.kind === 'character' && selectedEntry.desc}
+                    {selectedEntry.kind === 'robot' && selectedEntry.desc}
                   </div>
                 </div>
 
@@ -1217,6 +1818,161 @@ export const AssetLibraryTab: React.FC<Props> = ({ bridge }) => {
                       </select>
                     </label>
                   </div>
+                </div>
+              )}
+
+              {selectedEntry.kind === 'building' && (
+                <div className="rounded-xl border border-indigo-200 bg-indigo-50/70 p-2.5 space-y-2 text-[11px]">
+                  {selectedEntry.subkind !== 'outdoor' && selectedEntry.buildingId !== 'church' && (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="font-extrabold text-indigo-950">🏛️ Kiểu kiến trúc:</span>
+                      {BUILDING_SHAPE_OPTIONS.map((sh) => (
+                        <button
+                          key={sh.id}
+                          type="button"
+                          onClick={() => setBldgShape(sh.id)}
+                          className={`px-2 py-0.5 rounded-md border font-bold cursor-pointer ${
+                            bldgShape === sh.id
+                              ? 'bg-indigo-600 text-white border-indigo-800'
+                              : 'bg-white text-slate-700 border-slate-300'
+                          }`}
+                        >
+                          {sh.icon} {sh.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex flex-wrap items-center gap-3">
+                    {selectedEntry.buildingId === 'house' && (
+                      <label className="flex items-center gap-1.5 font-bold text-indigo-950">
+                        <span>🎨 Tông màu nhà:</span>
+                        <select
+                          value={bldgHouseStyle}
+                          onChange={(e) => setBldgHouseStyle(e.target.value as 'warm' | 'modern' | 'pastel')}
+                          className="px-2 py-0.5 rounded border border-slate-300 bg-white font-bold"
+                        >
+                          <option value="warm">Gỗ Ấm Áp</option>
+                          <option value="modern">Hiện Đại Xanh</option>
+                          <option value="pastel">Pastel Ngọc Bích</option>
+                        </select>
+                      </label>
+                    )}
+                    <div className="flex items-center gap-1.5 font-bold text-indigo-950">
+                      <span>🌗 Thời gian ánh sáng:</span>
+                      <button
+                        type="button"
+                        onClick={() => setBldgIsNight(false)}
+                        className={`px-2 py-0.5 rounded-md border cursor-pointer ${
+                          !bldgIsNight
+                            ? 'bg-amber-500 text-white border-amber-700'
+                            : 'bg-white text-slate-700 border-slate-300'
+                        }`}
+                      >
+                        ☀️ Ban ngày
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBldgIsNight(true)}
+                        className={`px-2 py-0.5 rounded-md border cursor-pointer ${
+                          bldgIsNight
+                            ? 'bg-slate-800 text-white border-slate-950'
+                            : 'bg-white text-slate-700 border-slate-300'
+                        }`}
+                      >
+                        🌙 Ban đêm
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {selectedEntry.kind === 'character' && (
+                <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-2.5 space-y-2 text-[11px]">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="flex items-center gap-1.5 font-bold text-rose-950">
+                      <span>💇 Kiểu tóc:</span>
+                      <select
+                        value={charHairStyle}
+                        onChange={(e) => setCharHairStyle(e.target.value)}
+                        className="px-2 py-0.5 rounded border border-slate-300 bg-white font-bold"
+                      >
+                        {HAIR_STYLES_VISUAL.map((hs) => (
+                          <option key={hs.id} value={hs.id}>
+                            {hs.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="flex items-center gap-1.5 font-bold text-rose-950">
+                      <span>🎩 Phụ kiện:</span>
+                      <select
+                        value={charAccessory}
+                        onChange={(e) => setCharAccessory(e.target.value)}
+                        className="px-2 py-0.5 rounded border border-slate-300 bg-white font-bold"
+                      >
+                        <option value="__default__">Mặc định nhân vật</option>
+                        {CHAR_ACCESSORY_OPTIONS.map((acc) => (
+                          <option key={acc.id || 'none'} value={acc.id}>
+                            {acc.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setCharWalking((v) => !v)}
+                      className={`px-2 py-0.5 rounded-md border font-bold cursor-pointer ${
+                        charWalking
+                          ? 'bg-emerald-600 text-white border-emerald-800'
+                          : 'bg-white text-slate-700 border-slate-300'
+                      }`}
+                    >
+                      {charWalking ? '🏃 Đang bước đi' : '🧍 Đứng yên'}
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="font-extrabold text-rose-950">🎨 Màu tóc:</span>
+                    {HAIR_COLORS.map((hc) => (
+                      <button
+                        key={hc}
+                        type="button"
+                        onClick={() => setCharHairColor(hc)}
+                        aria-label={`Màu tóc ${hc}`}
+                        className={`w-5 h-5 rounded-full border-2 cursor-pointer ${
+                          charHairColor === hc ? 'border-[#0F172A] scale-110' : 'border-white'
+                        }`}
+                        style={{ backgroundColor: hc }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedEntry.kind === 'robot' && (
+                <div className="rounded-xl border border-violet-200 bg-violet-50/70 p-2.5 flex flex-wrap items-center gap-2 text-[11px]">
+                  <span className="font-extrabold text-violet-950">🤖 Trạng thái hoạt ảnh 3D:</span>
+                  <button
+                    type="button"
+                    onClick={() => setRobotFollowingMode(false)}
+                    className={`px-2.5 py-1 rounded-md border font-bold cursor-pointer ${
+                      !robotFollowingMode
+                        ? 'bg-slate-800 text-white border-slate-950'
+                        : 'bg-white text-slate-700 border-slate-300'
+                    }`}
+                  >
+                    🛌 Đứng nghỉ tại phòng
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRobotFollowingMode(true)}
+                    className={`px-2.5 py-1 rounded-md border font-bold cursor-pointer ${
+                      robotFollowingMode
+                        ? 'bg-violet-600 text-white border-violet-800'
+                        : 'bg-white text-slate-700 border-slate-300'
+                    }`}
+                  >
+                    📢 Chạy theo sau &amp; Giơ bảng nhắc
+                  </button>
                 </div>
               )}
 

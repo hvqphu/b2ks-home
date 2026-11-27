@@ -1004,7 +1004,7 @@ export interface ShopBuildingConfig {
   npcOutfit: string;
 }
 
-function drawProtestantChurch2D(
+export function drawProtestantChurch2D(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,

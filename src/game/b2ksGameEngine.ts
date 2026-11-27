@@ -1388,7 +1388,7 @@ export function initB2KSGameEngine() {
       if (!m.helperRobot || typeof m.helperRobot !== 'object') {
         m.helperRobot = { skin: defaultSkin, reminders: [], updatedAt: 0 };
       } else {
-        if (!['doraemon', 'gundam', 'walle'].includes(m.helperRobot.skin)) {
+        if (!['doraemon', 'doraemi', 'gundam', 'walle'].includes(m.helperRobot.skin)) {
           m.helperRobot.skin = defaultSkin;
         }
         if (!Array.isArray(m.helperRobot.reminders)) m.helperRobot.reminders = [];
@@ -4714,7 +4714,7 @@ export function initB2KSGameEngine() {
       const skinGrid = ROBOT_SKIN_OPTIONS.map((sk) => {
         const selected = rCfg.skin === sk.id;
         return `
-          <button type="button" ${canEdit ? `onclick="setPhoneRobotSkin('${activeChild.id}', '${sk.id}')"` : 'disabled'} style="flex:1; min-width:80px; padding:6px 4px; border-radius:10px; border:2px solid ${selected ? '#4F46E5' : '#CBD5E1'}; background:${selected ? '#EEF2FF' : '#FFF'}; cursor:${canEdit ? 'pointer' : 'default'}; text-align:center;">
+          <button type="button" ${canEdit ? `onclick="setPhoneRobotSkin('${activeChild.id}', '${sk.id}')"` : 'disabled'} style="padding:6px 4px; border-radius:10px; border:2px solid ${selected ? '#4F46E5' : '#CBD5E1'}; background:${selected ? '#EEF2FF' : '#FFF'}; cursor:${canEdit ? 'pointer' : 'default'}; text-align:center;">
             <div style="font-size:18px;">${sk.icon}</div>
             <div style="font-size:11px; font-weight:800; color:#1E293B;">${escapeHtml(sk.name)}</div>
           </button>
@@ -4757,7 +4757,7 @@ export function initB2KSGameEngine() {
         ${childPills}
         <div style="background:#FFF; border:2px solid #2C3E50; border-radius:12px; padding:8px; margin-bottom:8px;">
           <div style="font-size:11.5px; font-weight:700; color:#312E81; margin-bottom:5px;">🎨 Chọn giao diện Robot giúp đỡ:</div>
-          <div style="display:flex; gap:6px;">${skinGrid}</div>
+          <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:6px;">${skinGrid}</div>
         </div>
         ${canEdit ? `
           <div style="background:#EEF2FF; border:2px solid #4F46E5; border-radius:12px; padding:8px; margin-bottom:8px;">
@@ -9633,7 +9633,21 @@ export function initB2KSGameEngine() {
   });
 
   const memberMoveState = new Map<string, { x: number; y: number; scene: string; movingUntil: number }>();
-  const helperRobotRuntimeMap = new Map<string, { x: number; y: number; scene: string; privateRoomId: string | null }>();
+  const helperRobotRuntimeMap = new Map<
+    string,
+    {
+      x: number;
+      y: number;
+      scene: string;
+      privateRoomId: string | null;
+      headingX: number;
+      headingY: number;
+      lastKidX: number;
+      lastKidY: number;
+      yaw: number;
+      trail: Array<{ x: number; y: number }>;
+    }
+  >();
   let playerWorldAngle = Math.PI / 2;
   let smoothPlayerWorldAngle = Math.PI / 2;
   let lastAngleMemberId = '';
@@ -9907,7 +9921,7 @@ export function initB2KSGameEngine() {
       }
     });
 
-    // Update Helper Robots for every child
+    // Update Helper Robots for every child (smooth breadcrumb pursuit trailing behind subject)
     const helperRobots: HelperRobotRenderItem[] = [];
     state.members
       .filter((m) => !isParent(m))
@@ -9918,20 +9932,157 @@ export function initB2KSGameEngine() {
         const myRoom = getMemberPrivateRoom(kid);
         const targetScene = activeRem ? kid.scene : 'private_room';
         const targetPrivateRoomId = activeRem ? (kid.privateRoomId || null) : (myRoom?.id || null);
-        const targetX = activeRem ? kid.x + 44 : 185;
-        const targetY = activeRem ? kid.y + 18 : 112;
+
+        const dirAng = cardinalWorldAngle(kid.dir || 'down');
+        const dirHx = Math.cos(dirAng);
+        const dirHy = Math.sin(dirAng);
 
         let rt = helperRobotRuntimeMap.get(kid.id);
-        if (!rt || rt.scene !== targetScene || rt.privateRoomId !== targetPrivateRoomId || Math.hypot(rt.x - targetX, rt.y - targetY) > 360) {
-          rt = { x: targetX, y: targetY, scene: targetScene, privateRoomId: targetPrivateRoomId };
+        const sceneChanged = !rt || rt.scene !== targetScene || rt.privateRoomId !== targetPrivateRoomId;
+
+        if (sceneChanged || !rt) {
+          const initHx = dirHx;
+          const initHy = dirHy;
+          const initX = activeRem ? kid.x - initHx * 48 - initHy * 12 : 185;
+          const initY = activeRem ? kid.y - initHy * 48 + initHx * 12 : 112;
+          rt = {
+            x: initX,
+            y: initY,
+            scene: targetScene,
+            privateRoomId: targetPrivateRoomId,
+            headingX: initHx,
+            headingY: initHy,
+            lastKidX: kid.x,
+            lastKidY: kid.y,
+            yaw: activeRem ? Math.atan2(kid.x - initX, kid.y - initY) : 0.35,
+            trail: [{ x: kid.x, y: kid.y }]
+          };
           helperRobotRuntimeMap.set(kid.id, rt);
-        } else {
-          const lerpF = Math.min(1, deltaSec * 6.5);
-          rt.x += (targetX - rt.x) * lerpF;
-          rt.y += (targetY - rt.y) * lerpF;
         }
 
-        const robotYaw = activeRem ? Math.atan2(kid.x - rt.x, kid.y - rt.y) : 0.35;
+        // Track subject heading & breadcrumbs inside current scene
+        const kidStepDx = kid.x - rt.lastKidX;
+        const kidStepDy = kid.y - rt.lastKidY;
+        const kidStepDist = Math.hypot(kidStepDx, kidStepDy);
+        if (kidStepDist > 0.6 && kidStepDist < 240) {
+          const nx = kidStepDx / kidStepDist;
+          const ny = kidStepDy / kidStepDist;
+          const hBlend = Math.min(1, deltaSec * 12);
+          const mx = rt.headingX + (nx - rt.headingX) * hBlend;
+          const my = rt.headingY + (ny - rt.headingY) * hBlend;
+          const mLen = Math.hypot(mx, my) || 1;
+          rt.headingX = mx / mLen;
+          rt.headingY = my / mLen;
+
+          const lastPt = rt.trail[rt.trail.length - 1];
+          if (!lastPt || Math.hypot(kid.x - lastPt.x, kid.y - lastPt.y) >= 10) {
+            rt.trail.push({ x: kid.x, y: kid.y });
+            if (rt.trail.length > 28) rt.trail.shift();
+          }
+        } else if (kidStepDist > 240) {
+          rt.trail = [{ x: kid.x, y: kid.y }];
+          rt.headingX = dirHx;
+          rt.headingY = dirHy;
+        }
+        rt.lastKidX = kid.x;
+        rt.lastKidY = kid.y;
+
+        // Compute follow point behind the subject along breadcrumb path
+        let targetX = 185;
+        let targetY = 112;
+        if (activeRem) {
+          const followDist = 48;
+          let bx = kid.x - rt.headingX * followDist;
+          let by = kid.y - rt.headingY * followDist;
+
+          if (rt.trail.length >= 2) {
+            let accDist = 0;
+            let curX = kid.x;
+            let curY = kid.y;
+            let foundOnTrail = false;
+            for (let i = rt.trail.length - 1; i >= 0; i--) {
+              const pt = rt.trail[i];
+              const segLen = Math.hypot(curX - pt.x, curY - pt.y);
+              if (accDist + segLen >= followDist && segLen > 0.01) {
+                const remain = followDist - accDist;
+                const t = remain / segLen;
+                bx = curX + (pt.x - curX) * t;
+                by = curY + (pt.y - curY) * t;
+                foundOnTrail = true;
+                break;
+              }
+              accDist += segLen;
+              curX = pt.x;
+              curY = pt.y;
+            }
+            if (!foundOnTrail && accDist > 4) {
+              const tail = rt.trail[0];
+              const vx = tail.x - kid.x;
+              const vy = tail.y - kid.y;
+              const vLen = Math.hypot(vx, vy) || 1;
+              bx = kid.x + (vx / vLen) * followDist;
+              by = kid.y + (vy / vLen) * followDist;
+            }
+          }
+
+          // Subtle shoulder offset perpendicular to heading so robot stays visible behind child
+          targetX = bx - rt.headingY * 14;
+          targetY = by + rt.headingX * 14;
+
+          if (targetScene === 'neighborhood') {
+            targetX = Math.max(40, Math.min(STREET_WORLD.width - 40, targetX));
+            targetY = Math.max(260, Math.min(STREET_WORLD.height - 40, targetY));
+          } else if (targetScene === 'private_room') {
+            targetX = Math.max(20, Math.min(PRIVATE_ROOM_WORLD.width - 20, targetX));
+            targetY = Math.max(24, Math.min(PRIVATE_ROOM_WORLD.height - 20, targetY));
+          } else {
+            targetX = Math.max(36, Math.min(HOUSE_WORLD.width - 36, targetX));
+            targetY = Math.max(40, Math.min(houseMetrics.houseHeight - 24, targetY));
+          }
+        }
+
+        const prevRx = rt.x;
+        const prevRy = rt.y;
+        const distToTarget = Math.hypot(targetX - rt.x, targetY - rt.y);
+        if (distToTarget > 380) {
+          rt.x = targetX;
+          rt.y = targetY;
+        } else if (distToTarget > 0.5) {
+          const maxStep = Math.max(195, distToTarget * 5.2) * Math.max(0.008, deltaSec);
+          const step = Math.min(distToTarget, maxStep);
+          rt.x += ((targetX - rt.x) / distToTarget) * step;
+          rt.y += ((targetY - rt.y) / distToTarget) * step;
+        }
+
+        // Maintain personal space bubble when following so robot never overlaps child
+        if (activeRem) {
+          const sepDx = rt.x - kid.x;
+          const sepDy = rt.y - kid.y;
+          const sepDist = Math.hypot(sepDx, sepDy);
+          if (sepDist < 34) {
+            const pushX = sepDist > 0.5 ? sepDx / sepDist : -rt.headingX;
+            const pushY = sepDist > 0.5 ? sepDy / sepDist : -rt.headingY;
+            rt.x = kid.x + pushX * 34;
+            rt.y = kid.y + pushY * 34;
+          }
+        }
+
+        const moveDx = rt.x - prevRx;
+        const moveDy = rt.y - prevRy;
+        const movedDist = Math.hypot(moveDx, moveDy);
+        const isRobotMoving = movedDist > 0.35 && movedDist < 120;
+
+        let desiredYaw = 0.35;
+        if (isRobotMoving) {
+          desiredYaw = Math.atan2(moveDx, moveDy);
+        } else if (activeRem) {
+          desiredYaw = Math.atan2(kid.x - rt.x, kid.y - rt.y);
+        }
+        let yawDelta = desiredYaw - rt.yaw;
+        while (yawDelta > Math.PI) yawDelta -= Math.PI * 2;
+        while (yawDelta < -Math.PI) yawDelta += Math.PI * 2;
+        rt.yaw += yawDelta * Math.min(1, deltaSec * 9);
+
         helperRobots.push({
           childId: kid.id,
           childName: kid.name,
@@ -9941,8 +10092,9 @@ export function initB2KSGameEngine() {
           scene: targetScene as HelperRobotRenderItem['scene'],
           privateRoomId: targetPrivateRoomId,
           isFollowing: Boolean(activeRem),
+          isMoving: isRobotMoving,
           reminderText: activeRem ? activeRem.text : '',
-          facingYaw: robotYaw
+          facingYaw: rt.yaw
         });
       });
 

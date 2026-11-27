@@ -303,7 +303,7 @@ export interface SpeakingAttemptRecord {
   ts: number;
 }
 
-export type RobotSkinId = 'doraemon' | 'gundam' | 'walle';
+export type RobotSkinId = 'doraemon' | 'doraemi' | 'gundam' | 'walle';
 
 export interface RobotReminderItem {
   id: string;
@@ -345,6 +345,7 @@ export interface HelperRobotRenderItem {
   x: number;
   y: number;
   isFollowing: boolean;
+  isMoving?: boolean;
   reminderText: string;
   facingYaw: number;
 }

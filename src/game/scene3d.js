@@ -13,7 +13,16 @@
 
 import { buildCatalogItem3D, buildProceduralLabItem3D } from './itemModels3d';
 
-export { buildCatalogItem3D, buildProceduralLabItem3D };
+export {
+  buildCatalogItem3D,
+  buildProceduralLabItem3D,
+  buildTownhouse3D,
+  buildShopBuilding3D,
+  buildOutdoorLandmark3D,
+  buildChibiCharacter3D,
+  buildForeignNpc3D,
+  buildHelperRobot3D,
+};
 export const WORLD_SCALE = 0.05; // 100px (2D) = 5 đơn vị 3D
 
 export const PASTEL_PALETTE = {
@@ -2101,7 +2110,7 @@ function makeRoundedExtrude(THREE, width, height, radius, depth, bevel, mat) {
 
 /**
  * Dựng Robot Giúp Đỡ 3D phong cách nhân vật hoạt hình mềm mại, sinh động, chiều cao tương đương các con (~1.88 đơn vị)
- * - Skins: 'doraemon' (Mèo máy tròn trĩnh + chong chóng tre), 'gundam' (SD Chibi Mecha bo tròn), 'walle' (Pixar WALL-E bo góc)
+ * - Skins: 'doraemon' (Mèo máy tròn trĩnh + chong chóng tre), 'doraemi' (Mèo vàng nơ đỏ + túi hồng), 'gundam' (SD Chibi Mecha bo tròn), 'walle' (Pixar WALL-E bo góc)
  */
 function buildHelperRobot3D(THREE, mats, shadowTex, skin, bannerTex) {
   const root = new THREE.Group();
@@ -2120,6 +2129,7 @@ function buildHelperRobot3D(THREE, mats, shadowTex, skin, bannerTex) {
   const leftArmPivot = new THREE.Group();
   const rightArmPivot = new THREE.Group();
   let propeller = null;
+  let ribbonBow = null;
 
   const whiteMat = mats.get('#FFFFFF', { roughness: 0.42 });
   const darkMat = mats.get('#1E293B', { roughness: 0.35 });
@@ -2242,6 +2252,156 @@ function buildHelperRobot3D(THREE, mats, shadowTex, skin, bannerTex) {
     ].forEach(([ap, side]) => {
       const shoulderCap = makeSphere(THREE, 0.1, 10, 8, blueMat);
       const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.088, 0.24, 6, 12), blueMat);
+      arm.position.set(side * 0.04, -0.17, 0);
+      arm.rotation.z = side * 0.18;
+      arm.castShadow = true;
+      const hand = makeSphere(THREE, 0.105, 12, 10, whiteMat);
+      hand.position.set(side * 0.08, -0.35, 0.02);
+      ap.add(shoulderCap, arm, hand);
+    });
+  } else if (skin === 'doraemi') {
+    const yellowMat = mats.get('#FACC15', { roughness: 0.34 });
+    const collarBlueMat = mats.get('#0EA5E9', { roughness: 0.34 });
+    const bowRedMat = mats.get('#EF4444', { roughness: 0.34 });
+    const bowDarkRedMat = mats.get('#DC2626', { roughness: 0.38 });
+    const pinkMat = mats.get('#F472B6', { roughness: 0.38 });
+    const cheekMat = mats.get('#FDA4AF', { roughness: 0.72 });
+
+    // Soft white oval paws grounded at y = 0
+    [-0.18, 0.18].forEach((fx) => {
+      const foot = makeSphere(THREE, 0.16, 14, 10, whiteMat);
+      foot.scale.set(1.0, 0.52, 1.32);
+      foot.position.set(fx, 0.085, 0.05);
+      actor.add(foot);
+    });
+
+    // Plump golden-yellow pear-shaped Lathe cartoon body (y = 0.13 .. 1.00)
+    const bodyPts = [
+      new THREE.Vector2(0.01, 0.13),
+      new THREE.Vector2(0.32, 0.15),
+      new THREE.Vector2(0.43, 0.36),
+      new THREE.Vector2(0.42, 0.62),
+      new THREE.Vector2(0.34, 0.88),
+      new THREE.Vector2(0.24, 1.0),
+      new THREE.Vector2(0.01, 1.02),
+    ];
+    const body = new THREE.Mesh(new THREE.LatheGeometry(bodyPts, 20), yellowMat);
+    body.castShadow = true;
+    body.receiveShadow = true;
+
+    // White belly + signature Doraemi checkered/pink-trimmed 4D pocket
+    const belly = makeSphere(THREE, 0.335, 16, 12, whiteMat);
+    belly.scale.set(1.02, 1.04, 0.52);
+    belly.position.set(0, 0.56, 0.26);
+
+    const pocketFill = makeSphere(THREE, 0.175, 14, 10, pinkMat);
+    pocketFill.scale.set(1.04, 0.82, 0.32);
+    pocketFill.position.set(0, 0.47, 0.405);
+    const pocketArch = new THREE.Mesh(new THREE.TorusGeometry(0.185, 0.022, 8, 18, Math.PI), bowRedMat);
+    pocketArch.rotation.z = Math.PI;
+    pocketArch.position.set(0, 0.53, 0.438);
+    const pocketTop = new THREE.Mesh(new THREE.CapsuleGeometry(0.018, 0.35, 4, 8), bowRedMat);
+    pocketTop.rotation.z = Math.PI / 2;
+    pocketTop.position.set(0, 0.53, 0.438);
+
+    // Cute red tulip-flower tail at the back
+    const tailStem = new THREE.Mesh(new THREE.CapsuleGeometry(0.02, 0.12, 4, 6), mats.get('#22C55E', { roughness: 0.5 }));
+    tailStem.rotation.x = -0.65;
+    tailStem.position.set(0, 0.32, -0.43);
+    const tailFlower = makeSphere(THREE, 0.082, 10, 8, bowRedMat);
+    tailFlower.scale.set(1.0, 1.15, 0.85);
+    tailFlower.position.set(0, 0.35, -0.50);
+
+    // Sky-blue collar + shiny gold bell
+    const collar = new THREE.Mesh(new THREE.TorusGeometry(0.255, 0.042, 10, 20), collarBlueMat);
+    collar.rotation.x = Math.PI / 2;
+    collar.position.y = 1.01;
+    const bell = makeSphere(THREE, 0.075, 12, 10, goldMat);
+    bell.position.set(0, 0.96, 0.29);
+    const bellRing = new THREE.Mesh(new THREE.TorusGeometry(0.074, 0.014, 6, 14), goldMat);
+    bellRing.rotation.x = Math.PI / 2;
+    bellRing.position.set(0, 0.96, 0.29);
+
+    // Round golden-yellow head (center y = 1.44) + crisp white face mask
+    const head = makeSphere(THREE, 0.445, 22, 16, yellowMat);
+    head.scale.set(1.04, 0.99, 1.0);
+    head.position.y = 1.44;
+    const face = makeSphere(THREE, 0.382, 18, 14, whiteMat);
+    face.scale.set(1.03, 0.92, 0.58);
+    face.position.set(0, 1.40, 0.245);
+
+    // Pink-red shiny nose + highlight + rosy cheeks
+    const nose = makeSphere(THREE, 0.056, 12, 10, pinkMat);
+    nose.position.set(0, 1.46, 0.465);
+    const noseGlint = makeSphere(THREE, 0.017, 6, 6, shineWhiteMat, false, false);
+    noseGlint.position.set(-0.018, 1.482, 0.51);
+
+    [-0.22, 0.22].forEach((cx) => {
+      const cheek = makeSphere(THREE, 0.068, 10, 8, cheekMat, false, false);
+      cheek.scale.set(1.25, 0.72, 0.35);
+      cheek.position.set(cx, 1.38, 0.405);
+      actor.add(cheek);
+    });
+
+    // Sweet smile & fine whiskers
+    const smile = new THREE.Mesh(new THREE.TorusGeometry(0.135, 0.015, 6, 16, Math.PI * 0.8), darkMat);
+    smile.rotation.z = Math.PI * 1.1;
+    smile.position.set(0, 1.35, 0.435);
+    const philtrum = new THREE.Mesh(new THREE.CapsuleGeometry(0.011, 0.088, 4, 6), darkMat);
+    philtrum.position.set(0, 1.36, 0.455);
+
+    [-1, 1].forEach((side) => {
+      [-0.14, 0.14].forEach((ang, wi) => {
+        const whisk = new THREE.Mesh(new THREE.CapsuleGeometry(0.0085, 0.15, 4, 6), darkMat);
+        whisk.rotation.z = Math.PI / 2 + side * (ang - 0.04);
+        whisk.position.set(side * 0.22, 1.41 - wi * 0.055, 0.425);
+        actor.add(whisk);
+      });
+    });
+
+    // Large cartoon oval eyes + delicate curved eyelashes + twin sparkles
+    [-0.088, 0.088].forEach((ex) => {
+      const eyeW = makeSphere(THREE, 0.088, 12, 10, whiteMat);
+      eyeW.scale.set(0.86, 1.18, 0.52);
+      eyeW.position.set(ex, 1.56, 0.405);
+      const pupil = makeSphere(THREE, 0.036, 10, 8, darkMat, false, false);
+      pupil.scale.set(0.9, 1.2, 0.7);
+      pupil.position.set(ex * 0.72, 1.56, 0.445);
+      const glint = makeSphere(THREE, 0.015, 6, 6, shineWhiteMat, false, false);
+      glint.position.set(ex * 0.72 - 0.012, 1.585, 0.468);
+      const lash = new THREE.Mesh(new THREE.CapsuleGeometry(0.011, 0.045, 4, 6), darkMat);
+      lash.position.set(ex + (ex < 0 ? -0.068 : 0.068), 1.63, 0.425);
+      lash.rotation.z = ex < 0 ? 0.62 : -0.62;
+      actor.add(eyeW, pupil, glint, lash);
+    });
+
+    // Iconic Giant Red Ribbon Bow Ears on top of head!
+    ribbonBow = new THREE.Group();
+    ribbonBow.position.set(0, 1.88, -0.02);
+    [-1, 1].forEach((side) => {
+      const wing = makeRoundedExtrude(THREE, 0.34, 0.24, 0.095, 0.12, 0.035, bowRedMat);
+      wing.position.set(side * 0.21, 0.05, 0);
+      wing.rotation.set(0.14, side * 0.18, side * 0.32);
+      const pleat = new THREE.Mesh(new THREE.CapsuleGeometry(0.024, 0.12, 4, 8), bowDarkRedMat);
+      pleat.rotation.z = Math.PI / 2 + side * 0.32;
+      pleat.position.set(side * 0.14, 0.03, 0.065);
+      ribbonBow.add(wing, pleat);
+    });
+    const bowKnot = makeSphere(THREE, 0.095, 12, 10, bowDarkRedMat);
+    bowKnot.scale.set(1.05, 0.9, 0.85);
+    ribbonBow.add(bowKnot);
+    actor.add(ribbonBow);
+
+    actor.add(body, belly, pocketFill, pocketArch, pocketTop, tailStem, tailFlower, collar, bell, bellRing, head, face, nose, noseGlint, smile, philtrum);
+
+    leftArmPivot.position.set(-0.41, 0.87, 0);
+    rightArmPivot.position.set(0.41, 0.87, 0);
+    [
+      [leftArmPivot, -1],
+      [rightArmPivot, 1],
+    ].forEach(([ap, side]) => {
+      const shoulderCap = makeSphere(THREE, 0.1, 10, 8, yellowMat);
+      const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.088, 0.24, 6, 12), yellowMat);
       arm.position.set(side * 0.04, -0.17, 0);
       arm.rotation.z = side * 0.18;
       arm.castShadow = true;
@@ -2488,6 +2648,8 @@ function buildHelperRobot3D(THREE, mats, shadowTex, skin, bannerTex) {
     rightArmPivot,
     bannerHolder,
     propeller,
+    ribbonBow,
+    currentYaw: 0.35,
   };
   return root;
 }
@@ -5338,16 +5500,39 @@ export async function createScene3D(canvasEl) {
       rEntry.mesh.position.y = me.scene === 'neighborhood' ? 0.08 : 0.1;
 
       const ud = rEntry.mesh.userData;
-      ud.actor.rotation.y = r.isFollowing ? camState.yaw : r.facingYaw || 0.35;
-      ud.actor.position.y = r.isFollowing ? Math.abs(Math.sin(nowMs * 0.008)) * 0.14 : Math.sin(nowMs * 0.003) * 0.04;
-      ud.actor.rotation.z = r.isFollowing ? Math.sin(nowMs * 0.006) * 0.035 : 0;
+      const targetYaw = typeof r.facingYaw === 'number' ? r.facingYaw : 0.35;
+      let curYaw = typeof ud.currentYaw === 'number' ? ud.currentYaw : targetYaw;
+      let yawDiff = targetYaw - curYaw;
+      while (yawDiff > Math.PI) yawDiff -= Math.PI * 2;
+      while (yawDiff < -Math.PI) yawDiff += Math.PI * 2;
+      curYaw += yawDiff * Math.min(1, deltaSec * 10);
+      ud.currentYaw = curYaw;
+      ud.actor.rotation.y = curYaw;
+
+      const movingNow = Boolean(r.isMoving);
+      ud.actor.position.y = movingNow
+        ? Math.abs(Math.sin(nowMs * 0.011)) * 0.14
+        : r.isFollowing
+          ? Math.abs(Math.sin(nowMs * 0.0065)) * 0.07
+          : Math.sin(nowMs * 0.003) * 0.04;
+      ud.actor.rotation.z = movingNow ? Math.sin(nowMs * 0.011) * 0.05 : 0;
+      ud.actor.rotation.x = THREE.MathUtils.damp(ud.actor.rotation.x || 0, movingNow ? 0.075 : 0, 10, deltaSec);
+
       if (ud.propeller) {
-        ud.propeller.rotation.y += deltaSec * (r.isFollowing ? 14 : 4.5);
+        ud.propeller.rotation.y += deltaSec * (movingNow ? 16 : r.isFollowing ? 11 : 4.5);
+      }
+      if (ud.ribbonBow) {
+        ud.ribbonBow.rotation.z = Math.sin(nowMs * (movingNow ? 0.011 : 0.0045)) * (movingNow ? 0.14 : 0.06);
       }
       ud.bannerHolder.visible = Boolean(r.isFollowing && r.reminderText);
-      const targetArmX = r.isFollowing ? -2.55 : 0.08;
-      ud.leftArmPivot.rotation.x = THREE.MathUtils.damp(ud.leftArmPivot.rotation.x, targetArmX, 12, deltaSec);
-      ud.rightArmPivot.rotation.x = THREE.MathUtils.damp(ud.rightArmPivot.rotation.x, targetArmX, 12, deltaSec);
+      // Keep floating reminder board cleanly facing camera while robot turns behind character
+      ud.bannerHolder.rotation.y = camState.yaw - curYaw;
+
+      const walkSwing = movingNow ? Math.sin(nowMs * 0.011) * 0.42 : 0;
+      const targetLeftArmX = r.isFollowing ? -2.55 : walkSwing;
+      const targetRightArmX = r.isFollowing ? -2.55 : -walkSwing;
+      ud.leftArmPivot.rotation.x = THREE.MathUtils.damp(ud.leftArmPivot.rotation.x, targetLeftArmX, 12, deltaSec);
+      ud.rightArmPivot.rotation.x = THREE.MathUtils.damp(ud.rightArmPivot.rotation.x, targetRightArmX, 12, deltaSec);
 
       dynamicLabels.push({
         x: rEntry.mesh.position.x,

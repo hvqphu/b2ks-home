@@ -25,6 +25,13 @@ export const ROBOT_SKIN_OPTIONS: Array<{
     desc: 'Tròn trĩnh xanh dương, chuông vàng & túi thần kỳ trước bụng',
   },
   {
+    id: 'doraemi',
+    name: 'Robot Mèo Vàng (Doraemi)',
+    icon: '🎀',
+    badgeColor: '#EAB308',
+    desc: 'Màu vàng tươi đáng yêu, nơ đỏ lớn trên đầu, chuông vàng & túi thần kỳ',
+  },
+  {
     id: 'gundam',
     name: 'Robot Chiến Binh (Gundam)',
     icon: '🤖',
