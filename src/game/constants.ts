@@ -12,6 +12,8 @@ import {
 } from '../types/b2ks';
 import { GLOBAL_SUCCESS_ENGLISH_BANK } from './englishCurriculum';
 
+export const APP_VERSION = 'v2.6.0';
+export const APP_UPDATED_AT = '26/11/2026 — 20:05';
 export const MAX_PARENT_POINTS = 500;
 export const DAILY_PARENT_ALLOWANCE = 150;
 export const DEFAULT_FIREBASE_URL = 'https://b2ks-home-default-rtdb.asia-southeast1.firebasedatabase.app';
@@ -484,6 +486,7 @@ export const NEIGHBORHOOD_LOCATIONS: NavDestination[] = [
   { id: 'lab', name: 'Phòng Thí Nghiệm B2KS', icon: '🧪', category: 'learn' as const, x: 1540, y: 790, color: '#0284C7' },
   { id: 'salon', name: 'Salon Tóc Nghệ Thuật', icon: '💇', category: 'shop' as const, x: 1760, y: 975, color: '#9333EA' },
   { id: 'flea_market', name: 'Chợ Trời B2KS', icon: '🎪', category: 'shop' as const, x: 1980, y: 790, color: '#D97706' },
+  { id: 'church', name: 'Nhà Thờ Tin Lành', icon: '⛪', category: 'learn' as const, x: 2345, y: 955, color: '#0369A1' },
   { id: 'fountain_plaza', name: 'Quảng Trường Đài Phun Nước', icon: '⛲', category: 'play' as const, x: 280, y: 1420, color: '#38BDF8' },
   { id: 'zoo', name: 'Sở Thú Ảo B2KS Zoo', icon: '🦁', category: 'learn' as const, x: 820, y: 1485, color: '#16A34A' },
   { id: 'reading_corner', name: 'Góc Đọc Sách Ngoài Trời', icon: '📚', category: 'learn' as const, x: 1540, y: 1400, color: '#059669' },

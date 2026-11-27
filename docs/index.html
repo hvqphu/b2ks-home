@@ -26,8 +26,8 @@
             }
         }
     </script>
-  <script type="module" crossorigin src="./assets/index-CgofY6ZS.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-DKKrNNrp.css">
+  <script type="module" crossorigin src="./assets/index-KSrTX6s9.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-BlOqRDIq.css">
 <link rel="manifest" href="./manifest.webmanifest"></head>
 <body>
 
@@ -207,26 +207,97 @@
 
     <!-- 1. GUIDE MODAL -->
     <div class="modal-overlay" id="guide-modal" style="display: none;">
-        <div class="modal-content pixel-box">
-            <div class="modal-header">
-                <h2 id="guide-title-brand">🏡 B2KS Daily Routines — Khu Phố Gia Đình</h2>
+        <div class="modal-content pixel-box" style="max-width: 780px;">
+            <div class="modal-header" style="align-items:flex-start; gap:10px;">
+                <div>
+                    <h2 id="guide-title-brand" style="margin:0;">🏡 B2KS Daily Routines — Khu Phố Gia Đình</h2>
+                    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:4px; font-size:12px; color:#475569; font-weight:700;">
+                        <span>Phiên bản: <b id="guide-app-version" style="color:#0369A1;">v2.6.0</b></span>
+                        <span aria-hidden="true">·</span>
+                        <span>Cập nhật mới nhất: <b id="guide-updated-at" style="color:#0F766E;">26/11/2026 — 20:05</b></span>
+                    </div>
+                </div>
                 <button class="btn btn-primary btn-sm" onclick="closeModal('guide-modal'); startAudioOnce();">Bắt đầu chơi ▶</button>
             </div>
-            <div style="font-size: 14px; line-height: 1.55;">
-                <p><b>🕹️ Di chuyển tự do 3D Isometric:</b> Dùng phím <b>Mũi tên / W A S D</b>, <b>Joystick</b> góc dưới bên trái, hoặc <b>Chạm trực tiếp vào mặt đất (Tap-to-move)</b> để nhân vật tự đi tới!</p>
-                <p><b>🎥 Điều khiển Camera 3D:</b> <b>Kéo / Vuốt</b> để xoay góc nhìn, <b>Cuộn chuột / Chụm ngón</b> để Zoom, bấm nút <b>🧭</b> góc phải để quay về góc chuẩn Isometric 45°.</p>
-                <p><b>🌟 Các khu vực mới trên bản đồ Khu Phố:</b></p>
-                <ul>
-                    <li><b>🐾 Cửa Hàng Thú Cưng B2KS:</b> Đổi điểm nhận trứng (10 loài thú cưng!), ấp nở &amp; cho ăn để thú cưng tiến hóa đồng hành, tăng tốc độ &amp; điểm sao!</li>
-                    <li><b>🌌 Trung Tâm Giao Dịch Xuyên Thế Giới:</b> Quy đổi điểm sao lấy tiền mặt hoặc đặc quyền thật ngoài đời!</li>
-                    <li><b>⚽ Sân Bóng Đá B2KS (Miễn phí):</b> Hỗ trợ đấu 1P, đấu 2 người Online 1v1 &amp; đứng xem trực tiếp làm khán giả!</li>
-                    <li><b>🗺️ Minimap &amp; 🧭 Chỉ đường Điện thoại:</b> Xem bản đồ thu nhỏ góc phải &amp; chọn địa điểm trên Điện thoại để bật mũi tên dẫn đường!</li>
-                    <li><b>🦁 Sở Thú Ảo &amp; 🎪 Chợ Trời &amp; 📊 Bảng Phụ Huynh:</b> Học tiếng Anh, mua bán đồ &amp; theo dõi trạng thái qua Mini Window!</li>
-                </ul>
-                <p><b>💬 Bong bóng hội thoại &amp; Điểm thưởng:</b></p>
-                <ul>
-                    <li>Khi đứng gần mọi người, Công viên Tiếng Anh hoặc Góc đọc sách, thanh chat sẽ tự động hiện để bạn gõ câu tiếng Anh (không lặp lại câu cũ, giãn cách 30s) nhận <b>+2⭐</b>!</li>
-                </ul>
+
+            <!-- Categorized Tabs -->
+            <div id="guide-cat-tabs" style="display:flex; flex-wrap:wrap; gap:6px; padding:8px; background:#E2E8F0; border:2px solid var(--dark); border-radius:10px; margin-bottom:12px;">
+                <button type="button" class="btn btn-sm guide-tab-btn" data-guide-tab="all" onclick="switchGuideTab('all')" style="background:#0F766E; color:#FFF;">📚 Tất cả hạng mục</button>
+                <button type="button" class="btn btn-sm guide-tab-btn" data-guide-tab="controls" onclick="switchGuideTab('controls')" style="background:#FFF; color:#1E293B;">🕹️ Điều khiển &amp; 3D</button>
+                <button type="button" class="btn btn-sm guide-tab-btn" data-guide-tab="map" onclick="switchGuideTab('map')" style="background:#FFF; color:#1E293B;">🗺️ Khu phố &amp; Phòng riêng</button>
+                <button type="button" class="btn btn-sm guide-tab-btn" data-guide-tab="tasks" onclick="switchGuideTab('tasks')" style="background:#FFF; color:#1E293B;">📋 Nhiệm vụ &amp; Đổi quà</button>
+                <button type="button" class="btn btn-sm guide-tab-btn" data-guide-tab="learn" onclick="switchGuideTab('learn')" style="background:#FFF; color:#1E293B;">🎓 Học tập &amp; Kinh Thánh</button>
+                <button type="button" class="btn btn-sm guide-tab-btn" data-guide-tab="play" onclick="switchGuideTab('play')" style="background:#FFF; color:#1E293B;">🎮 Game, Pet &amp; Lab</button>
+                <button type="button" class="btn btn-sm guide-tab-btn" data-guide-tab="online" onclick="switchGuideTab('online')" style="background:#FFF; color:#1E293B;">👨‍👩‍👧‍👦 Online &amp; Phụ huynh</button>
+            </div>
+
+            <div style="font-size: 13.5px; line-height: 1.55; display:flex; flex-direction:column; gap:10px;">
+                <section class="guide-section" data-guide-cat="controls" style="background:#F8FAFC; border:2px solid #CBD5E1; border-radius:10px; padding:10px 12px;">
+                    <h3 style="margin:0 0 6px; font-size:14.5px; color:#0F172A;">🕹️ 1. Di Chuyển, Camera 3D &amp; Âm Thanh</h3>
+                    <ul style="margin:0; padding-left:18px;">
+                        <li><b>Di chuyển nhân vật:</b> Dùng phím <b>Mũi tên / W A S D</b> trên máy tính, <b>Joystick</b> góc dưới bên trái trên cảm ứng, hoặc <b>Chạm trực tiếp vào mặt đất (Tap-to-move)</b> để tự bước tới điểm chọn.</li>
+                        <li><b>Điều khiển Camera 3D Isometric:</b> Kéo/vuốt màn hình để xoay góc nhìn, cuộn chuột hoặc chụm ngón để phóng to/thu nhỏ, bấm nút <b>🧭</b> góc phải để quay lại góc nhìn 45° chuẩn.</li>
+                        <li><b>Tương tác công trình:</b> Đi lại gần cửa các tòa nhà hoặc nhân vật NPC, nhấn phím <b>Space / Enter</b> hoặc bấm nút hành động hiện ra phía dưới màn hình.</li>
+                        <li><b>Nhạc nền &amp; Thời tiết:</b> Chọn chủ đề nhạc nền riêng biệt ở góc trên bên phải; ánh sáng Ngày/Đêm và Thời tiết tự động cập nhật theo thời gian thực.</li>
+                    </ul>
+                </section>
+
+                <section class="guide-section" data-guide-cat="map" style="background:#F0F9FF; border:2px solid #BAE6FD; border-radius:10px; padding:10px 12px;">
+                    <h3 style="margin:0 0 6px; font-size:14.5px; color:#0C4A6E;">🗺️ 2. Bản Đồ Khu Phố, Nhà Phố &amp; Phòng Riêng</h3>
+                    <ul style="margin:0; padding-left:18px;">
+                        <li><b>Bản đồ thu nhỏ (Minimap) &amp; Chỉ đường GPS:</b> Thu gọn/mở rộng, phóng to hoặc xoay Minimap ở góc phải; mở <b>📱 Điện thoại ➔ Bản đồ</b> để chọn công trình và bật mũi tên dẫn đường trực tiếp.</li>
+                        <li><b>Nhà Phố Gia Đình:</b> Bước vào sảnh chung (Ăn tối kiếm sao, xem TV giải trí), dùng thang máy hoặc cửa hành lang lên <b>Phòng riêng</b> của từng thành viên.</li>
+                        <li><b>Trang trí &amp; Cất đồ Phòng riêng:</b> Dùng vật phẩm mua ở Siêu Thị hoặc chế tạo từ Phòng Thí Nghiệm để đặt lên nhiều vị trí trong phòng (số lượng trong túi sẽ trừ đúng số đã đặt). Có thể <b>nhặt/thu hồi đồ trang trí</b> cất lại vào túi bất cứ lúc nào!</li>
+                        <li><b>Thời trang &amp; Salon:</b> Ghé <b>👗 Thời Trang</b> &amp; <b>💇 Salon Tóc</b> đổi kiểu tóc, trang phục và đồng bộ ngay diện mạo sang các máy khác.</li>
+                    </ul>
+                </section>
+
+                <section class="guide-section" data-guide-cat="tasks" style="background:#FFFBEB; border:2px solid #FDE68A; border-radius:10px; padding:10px 12px;">
+                    <h3 style="margin:0 0 6px; font-size:14.5px; color:#78350F;">📋 3. Nhiệm Vụ, Điểm Sao &amp; Quy Đổi Ngoài Đời</h3>
+                    <ul style="margin:0; padding-left:18px;">
+                        <li><b>Bảng Nhiệm Vụ (📋):</b> Ba mẹ giao <b>Việc nhà</b>, <b>Bài tập học tập</b> (đính kèm ảnh/tệp &amp; chấm điểm), hoặc <b>Nhiệm vụ Đồng đội</b> cho cả hai bé cùng hoàn thành.</li>
+                        <li><b>Giới hạn điểm Phụ Huynh:</b> Điểm ba mẹ tối đa mặc định <b>500⭐</b> (Admin có thể tùy chỉnh giới hạn này cho từng gia đình).</li>
+                        <li><b>🌌 Trung Tâm Xuyên Thế Giới:</b> Con dùng điểm sao tích lũy gửi yêu cầu đổi quà/tiền thưởng/đặc quyền thật ngoài đời để ba mẹ duyệt.</li>
+                        <li><b>🎪 Chợ Trời B2KS &amp; 🏪 Siêu Thị:</b> Mua nội thất, thẻ TV, phụ kiện thú cưng hoặc đăng bán/mua trao đổi vật phẩm giữa các thành viên.</li>
+                    </ul>
+                </section>
+
+                <section class="guide-section" data-guide-cat="learn" style="background:#F0FDF4; border:2px solid #BBF7D0; border-radius:10px; padding:10px 12px;">
+                    <h3 style="margin:0 0 6px; font-size:14.5px; color:#14532D;">🎓 4. Học Tập Song Ngữ &amp; Nhà Thờ Tin Lành (Đố Kinh Thánh)</h3>
+                    <ul style="margin:0; padding-left:18px;">
+                        <li><b>⛪ Nhà Thờ Tin Lành — Đố Kinh Thánh (200 câu NIV &amp; Truyền Thống 1925):</b>
+                            <ul style="margin:4px 0; padding-left:18px;">
+                                <li>Trả lời đúng mỗi câu nhận <b>+1⭐</b>; đúng <b>3 câu liên tiếp</b> được thưởng thêm <b>+1⭐</b>.</li>
+                                <li>Chạm trực tiếp vào bất kỳ từ tiếng Anh nào trên câu hỏi (hoặc bật <b>Tra từ đáp án</b>) để xem nghĩa tiếng Việt ngay; tên riêng có chú thích tiếng Việt theo bản 1925.</li>
+                                <li>Trả lời sai sẽ không lộ đáp án mà hiển thị <b>gợi ý tên Sách Kinh Thánh</b> (Anh &amp; Việt) để tự tìm; trả lời đúng sẽ hiện nguyên văn câu Kinh Thánh song ngữ (NIV &amp; 1925).</li>
+                                <li>Mỗi câu trả lời đúng đủ <b>3 lần</b> sẽ được lưu đồng bộ và không hỏi lại thành viên đó nữa.</li>
+                            </ul>
+                        </li>
+                        <li><b>🎓 Trung Tâm Tiếng Anh (Global Success Lớp 6–9):</b> Bộ 1,920 câu Từ vựng &amp; Ngữ pháp phân chia theo Lớp 6–9 và Unit 1–12.</li>
+                        <li><b>🗣️ Luyện Nói (Speaking Practice):</b> Nói chuyện trực tiếp với <b>Mr. Alex</b> &amp; <b>Ms. Emma</b> trên phố qua Micro (Level 1–5) để thăng cấp &amp; nhận sao.</li>
+                        <li><b>💬 Chat Tiếng Anh &amp; 📚 Góc Đọc Sách / Truyện Tranh:</b> Gõ câu tiếng Anh không trùng lặp hoặc đọc truyện tranh song ngữ để nhận thưởng &amp; mở huy hiệu Thành tựu (🏆).</li>
+                    </ul>
+                </section>
+
+                <section class="guide-section" data-guide-cat="play" style="background:#FAF5FF; border:2px solid #E9D5FF; border-radius:10px; padding:10px 12px;">
+                    <h3 style="margin:0 0 6px; font-size:14.5px; color:#581C87;">🎮 5. Khu Vui Chơi, Đá Luân Lưu, Thú Cưng &amp; Phòng Thí Nghiệm</h3>
+                    <ul style="margin:0; padding-left:18px;">
+                        <li><b>⚽ Sân Bóng Đá Đá Luân Lưu (Miễn phí):</b> Chơi 1 người với máy hoặc tạo phòng <b>2P Online</b> thay phiên nhau Sút bóng &amp; làm Thủ môn bắt gôn (chỉ chủ phòng mới bấm Bắt đầu khi cả hai đã Sẵn sàng, tự thoát phòng khi rời sân).</li>
+                        <li><b>🕹️ Khu Vui Chơi Arcade (1⭐):</b> Chơi các mini-game (Caro, Đua xe, Rắn, Đua Toán, Cờ Vua...) cùng bạn trong phòng chờ Online đồng bộ cả 2 máy.</li>
+                        <li><b>🐾 Cửa Hàng Thú Cưng &amp; 🦁 Sở Thú Ảo:</b> Nhận trứng 10 loài thú cưng, ấp nở, cho ăn để tiến hóa 4 cấp bậc, đeo phụ kiện &amp; khám phá thế giới động vật Wiki.</li>
+                        <li><b>🧪 Phòng Thí Nghiệm Sáng Tạo:</b> Mô tả đồ vật bằng tiếng Anh để chế tạo vật phẩm 2D trong túi đồ đồng nhất với mô hình 3D đặt ngoài bản đồ/phòng riêng.</li>
+                    </ul>
+                </section>
+
+                <section class="guide-section" data-guide-cat="online" style="background:#FFF1F2; border:2px solid #FECDD3; border-radius:10px; padding:10px 12px;">
+                    <h3 style="margin:0 0 6px; font-size:14.5px; color:#881337;">👨‍👩‍👧‍👦 6. Đồng Bộ Online, Thông Báo &amp; Bảng Điều Khiển Phụ Huynh</h3>
+                    <ul style="margin:0; padding-left:18px;">
+                        <li><b>Đồng bộ đa thiết bị (Realtime):</b> Tự động đồng bộ tên nhân vật, diện mạo, túi đồ, đồ trang trí phòng riêng, tiến độ học &amp; phòng chơi giữa các máy.</li>
+                        <li><b>🔔 Thông báo Push Notification:</b> Mở khóa thông báo để máy con tự nhận chuông &amp; thông báo ngay khi ba mẹ giao bài tập/nhiệm vụ mới.</li>
+                        <li><b>🤖 Robot Trợ Lý &amp; Mini Window:</b> Nhắn tin nhắc việc qua Robot đi theo con và theo dõi hoạt động nhanh qua cửa sổ phụ huynh thu gọn.</li>
+                        <li><b>📊 Bảng Điều Khiển Phụ Huynh (PIN mặc định 1234):</b> Xem biểu đồ tiến độ, duyệt đổi quà, nhập/xuất CSV ngân hàng <b>Tiếng Anh</b>, <b>Speaking</b> &amp; <b>Đố Kinh Thánh</b>, tùy chỉnh vị trí/hình dáng công trình bản đồ và xuất file mã nguồn ZIP.</li>
+                    </ul>
+                </section>
             </div>
         </div>
     </div>
@@ -904,6 +975,19 @@
         if (typeof window.startAudioOnce !== 'function') {
           window.startAudioOnce = function () {};
         }
+        window.switchGuideTab = function (tabId) {
+          var btns = document.querySelectorAll('.guide-tab-btn');
+          btns.forEach(function (b) {
+            var isAct = b.getAttribute('data-guide-tab') === tabId;
+            b.style.background = isAct ? '#0F766E' : '#FFFFFF';
+            b.style.color = isAct ? '#FFFFFF' : '#1E293B';
+          });
+          var secs = document.querySelectorAll('.guide-section');
+          secs.forEach(function (s) {
+            var cat = s.getAttribute('data-guide-cat');
+            s.style.display = tabId === 'all' || cat === tabId ? 'block' : 'none';
+          });
+        };
         setTimeout(function () {
           if (window.__B2KS_BOOTED__ || /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname)) return;
           fetch('./docs/index.html', { method: 'HEAD' })

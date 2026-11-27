@@ -990,7 +990,8 @@ export interface ShopBuildingConfig {
     | 'cross_world'
     | 'flea_market'
     | 'zoo'
-    | 'pet_shop';
+    | 'pet_shop'
+    | 'church';
   title: string;
   shape?: BuildingShape;
   npcName: string;
@@ -1001,6 +1002,105 @@ export interface ShopBuildingConfig {
   npcPantsColor: string;
   npcPantsStyle: string;
   npcOutfit: string;
+}
+
+function drawProtestantChurch2D(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  lighting: LightingInfo
+) {
+  ctx.save();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#1E293B';
+
+  // Soft ground shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.beginPath();
+  ctx.ellipse(x, y + 68, 108, 14, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Paved steps
+  ctx.fillStyle = '#E2E8F0';
+  ctx.fillRect(x - 36, y + 54, 72, 12);
+  ctx.strokeRect(x - 36, y + 54, 72, 12);
+
+  // Clean white Protestant sanctuary walls
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(x - 94, y - 58, 188, 114);
+  ctx.strokeRect(x - 94, y - 58, 188, 114);
+
+  // Gable roof (deep slate blue, crisp & simple)
+  ctx.fillStyle = '#334155';
+  ctx.beginPath();
+  ctx.moveTo(x - 104, y - 58);
+  ctx.lineTo(x, y - 114);
+  ctx.lineTo(x + 104, y - 58);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // White front gable triangle facade
+  ctx.fillStyle = '#F8FAFC';
+  ctx.beginPath();
+  ctx.moveTo(x - 86, y - 58);
+  ctx.lineTo(x, y - 104);
+  ctx.lineTo(x + 86, y - 58);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Plain tall arched clear glass windows (no icons, pictures, or statues)
+  [-62, 42].forEach((wx) => {
+    ctx.fillStyle = lighting.isNight ? '#FEF08A' : '#E0F2FE';
+    ctx.beginPath();
+    ctx.roundRect(x + wx, y - 34, 20, 52, [10, 10, 2, 2]);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x + wx + 10, y - 34);
+    ctx.lineTo(x + wx + 10, y + 18);
+    ctx.moveTo(x + wx, y - 8);
+    ctx.lineTo(x + wx + 20, y - 8);
+    ctx.stroke();
+  });
+
+  // Plain wooden double doors
+  ctx.fillStyle = '#78350F';
+  ctx.beginPath();
+  ctx.roundRect(x - 20, y - 6, 40, 60, [6, 6, 0, 0]);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x, y - 6);
+  ctx.lineTo(x, y + 54);
+  ctx.stroke();
+
+  // Top Steeple Signboard with ONLY the 2 words "TIN LÀNH"
+  ctx.fillStyle = '#0F172A';
+  ctx.beginPath();
+  ctx.roundRect(x - 54, y - 134, 108, 28, 5);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#FACC15';
+  ctx.font = 'bold 14px Fredoka, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('TIN LÀNH', x, y - 120);
+
+  // Empty Cross (Thập tự giá) positioned directly above "TIN LÀNH"
+  ctx.fillStyle = '#FACC15';
+  ctx.strokeStyle = '#92400E';
+  ctx.lineWidth = 2;
+  // Vertical beam
+  ctx.fillRect(x - 4, y - 178, 8, 42);
+  ctx.strokeRect(x - 4, y - 178, 8, 42);
+  // Horizontal beam
+  ctx.fillRect(x - 16, y - 166, 32, 8);
+  ctx.strokeRect(x - 16, y - 166, 32, 8);
+
+  ctx.restore();
 }
 
 export function drawShopBuilding(
@@ -2088,16 +2188,20 @@ export function drawNeighborhoodWorld(
     npcShirtColor: '#EC4899', npcShirtPattern: 'heart', npcPantsColor: '#7C3AED', npcPantsStyle: 'skirt', npcOutfit: '🎀'
   }, lighting);
 
+  // 12. NHÀ THỜ TIN LÀNH (Strict Protestant architecture: ONLY "TIN LÀNH" + Cross above, zero images/statues)
+  const churchLoc = getLoc('church', 2345, 955);
+  drawProtestantChurch2D(ctx, churchLoc.x, churchLoc.y - 65, lighting);
+
   const treeCoords: [number, number, TreeKind][] = [
     [60, 290, 'sakura'], [285, 290, 'pine'], [490, 315, 'orange'], [640, 320, 'oak'], [1065, 310, 'sakura'],
     [1365, 300, 'pine'], [1760, 315, 'orange'], [2180, 330, 'palm'],
-    [80, 730, 'oak'], [420, 685, 'sakura'], [770, 745, 'pine'], [1360, 740, 'orange'], [2220, 760, 'palm'],
+    [80, 730, 'oak'], [420, 685, 'sakura'], [770, 745, 'pine'], [1360, 740, 'orange'], [2185, 760, 'palm'],
     [90, 1290, 'sakura'], [560, 1340, 'oak'], [1080, 1360, 'pine'], [1350, 1290, 'orange'], [2340, 1490, 'palm'],
-    [1830, 1320, 'sakura'], [2430, 790, 'oak']
+    [1830, 1320, 'sakura'], [2468, 780, 'oak']
   ];
   treeCoords.forEach(([tx, ty, tkind]) => drawCuteTree(ctx, tx, ty, tkind));
 
-  const lampX = [250, 680, 1080, 1420, 1820, 2240];
+  const lampX = [250, 680, 1080, 1420, 1820, 2205];
   [425, 985].forEach((ly) => {
     lampX.forEach((lx) => drawStreetLamp(ctx, lx, ly, lighting.isNight));
   });

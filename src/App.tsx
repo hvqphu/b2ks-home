@@ -14,6 +14,7 @@ import { SoundThemePicker } from './components/SoundThemePicker';
 import { AdminPanelModal } from './components/AdminPanelModal';
 import { AchievementsModal } from './components/AchievementsModal';
 import { SpeakingPracticeModal } from './components/SpeakingPracticeModal';
+import { ChurchBibleModal } from './components/ChurchBibleModal';
 
 export default function App() {
   const [activeModal, setActiveModal] = useState<ActiveReactModal>(null);
@@ -171,6 +172,9 @@ export default function App() {
       )}
       {bridge && unlocked && activeModal === 'speaking_practice' && (
         <SpeakingPracticeModal bridge={bridge} onClose={close} />
+      )}
+      {bridge && unlocked && activeModal === 'church_bible' && (
+        <ChurchBibleModal bridge={bridge} onClose={close} />
       )}
     </>
   );

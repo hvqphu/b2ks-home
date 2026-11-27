@@ -381,6 +381,7 @@ export interface Member {
   speakingLevel?: number;
   speakingStreak?: number;
   speakingHistory?: SpeakingAttemptRecord[];
+  bibleProgress?: BibleQuizProgress;
   helperRobot?: HelperRobotConfig;
   pets?: OwnedPet[];
   activePetId?: string | null;
@@ -483,6 +484,7 @@ export interface ActivityLogEntry {
     | 'quest_part'
     | 'quiz_done'
     | 'speaking_done'
+    | 'bible_done'
     | 'achievement_unlock'
     | 'achievement_unlocked'
     | 'cross_world'
@@ -533,6 +535,31 @@ export interface EnglishQuestion {
   ans: number;
   exp: string;
   custom?: boolean;
+}
+
+export type BibleQuestionCategory = 'fact' | 'image' | 'verse' | 'parable';
+
+export interface BibleQuestion {
+  id: string;
+  category: BibleQuestionCategory;
+  visualId?: string;
+  q: string;
+  opts: [string, string, string, string];
+  ans: 0 | 1 | 2 | 3;
+  bookEn: string;
+  bookVi: string;
+  ref: string;
+  verseEn: string;
+  verseVi: string;
+  custom?: boolean;
+}
+
+export interface BibleQuizProgress {
+  correctCounts: Record<string, number>;
+  streak: number;
+  totalCorrect: number;
+  totalAnswered: number;
+  updatedAt?: number;
 }
 
 export interface ZooAnimal {
@@ -620,7 +647,8 @@ export type ActiveReactModal =
   | 'comic_library'
   | 'admin_panel'
   | 'achievements'
-  | 'speaking_practice';
+  | 'speaking_practice'
+  | 'church_bible';
 
 export interface B2KSBridge {
   getState: () => B2KSState;
@@ -720,6 +748,29 @@ export interface B2KSBridge {
     newLevel: SpeakingLevel;
     newStreak: number;
     leveledUp: boolean;
+    msg: string;
+  };
+  getGlobalBibleBank?: () => BibleQuestion[];
+  addBibleQuestion?: (input: Omit<BibleQuestion, 'id' | 'custom'> & { id?: string }) => { ok: boolean; msg: string; question?: BibleQuestion };
+  deleteBibleQuestion?: (id: string) => { ok: boolean; msg: string };
+  importBibleBankQuestions?: (incoming: BibleQuestion[], mode?: 'merge' | 'replace') => { ok: boolean; added: number; updated: number; total: number; msg: string };
+  resetBibleBankToDefault?: () => { ok: boolean; total: number; msg: string };
+  submitBibleAnswer?: (
+    questionId: string,
+    selectedIndex: number
+  ) => {
+    correct: boolean;
+    awarded: number;
+    baseAwarded: number;
+    streakBonus: number;
+    newStreak: number;
+    questionCorrectCount: number;
+    retired: boolean;
+    bookEn: string;
+    bookVi: string;
+    ref: string;
+    verseEn: string;
+    verseVi: string;
     msg: string;
   };
   getMaxParentPoints?: () => number;

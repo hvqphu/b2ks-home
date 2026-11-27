@@ -9,6 +9,8 @@ import {
   B2KSBridge,
   B2KSState,
   BgmThemeId,
+  BibleQuestion,
+  BibleQuizProgress,
   BuildingLayoutOverride,
   CrossWorldRequest,
   CustomLabItem,
@@ -35,6 +37,8 @@ import {
 } from '../types/b2ks';
 import {
   ACTIVITY_RULES,
+  APP_UPDATED_AT,
+  APP_VERSION,
   BGM_THEME_OPTIONS,
   DAILY_PARENT_ALLOWANCE,
   DEFAULT_ACTIVITY_CONFIGS,
@@ -73,6 +77,12 @@ import {
   CURRICULUM_BANK_VERSION,
   getGlobalSuccessUnitTitle
 } from './englishCurriculum';
+import {
+  BIBLE_BANK_VERSION,
+  DEFAULT_BIBLE_BANK,
+  normalizeBibleQuestionsList,
+  resolveVietnameseBookName
+} from './bibleQuizData';
 import {
   buildLabSVGMarkup,
   getLabItemCanvasImage,
@@ -775,6 +785,7 @@ export function initB2KSGameEngine() {
   const LEGACY_STORAGE_KEY = 'b2ks_daily_routines_rpg_v16';
   const SHARED_ENGLISH_STORAGE_KEY = 'b2ks_shared_english_bank_v2';
   const SHARED_SPEAKING_STORAGE_KEY = 'b2ks_shared_speaking_bank_v1';
+  const SHARED_BIBLE_STORAGE_KEY = 'b2ks_shared_bible_bank_v1';
 
   let globalEnglishBank: EnglishQuestion[] = DEFAULT_ENGLISH_BANK.map((q) => ({ ...q }));
   let sharedEnglishBankUpdatedAt = 0;
@@ -783,6 +794,75 @@ export function initB2KSGameEngine() {
   let globalSpeakingBank: SpeakingBankQuestion[] = DEFAULT_SPEAKING_BANK.map((q) => ({ ...q }));
   let sharedSpeakingBankUpdatedAt = 0;
   let lastSharedSpeakingMetaCheckAt = 0;
+
+  let globalBibleBank: BibleQuestion[] = DEFAULT_BIBLE_BANK.map((q) => ({ ...q }));
+  let sharedBibleBankUpdatedAt = 0;
+  let lastSharedBibleMetaCheckAt = 0;
+
+  function loadSharedBibleBank() {
+    try {
+      const raw = localStorage.getItem(SHARED_BIBLE_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (
+          parsed &&
+          Number(parsed.version) >= BIBLE_BANK_VERSION &&
+          Array.isArray(parsed.questions) &&
+          parsed.questions.length > 0
+        ) {
+          const normalized = normalizeBibleQuestionsList(parsed.questions);
+          if (normalized.length > 0) {
+            globalBibleBank = normalized;
+            sharedBibleBankUpdatedAt = Number(parsed.updatedAt) || 0;
+            return;
+          }
+        }
+      }
+    } catch {
+      // fallback to built-in 200-question NIV/1925 Bible bank
+    }
+    globalBibleBank = DEFAULT_BIBLE_BANK.map((q) => ({ ...q }));
+    sharedBibleBankUpdatedAt = 0;
+  }
+
+  function saveSharedBibleBank(questions: BibleQuestion[], updatedAt = Date.now(), pushCloud = true) {
+    const clean = normalizeBibleQuestionsList(questions);
+    if (clean.length === 0) return;
+    globalBibleBank = clean;
+    sharedBibleBankUpdatedAt = updatedAt;
+    try {
+      localStorage.setItem(
+        SHARED_BIBLE_STORAGE_KEY,
+        JSON.stringify({
+          version: BIBLE_BANK_VERSION,
+          updatedAt,
+          questions: globalBibleBank
+        })
+      );
+    } catch {
+      // ignore storage quota errors
+    }
+    if (pushCloud && deviceConfig.firebaseUrl) {
+      fetch(`${deviceConfig.firebaseUrl}/b2ks_shared_bible_bank.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          version: BIBLE_BANK_VERSION,
+          updatedAt,
+          questions: globalBibleBank
+        })
+      }).catch(() => {});
+      fetch(`${deviceConfig.firebaseUrl}/b2ks_shared_bible_bank_meta.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          version: BIBLE_BANK_VERSION,
+          updatedAt,
+          count: globalBibleBank.length
+        })
+      }).catch(() => {});
+    }
+  }
 
   function normalizeSpeakingQuestionsList(raw: unknown): SpeakingBankQuestion[] {
     if (!Array.isArray(raw)) return [];
@@ -1123,6 +1203,7 @@ export function initB2KSGameEngine() {
   let state: B2KSState = createFreshDefaultState(localStorage.getItem(LAST_FAMILY_KEY) || deviceConfig.lastFamilyName || 'B2KS');
   loadSharedEnglishBank();
   loadSharedSpeakingBank();
+  loadSharedBibleBank();
 
   function getCurrentUser(): Member {
     return state.members.find((m) => m.id === state.currentUserId) || state.members[0];
@@ -1158,6 +1239,23 @@ export function initB2KSGameEngine() {
         cur.highScoreStreak = Math.max(0, Math.min(3, Math.round(Number(cur.highScoreStreak) || 0)));
       }
     });
+    if (!m.bibleProgress || typeof m.bibleProgress !== 'object') {
+      m.bibleProgress = { correctCounts: {}, streak: 0, totalCorrect: 0, totalAnswered: 0, updatedAt: 0 };
+    } else {
+      const rawCounts = m.bibleProgress.correctCounts && typeof m.bibleProgress.correctCounts === 'object' ? m.bibleProgress.correctCounts : {};
+      const cleanCounts: Record<string, number> = {};
+      Object.entries(rawCounts).forEach(([qid, val]) => {
+        const c = Math.max(0, Math.min(3, Math.round(Number(val) || 0)));
+        if (c > 0) cleanCounts[qid] = c;
+      });
+      m.bibleProgress = {
+        correctCounts: cleanCounts,
+        streak: Math.max(0, Math.round(Number(m.bibleProgress.streak) || 0)),
+        totalCorrect: Math.max(0, Math.round(Number(m.bibleProgress.totalCorrect) || 0)),
+        totalAnswered: Math.max(0, Math.round(Number(m.bibleProgress.totalAnswered) || 0)),
+        updatedAt: Number(m.bibleProgress.updatedAt) || 0
+      };
+    }
     if (!Array.isArray(m.pets)) m.pets = [];
     m.pets.forEach((p) => {
       if (!p.variant) p.variant = 'classic';
@@ -1494,6 +1592,34 @@ export function initB2KSGameEngine() {
     return out;
   }
 
+  function mergeBibleProgress(a?: BibleQuizProgress, b?: BibleQuizProgress): BibleQuizProgress {
+    const counts: Record<string, number> = {};
+    const addCounts = (src?: Record<string, number>) => {
+      if (!src || typeof src !== 'object') return;
+      Object.entries(src).forEach(([qid, cnt]) => {
+        const val = Math.max(0, Math.min(3, Math.round(Number(cnt) || 0)));
+        if (val > 0) counts[qid] = Math.max(counts[qid] || 0, val);
+      });
+    };
+    addCounts(a?.correctCounts);
+    addCounts(b?.correctCounts);
+    const tsA = Number(a?.updatedAt) || 0;
+    const tsB = Number(b?.updatedAt) || 0;
+    const streak =
+      tsB > tsA
+        ? Math.max(0, Math.round(Number(b?.streak) || 0))
+        : tsA > tsB
+          ? Math.max(0, Math.round(Number(a?.streak) || 0))
+          : Math.max(Number(a?.streak) || 0, Number(b?.streak) || 0);
+    return {
+      correctCounts: counts,
+      streak,
+      totalCorrect: Math.max(Number(a?.totalCorrect) || 0, Number(b?.totalCorrect) || 0),
+      totalAnswered: Math.max(Number(a?.totalAnswered) || 0, Number(b?.totalAnswered) || 0),
+      updatedAt: Math.max(tsA, tsB)
+    };
+  }
+
   function persistDurableMemberArchive() {
     try {
       const key = getMemberArchiveKey();
@@ -1536,6 +1662,7 @@ export function initB2KSGameEngine() {
           unlockedZooAnimals: unionStringLists(prev?.unlockedZooAnimals || [], m.unlockedZooAnimals || []),
           englishQuizHistory: mergeQuizHistory(prev?.englishQuizHistory || [], m.englishQuizHistory || []),
           englishProgress: mergeEnglishProgressMaps(prev?.englishProgress, m.englishProgress),
+          bibleProgress: mergeBibleProgress(prev?.bibleProgress, m.bibleProgress),
           comicReadStats: {
             ...(m.comicReadStats || { date: new Date().toDateString(), count: 0, lastReadAt: 0, completedIds: [] }),
             completedIds: unionStringLists(prev?.comicReadStats?.completedIds || [], m.comicReadStats?.completedIds || [])
@@ -1586,6 +1713,9 @@ export function initB2KSGameEngine() {
         }
         if (entry.englishProgress) {
           m.englishProgress = mergeEnglishProgressMaps(m.englishProgress, entry.englishProgress);
+        }
+        if (entry.bibleProgress) {
+          m.bibleProgress = mergeBibleProgress(m.bibleProgress, entry.bibleProgress);
         }
         if (Array.isArray(entry.unlockedAchievements)) {
           m.unlockedAchievements = mergeAchievementsList(m.unlockedAchievements, entry.unlockedAchievements);
@@ -2253,6 +2383,10 @@ export function initB2KSGameEngine() {
       const el = document.getElementById(id);
       if (el) el.textContent = txt;
     });
+    const verEl = document.getElementById('guide-app-version');
+    if (verEl) verEl.textContent = APP_VERSION;
+    const updEl = document.getElementById('guide-updated-at');
+    if (updEl) updEl.textContent = APP_UPDATED_AT;
     const famBadge = document.getElementById('hud-family-badge');
     if (famBadge) famBadge.textContent = `🏡 ${brand}`;
   }
@@ -7410,6 +7544,194 @@ export function initB2KSGameEngine() {
             : `💡 Độ chính xác ${acc}% (< 80%) → +0⭐. Chuỗi 80%+ đặt lại về 0/5, hãy thử lại nhé!`
       };
     },
+    getGlobalBibleBank: () => globalBibleBank,
+    addBibleQuestion: (input: Omit<BibleQuestion, 'id' | 'custom'> & { id?: string }) => {
+      const qText = String(input.q || '').trim();
+      const opts = Array.isArray(input.opts) ? input.opts.map((o) => String(o || '').trim()) : [];
+      if (!qText || opts.length < 4 || opts.slice(0, 4).some((o) => !o)) {
+        return { ok: false, msg: '⚠️ Vui lòng nhập đầy đủ câu hỏi và 4 đáp án A, B, C, D!' };
+      }
+      const bookEn = String(input.bookEn || 'Genesis').trim();
+      const bookVi = resolveVietnameseBookName(bookEn, input.bookVi);
+      const ans = Math.max(0, Math.min(3, Math.round(Number(input.ans) || 0))) as 0 | 1 | 2 | 3;
+      const newQ: BibleQuestion = {
+        id: (input.id && input.id.trim()) || `bible_c_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
+        category: input.category || 'fact',
+        ...(input.visualId ? { visualId: input.visualId } : {}),
+        q: qText,
+        opts: [opts[0], opts[1], opts[2], opts[3]],
+        ans,
+        bookEn,
+        bookVi,
+        ref: String(input.ref || '1:1').trim(),
+        verseEn: String(input.verseEn || '').trim(),
+        verseVi: String(input.verseVi || '').trim(),
+        custom: true
+      };
+      const nextBank = [newQ, ...globalBibleBank];
+      saveSharedBibleBank(nextBank, Date.now(), true);
+      notifySubscribers();
+      return { ok: true, msg: `✅ Đã thêm câu hỏi Kinh Thánh (${bookEn} ${newQ.ref})!`, question: newQ };
+    },
+    deleteBibleQuestion: (id: string) => {
+      if (globalBibleBank.length <= 5) {
+        return { ok: false, msg: '⚠️ Cần giữ lại tối thiểu 5 câu trong ngân hàng Đố Kinh Thánh!' };
+      }
+      const nextBank = globalBibleBank.filter((q) => q.id !== id);
+      if (nextBank.length === globalBibleBank.length) {
+        return { ok: false, msg: 'Không tìm thấy câu hỏi cần xóa!' };
+      }
+      saveSharedBibleBank(nextBank, Date.now(), true);
+      notifySubscribers();
+      return { ok: true, msg: `🗑️ Đã xóa câu hỏi Kinh Thánh (${nextBank.length} câu còn lại).` };
+    },
+    importBibleBankQuestions: (incoming: BibleQuestion[], mode: 'merge' | 'replace' = 'merge') => {
+      const clean = normalizeBibleQuestionsList(incoming);
+      if (clean.length === 0) {
+        return {
+          ok: false,
+          added: 0,
+          updated: 0,
+          total: globalBibleBank.length,
+          msg: '⚠️ Không có câu hỏi Kinh Thánh hợp lệ nào trong file CSV!'
+        };
+      }
+      let nextBank: BibleQuestion[] = [];
+      let added = 0;
+      let updated = 0;
+      if (mode === 'replace') {
+        nextBank = clean;
+        added = clean.length;
+      } else {
+        const byId = new Map<string, BibleQuestion>();
+        globalBibleBank.forEach((q) => byId.set(q.id, { ...q }));
+        clean.forEach((q) => {
+          if (byId.has(q.id)) updated += 1;
+          else added += 1;
+          byId.set(q.id, q);
+        });
+        nextBank = Array.from(byId.values());
+      }
+      saveSharedBibleBank(nextBank, Date.now(), true);
+      notifySubscribers();
+      return {
+        ok: true,
+        added,
+        updated,
+        total: globalBibleBank.length,
+        msg:
+          mode === 'replace'
+            ? `✅ Đã thay thế Ngân hàng Đố Kinh Thánh (${globalBibleBank.length} câu)!`
+            : `✅ Đã nhập CSV Đố Kinh Thánh (+${added} mới, cập nhật ${updated} · Tổng: ${globalBibleBank.length} câu)!`
+      };
+    },
+    resetBibleBankToDefault: () => {
+      const fresh = DEFAULT_BIBLE_BANK.map((q) => ({ ...q }));
+      saveSharedBibleBank(fresh, Date.now(), true);
+      notifySubscribers();
+      return {
+        ok: true,
+        total: globalBibleBank.length,
+        msg: `↺ Đã khôi phục bộ 200 câu Đố Kinh Thánh chuẩn (NIV & Truyền Thống 1925)!`
+      };
+    },
+    submitBibleAnswer: (questionId: string, selectedIndex: number) => {
+      const me = getCurrentUser();
+      ensureMemberProps(me);
+      const q = globalBibleBank.find((item) => item.id === questionId) || globalBibleBank[0];
+      const prog = me.bibleProgress!;
+      const now = Date.now();
+      const prevCount = Math.max(0, Math.min(3, Math.round(Number(prog.correctCounts[q.id]) || 0)));
+
+      if (prevCount >= 3) {
+        return {
+          correct: true,
+          awarded: 0,
+          baseAwarded: 0,
+          streakBonus: 0,
+          newStreak: prog.streak || 0,
+          questionCorrectCount: 3,
+          retired: true,
+          bookEn: q.bookEn,
+          bookVi: q.bookVi,
+          ref: q.ref,
+          verseEn: q.verseEn,
+          verseVi: q.verseVi,
+          msg: '✅ Câu hỏi này bạn đã trả lời đúng đủ 3 lần nên sẽ không hỏi lại nữa!'
+        };
+      }
+
+      prog.totalAnswered = (prog.totalAnswered || 0) + 1;
+      const isCorrect = Number(selectedIndex) === Number(q.ans);
+      let baseAwarded = 0;
+      let streakBonus = 0;
+      let actualAwarded = 0;
+      let nextCount = prevCount;
+
+      if (isCorrect) {
+        nextCount = Math.min(3, prevCount + 1);
+        prog.correctCounts[q.id] = nextCount;
+        prog.totalCorrect = (prog.totalCorrect || 0) + 1;
+        prog.streak = (prog.streak || 0) + 1;
+
+        baseAwarded = 1;
+        streakBonus = prog.streak > 0 && prog.streak % 3 === 0 ? 1 : 0;
+        const rawGain = baseAwarded + streakBonus;
+
+        if (!isParent(me)) {
+          me.points += rawGain;
+          actualAwarded = rawGain;
+        } else {
+          actualAwarded = addParentPointsWithAllowanceCap(me, rawGain);
+        }
+        me.pointsUpdatedAt = now;
+
+        logActivity({
+          memberId: me.id,
+          memberName: me.name,
+          action: 'bible_done',
+          detail: `Đố Kinh Thánh (${q.bookVi} ${q.ref}) — Đúng lần ${nextCount}/3${streakBonus > 0 ? ' · Thưởng chuỗi 3 câu liên tiếp!' : ''} (+${actualAwarded}⭐)`,
+          pointsDelta: actualAwarded
+        });
+
+        AudioEngine.playCoin();
+        if (streakBonus > 0) {
+          triggerConfetti();
+        }
+        triggerSpeechBubble(me, `Amen! +${actualAwarded}⭐ (${q.bookEn} ${q.ref})`, true);
+      } else {
+        prog.streak = 0;
+        AudioEngine.playError();
+      }
+
+      prog.updatedAt = now;
+      me.memberUpdatedAt = now;
+      touchMemberData(me, now);
+      updateHUD();
+      saveGame(true);
+      notifySubscribers();
+
+      const retired = nextCount >= 3;
+      return {
+        correct: isCorrect,
+        awarded: actualAwarded,
+        baseAwarded,
+        streakBonus,
+        newStreak: prog.streak,
+        questionCorrectCount: nextCount,
+        retired,
+        bookEn: q.bookEn,
+        bookVi: q.bookVi,
+        ref: q.ref,
+        verseEn: q.verseEn,
+        verseVi: q.verseVi,
+        msg: isCorrect
+          ? streakBonus > 0
+            ? `🌟 Tuyệt vời! Đúng 3 câu liên tiếp: +1⭐ + 1⭐ thưởng (+${actualAwarded}⭐)!`
+            : `✅ Chính xác! Nhận +${actualAwarded}⭐ (${nextCount}/3 lần để hoàn thành câu này).`
+          : `💡 Chưa chính xác rồi — hãy mở Kinh Thánh sách ${q.bookEn} (${q.bookVi}) để tìm nhé!`
+      };
+    },
     adminListNeighborhoods: async () => {
       if (getActiveFamilySlug() !== 'b2ks' || getCurrentUser().role !== 'Bố') return [];
       const fbUrl = deviceConfig.firebaseUrl;
@@ -8373,6 +8695,7 @@ export function initB2KSGameEngine() {
       const pLab = coord('lab', 1540, 790);
       const pSalon = coord('salon', 1760, 975);
       const pFlea = coord('flea_market', 1980, 790);
+      const pChurch = coord('church', 2345, 955);
       const pFountain = coord('fountain_plaza', 280, 1420);
       const pZoo = coord('zoo', 820, 1485);
       const pRead = coord('reading_corner', 1540, 1400);
@@ -8387,6 +8710,7 @@ export function initB2KSGameEngine() {
       items.push({ x: pArcade.x, y: pArcade.y, radius: 92, label: '🕹️ Vào Khu Vui Chơi (1⭐/lượt)', action: () => openModal('arcade-modal') });
       items.push({ x: pLab.x, y: pLab.y, radius: 90, label: '🧪 Vào Phòng Thí Nghiệm (10⭐)', action: () => openModal('invention-lab-modal') });
       items.push({ x: pFlea.x, y: pFlea.y, radius: 92, label: `🎪 Vào Chợ Trời ${brand}`, action: () => openReactModal('flea_market') });
+      items.push({ x: pChurch.x, y: pChurch.y, radius: 95, label: '⛪ Vào Nhà Thờ Tin Lành (Đố Kinh Thánh)', action: () => openReactModal('church_bible') });
       items.push({ x: pSalon.x, y: pSalon.y, radius: 88, label: '💇 Salon Tóc', action: () => openModal('salon-modal') });
 
       foreignNpcStates.forEach((npc) => {
@@ -8535,6 +8859,7 @@ export function initB2KSGameEngine() {
   function loadGame(overrideFamilyName?: string) {
     loadSharedEnglishBank();
     loadSharedSpeakingBank();
+    loadSharedBibleBank();
     const famName = (overrideFamilyName ?? localStorage.getItem(LAST_FAMILY_KEY) ?? deviceConfig.lastFamilyName ?? 'B2KS').trim() || 'B2KS';
     state = createFreshDefaultState(famName);
     hasHydratedRemote = false;
@@ -8861,6 +9186,7 @@ export function initB2KSGameEngine() {
             const mergedZoo = unionStringLists(lm.unlockedZooAnimals, rm.unlockedZooAnimals);
             const mergedQuiz = mergeQuizHistory(lm.englishQuizHistory, rm.englishQuizHistory);
             const mergedEngProg = mergeEnglishProgressMaps(lm.englishProgress, rm.englishProgress);
+            const mergedBibleProg = mergeBibleProgress(lm.bibleProgress, rm.bibleProgress);
             const mergedComics = unionStringLists(
               lm.comicReadStats?.completedIds || [],
               rm.comicReadStats?.completedIds || []
@@ -8894,6 +9220,7 @@ export function initB2KSGameEngine() {
               rm.unlockedZooAnimals = mergedZoo;
               rm.englishQuizHistory = mergedQuiz;
               rm.englishProgress = mergedEngProg;
+              rm.bibleProgress = mergedBibleProg;
               rm.customLabItems = mergedLab;
               rm.inventory = mergedInv;
               rm.unlockedAchievements = mergedAch;
@@ -8958,6 +9285,7 @@ export function initB2KSGameEngine() {
                 unlockedZooAnimals: mergedZoo,
                 englishQuizHistory: mergedQuiz,
                 englishProgress: mergedEngProg,
+                bibleProgress: mergedBibleProg,
                 customLabItems: mergedLab,
                 inventory: mergedInv,
                 unlockedAchievements: mergedAch,
@@ -8977,6 +9305,7 @@ export function initB2KSGameEngine() {
               rm.unlockedZooAnimals = mergedZoo;
               rm.englishQuizHistory = mergedQuiz;
               rm.englishProgress = mergedEngProg;
+              rm.bibleProgress = mergedBibleProg;
               rm.customLabItems = mergedLab;
               rm.inventory = mergedInv;
               rm.unlockedAchievements = mergedAch;
@@ -9040,6 +9369,11 @@ export function initB2KSGameEngine() {
           const mergedEngProg = mergeEnglishProgressMaps(m.englishProgress, remoteM.englishProgress);
           if (JSON.stringify(mergedEngProg) !== JSON.stringify(m.englishProgress)) {
             m.englishProgress = mergedEngProg;
+            changed = true;
+          }
+          const mergedBibleProg = mergeBibleProgress(m.bibleProgress, remoteM.bibleProgress);
+          if (JSON.stringify(mergedBibleProg) !== JSON.stringify(m.bibleProgress)) {
+            m.bibleProgress = mergedBibleProg;
             changed = true;
           }
           const mergedAch = mergeAchievementsList(m.unlockedAchievements, remoteM.unlockedAchievements);
@@ -9181,6 +9515,30 @@ export function initB2KSGameEngine() {
               .then((fullSpk) => {
                 if (fullSpk && Array.isArray(fullSpk.sentences) && fullSpk.sentences.length > 0) {
                   saveSharedSpeakingBank(fullSpk.sentences, Number(fullSpk.updatedAt) || Date.now(), false);
+                  notifySubscribers();
+                }
+              })
+              .catch(() => {});
+          }
+        })
+        .catch(() => {});
+    }
+
+    if (nowMetaCheck - lastSharedBibleMetaCheckAt >= 15000) {
+      lastSharedBibleMetaCheckAt = nowMetaCheck;
+      fetch(`${deviceConfig.firebaseUrl}/b2ks_shared_bible_bank_meta.json`, { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((meta) => {
+          if (
+            meta &&
+            Number(meta.version) >= BIBLE_BANK_VERSION &&
+            Number(meta.updatedAt || 0) > sharedBibleBankUpdatedAt
+          ) {
+            fetch(`${deviceConfig.firebaseUrl}/b2ks_shared_bible_bank.json`, { cache: 'no-store' })
+              .then((r2) => r2.json())
+              .then((fullBible) => {
+                if (fullBible && Array.isArray(fullBible.questions) && fullBible.questions.length > 0) {
+                  saveSharedBibleBank(fullBible.questions, Number(fullBible.updatedAt) || Date.now(), false);
                   notifySubscribers();
                 }
               })

@@ -229,6 +229,13 @@ function makeSphere(THREE, r, ws, hs, mat, castShadow = true, receiveShadow = tr
   return m;
 }
 
+function makeCone(THREE, r, h, radialSegs, mat, castShadow = true, receiveShadow = true) {
+  const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, radialSegs), mat);
+  m.castShadow = castShadow;
+  m.receiveShadow = receiveShadow;
+  return m;
+}
+
 /**
  * Dựng 5 loại cây Low-poly 3D chi tiết (nhiều tán, cành nhánh, bồn cây/quả)
  */
@@ -1151,6 +1158,82 @@ function buildShopBuilding3D(THREE, mats, x, z, type, shape, isNight) {
     eTrunk.position.set(0.3, 0.85, -0.2);
     eTrunk.rotation.x = 0.55;
     g.add(gBody, gNeck, gHead, eBody, eTrunk);
+  } else if (type === 'church') {
+    // Clean Protestant Church: White sanctuary walls, pitched roof, ONLY "TIN LÀNH" sign on top + Cross above, NO pictures/statues
+    const whiteMat = mats.get('#FFFFFF', { roughness: 0.65 });
+    const trimMat = mats.get('#E2E8F0', { roughness: 0.7 });
+    const slateRoofMat = mats.get('#334155', { roughness: 0.72 });
+    const darkSignMat = mats.get('#0F172A', { roughness: 0.45 });
+    const brassMat = mats.get('#FACC15', { roughness: 0.25, metalness: 0.65 });
+    const doorWoodMat = mats.get('#78350F', { roughness: 0.72 });
+
+    // Stone steps at front entrance
+    const step1 = makeBox(THREE, 3.6, 0.22, 1.4, trimMat);
+    step1.position.set(0, 0.18, 2.75);
+    const step2 = makeBox(THREE, 3.0, 0.22, 0.9, trimMat);
+    step2.position.set(0, 0.36, 2.45);
+    g.add(step1, step2);
+
+    // Main sanctuary hall
+    const plinth = makeBox(THREE, 9.2, 0.52, 5.6, trimMat);
+    plinth.position.set(0, 0.35, -0.35);
+    const sanctuary = makeBox(THREE, 8.8, 4.3, 5.2, whiteMat);
+    sanctuary.position.set(0, 2.35, -0.35);
+    g.add(plinth, sanctuary);
+
+    // Pitched triangular gable roof
+    const gableRoof = makeCone(THREE, 4.9, 2.25, 4, slateRoofMat);
+    gableRoof.rotation.y = Math.PI / 4;
+    gableRoof.scale.set(1.42, 1.0, 0.92);
+    gableRoof.position.set(0, 5.55, -0.35);
+    g.add(gableRoof);
+
+    // Clean front tower / peak supporting the "TIN LÀNH" sign & Cross
+    const peakWall = makeBox(THREE, 3.4, 2.2, 2.0, whiteMat);
+    peakWall.position.set(0, 5.35, 1.35);
+    const peakCap = makeBox(THREE, 3.65, 0.24, 2.2, slateRoofMat);
+    peakCap.position.set(0, 6.5, 1.35);
+    g.add(peakWall, peakCap);
+
+    // Plain double wooden entrance doors + clear frosted side lancet windows (zero images/icons)
+    addRecessedDoor3D(THREE, mats, g, 0, 1.55, 2.25, 1.95, 2.35, darkSignMat, doorWoodMat);
+    [-2.85, 2.85].forEach((wx) => addFramedWindow3D(THREE, mats, g, wx, 2.35, 2.25, 1.15, 2.1, slateRoofMat, winMat));
+
+    // Signboard on top peak: ONLY the 2 words "TIN LÀNH"
+    const signCanvas = document.createElement('canvas');
+    signCanvas.width = 512;
+    signCanvas.height = 128;
+    const sCtx = signCanvas.getContext('2d');
+    if (sCtx) {
+      sCtx.fillStyle = '#0F172A';
+      sCtx.fillRect(0, 0, 512, 128);
+      sCtx.strokeStyle = '#FACC15';
+      sCtx.lineWidth = 6;
+      sCtx.strokeRect(8, 8, 496, 112);
+      sCtx.fillStyle = '#FACC15';
+      sCtx.font = 'bold 68px sans-serif';
+      sCtx.textAlign = 'center';
+      sCtx.textBaseline = 'middle';
+      sCtx.fillText('TIN LÀNH', 256, 66);
+    }
+    const signTex = new THREE.CanvasTexture(signCanvas);
+    signTex.colorSpace = THREE.SRGBColorSpace;
+    const signPlateMat = new THREE.MeshStandardMaterial({ map: signTex, roughness: 0.35 });
+    const signBack = makeBox(THREE, 3.45, 0.92, 0.22, darkSignMat);
+    signBack.position.set(0, 7.08, 1.55);
+    const signFront = new THREE.Mesh(new THREE.PlaneGeometry(3.3, 0.82), signPlateMat);
+    signFront.position.set(0, 7.08, 1.67);
+    const signRear = new THREE.Mesh(new THREE.PlaneGeometry(3.3, 0.82), signPlateMat);
+    signRear.rotation.y = Math.PI;
+    signRear.position.set(0, 7.08, 1.43);
+    g.add(signBack, signFront, signRear);
+
+    // Plain Golden Cross (Thập tự giá) directly above "TIN LÀNH"
+    const crossVert = makeBox(THREE, 0.24, 1.75, 0.22, brassMat);
+    crossVert.position.set(0, 8.42, 1.55);
+    const crossHoriz = makeBox(THREE, 1.15, 0.24, 0.22, brassMat);
+    crossHoriz.position.set(0, 8.72, 1.55);
+    g.add(crossVert, crossHoriz);
   }
   return g;
 }
@@ -4633,6 +4716,7 @@ export async function createScene3D(canvasEl) {
       { id: 'english_center', fx: 250, fy: 925, type: 'english', title: `🎓 Trung Tâm Tiếng Anh ${brand}` },
       { id: 'fashion', fx: 600, fy: 945, type: 'fashion', title: '👗 Cửa Hàng Thời Trang' },
       { id: 'salon', fx: 1760, fy: 975, type: 'salon', title: '💇 Salon Tóc Nghệ Thuật' },
+      { id: 'church', fx: 2345, fy: 955, type: 'church', title: 'TIN LÀNH' },
       { id: 'zoo', fx: 820, fy: 1485, type: 'zoo', title: `🦁 Sở Thú Ảo ${brand} Zoo` },
     ];
     shopDefs.forEach((sd) => {
@@ -4698,8 +4782,8 @@ export async function createScene3D(canvasEl) {
     const treeCoords = [
       [60, 290, 'sakura'], [285, 290, 'pine'], [490, 315, 'orange'], [640, 320, 'oak'], [1065, 310, 'sakura'],
       [1365, 300, 'pine'], [1760, 315, 'orange'], [2180, 330, 'palm'], [80, 730, 'oak'], [420, 685, 'sakura'],
-      [770, 745, 'pine'], [1360, 740, 'orange'], [2220, 760, 'palm'], [90, 1290, 'sakura'], [560, 1340, 'oak'],
-      [1080, 1360, 'pine'], [1350, 1290, 'orange'], [2340, 1490, 'palm'], [1830, 1320, 'sakura'], [2430, 790, 'oak'],
+      [770, 745, 'pine'], [1360, 740, 'orange'], [2185, 760, 'palm'], [90, 1290, 'sakura'], [560, 1340, 'oak'],
+      [1080, 1360, 'pine'], [1350, 1290, 'orange'], [2340, 1490, 'palm'], [1830, 1320, 'sakura'], [2468, 780, 'oak'],
     ];
     treeCoords.forEach(([tx, ty, tk]) => {
       const tree = buildTree3D(THREE, mats, tk, tx * WORLD_SCALE, ty * WORLD_SCALE, true);
@@ -4736,7 +4820,7 @@ export async function createScene3D(canvasEl) {
     });
 
     // Street Lamps
-    const lampX = [250, 680, 1080, 1420, 1820, 2240];
+    const lampX = [250, 680, 1080, 1420, 1820, 2205];
     [425, 985].forEach((ly) => {
       lampX.forEach((lx) => {
         grp.add(buildStreetLamp3D(THREE, mats, lx * WORLD_SCALE, ly * WORLD_SCALE, lighting.isNight));

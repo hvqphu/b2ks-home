@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   Award,
   BarChart3,
+  BookOpen,
   CheckCircle2,
   Compass,
   Download,
@@ -38,6 +39,8 @@ import {
   ActivityConfigItem,
   B2KSBridge,
   BgmThemeId,
+  BibleQuestion,
+  BibleQuestionCategory,
   BuildingLayoutOverride,
   BuildingShape,
   CrossWorldRequest,
@@ -77,6 +80,8 @@ import {
   getTotalCompletedTasksForMember,
   parseSpeakingBankCsv,
 } from '../game/speakingAndAchievements';
+import { BIBLE_BOOK_PAIRS } from '../game/bibleGlossary';
+import { exportBibleBankToCsv, parseBibleBankCsv } from '../game/bibleQuizData';
 
 interface Props {
   bridge: B2KSBridge;
@@ -84,7 +89,7 @@ interface Props {
 }
 
 export const ParentalDashboardModal: React.FC<Props> = ({ bridge, onClose }) => {
-  const [tab, setTab] = useState<'charts' | 'achievements' | 'rewards' | 'quests' | 'english' | 'speaking' | 'activities' | 'family_map' | 'pets' | 'logs'>('charts');
+  const [tab, setTab] = useState<'charts' | 'achievements' | 'rewards' | 'quests' | 'english' | 'speaking' | 'bible' | 'activities' | 'family_map' | 'pets' | 'logs'>('charts');
   const [, setTick] = useState(0);
   const [pointInputs, setPointInputs] = useState<Record<string, string>>({});
   const [pointReasons, setPointReasons] = useState<Record<string, string>>({});
@@ -140,6 +145,24 @@ export const ParentalDashboardModal: React.FC<Props> = ({ bridge, onClose }) => 
   const [confirmResetSpeak, setConfirmResetSpeak] = useState(false);
   const speakCsvInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Shared Bible Quiz Bank state (NIV & Truyền Thống 1925)
+  const [bibleCatFilter, setBibleCatFilter] = useState<'all' | BibleQuestionCategory>('all');
+  const [bibleSearch, setBibleSearch] = useState('');
+  const [bibleCsvMode, setBibleCsvMode] = useState<'merge' | 'replace'>('merge');
+  const [confirmResetBible, setConfirmResetBible] = useState(false);
+  const bibleCsvInputRef = useRef<HTMLInputElement | null>(null);
+  const [newBibleCat, setNewBibleCat] = useState<BibleQuestionCategory>('fact');
+  const [newBibleQ, setNewBibleQ] = useState('');
+  const [newBibleOptA, setNewBibleOptA] = useState('');
+  const [newBibleOptB, setNewBibleOptB] = useState('');
+  const [newBibleOptC, setNewBibleOptC] = useState('');
+  const [newBibleOptD, setNewBibleOptD] = useState('');
+  const [newBibleAns, setNewBibleAns] = useState<0 | 1 | 2 | 3>(0);
+  const [newBibleBookEn, setNewBibleBookEn] = useState('Genesis');
+  const [newBibleRef, setNewBibleRef] = useState('');
+  const [newBibleVerseEn, setNewBibleVerseEn] = useState('');
+  const [newBibleVerseVi, setNewBibleVerseVi] = useState('');
+
   // Kid Achievements view state inside Parental Dashboard
   const [achKidId, setAchKidId] = useState<string>('');
   const [achCatFilter, setAchCatFilter] = useState<'all' | AchievementCategory>('all');
@@ -152,6 +175,7 @@ export const ParentalDashboardModal: React.FC<Props> = ({ bridge, onClose }) => 
   const isB2KSFamily = (bridge.getActiveFamilySlug?.() || 'b2ks') === 'b2ks';
   const sharedEnglishBank = bridge.getGlobalEnglishBank?.() || state.englishQuestions || [];
   const sharedSpeakingBank: SpeakingBankQuestion[] = bridge.getGlobalSpeakingBank?.() || [];
+  const sharedBibleBank: BibleQuestion[] = bridge.getGlobalBibleBank?.() || [];
   const kids = state.members.filter((m) => !bridge.isParent(m));
   const pendingRequests = state.crossWorldRequests.filter((r) => r.status === 'pending');
 
@@ -575,6 +599,79 @@ export const ParentalDashboardModal: React.FC<Props> = ({ bridge, onClose }) => 
     }
   };
 
+  const handleExportBibleCsv = () => {
+    const csvContent = exportBibleBankToCsv(sharedBibleBank);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `b2ks-bible-quiz-bank-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.setTimeout(() => URL.revokeObjectURL(url), 10000);
+    bridge.playSuccess();
+    bridge.showToast(`📤 Đã xuất ${sharedBibleBank.length} câu Đố Kinh Thánh ra file CSV (UTF-8)!`);
+  };
+
+  const handleImportBibleCsvFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = parseBibleBankCsv(text);
+      if (parsed.questions.length === 0) {
+        bridge.playError();
+        bridge.showToast('⚠️ File CSV Đố Kinh Thánh không có câu hợp lệ! Cần các cột id,category,q,optA..D,ans,bookEn,bookVi,ref,verseEn,verseVi.');
+        return;
+      }
+      const res = bridge.importBibleBankQuestions?.(parsed.questions, bibleCsvMode);
+      if (res) {
+        bridge.showToast(res.msg + (parsed.errors > 0 ? ` (Bỏ qua ${parsed.errors} dòng lỗi)` : ''));
+        if (res.ok) bridge.playSuccess();
+        else bridge.playError();
+        forceRefresh();
+      }
+    } catch {
+      bridge.playError();
+      bridge.showToast('❌ Không thể đọc file CSV Đố Kinh Thánh đã chọn!');
+    }
+  };
+
+  const handleAddBibleQuestion = (e: React.FormEvent) => {
+    e.preventDefault();
+    const pair = BIBLE_BOOK_PAIRS.find((b) => b.en === newBibleBookEn);
+    const res = bridge.addBibleQuestion?.({
+      category: newBibleCat,
+      q: newBibleQ.trim(),
+      opts: [newBibleOptA.trim(), newBibleOptB.trim(), newBibleOptC.trim(), newBibleOptD.trim()],
+      ans: newBibleAns,
+      bookEn: newBibleBookEn,
+      bookVi: pair?.vi || newBibleBookEn,
+      ref: newBibleRef.trim() || '1:1',
+      verseEn: newBibleVerseEn.trim(),
+      verseVi: newBibleVerseVi.trim(),
+    });
+    if (res) {
+      bridge.showToast(res.msg);
+      if (res.ok) {
+        bridge.playSuccess();
+        setNewBibleQ('');
+        setNewBibleOptA('');
+        setNewBibleOptB('');
+        setNewBibleOptC('');
+        setNewBibleOptD('');
+        setNewBibleRef('');
+        setNewBibleVerseEn('');
+        setNewBibleVerseVi('');
+        forceRefresh();
+      } else {
+        bridge.playError();
+      }
+    }
+  };
+
   const [downloadingZip, setDownloadingZip] = useState(false);
 
   const handleDownloadGithubZip = async () => {
@@ -825,6 +922,16 @@ export const ParentalDashboardModal: React.FC<Props> = ({ bridge, onClose }) => 
           >
             <MessageSquare className="w-3.5 h-3.5" />
             Ngân Hàng Speaking ({sharedSpeakingBank.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('bible')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 ${
+              tab === 'bible' ? 'bg-[#0369A1] text-white' : 'bg-white text-[#2C3E50]'
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            Đố Kinh Thánh ({sharedBibleBank.length})
           </button>
           {isB2KSFamily && (
             <button
@@ -1718,6 +1825,288 @@ export const ParentalDashboardModal: React.FC<Props> = ({ bridge, onClose }) => 
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {tab === 'bible' && (
+            <div className="space-y-4">
+              {/* Bible Bank Header & CSV Controls */}
+              <div className="rounded-xl border-2 border-[#2C3E50] bg-sky-50 p-3.5 space-y-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <h3 className="font-extrabold text-sm text-sky-950">
+                      ⛪ Ngân Hàng Câu Hỏi Đố Kinh Thánh (NIV &amp; Truyền Thống 1925)
+                    </h3>
+                    <p className="text-xs text-sky-800 mt-0.5">
+                      Bộ câu hỏi cho Nhà Thờ Tin Lành (6–16 tuổi). Đúng mỗi câu +1⭐, đúng 3 câu liên tiếp thưởng +1⭐; trả lời đúng đủ 3 lần sẽ tự ẩn khỏi bộ câu của thành viên đó.
+                    </p>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-lg bg-white border-2 border-sky-500 text-xs font-extrabold text-sky-900 tabular-nums shrink-0">
+                    📖 {sharedBibleBank.length} câu
+                  </span>
+                </div>
+
+                {/* Kids Bible Progress Summary */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {kids.map((kid) => {
+                    const bp = kid.bibleProgress || { correctCounts: {}, streak: 0, totalCorrect: 0, totalAnswered: 0 };
+                    const mastered = sharedBibleBank.filter((q) => (bp.correctCounts?.[q.id] || 0) >= 3).length;
+                    return (
+                      <div key={kid.id} className="rounded-lg border border-sky-200 bg-white px-3 py-2 flex items-center justify-between text-xs">
+                        <div>
+                          <div className="font-extrabold text-slate-900">{kid.name}</div>
+                          <div className="text-[11px] text-slate-600">
+                            Đúng {bp.totalCorrect || 0}/{bp.totalAnswered || 0} lượt · Chuỗi: {bp.streak || 0}
+                          </div>
+                        </div>
+                        <div className="text-right font-extrabold text-sky-800 tabular-nums">
+                          {mastered}/{sharedBibleBank.length} đã thuộc (3/3)
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* CSV Controls */}
+                <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-sky-200">
+                  <button
+                    type="button"
+                    onClick={handleExportBibleCsv}
+                    className="btn btn-sm btn-primary"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Xuất CSV ({sharedBibleBank.length} câu)</span>
+                  </button>
+
+                  <div className="flex items-center gap-1.5 bg-white border-2 border-[#2C3E50] rounded-lg px-2 py-1">
+                    <select
+                      value={bibleCsvMode}
+                      onChange={(e) => setBibleCsvMode(e.target.value as 'merge' | 'replace')}
+                      className="text-[11px] font-bold text-slate-700 bg-transparent focus:outline-none cursor-pointer"
+                    >
+                      <option value="merge">Chế độ: Gộp &amp; cập nhật theo ID</option>
+                      <option value="replace">Chế độ: Thay thế toàn bộ</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => bibleCsvInputRef.current?.click()}
+                      className="btn btn-sm btn-accent"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Nhập CSV</span>
+                    </button>
+                    <input
+                      ref={bibleCsvInputRef}
+                      type="file"
+                      accept=".csv,text/csv"
+                      onChange={handleImportBibleCsvFile}
+                      className="hidden"
+                    />
+                  </div>
+
+                  {confirmResetBible ? (
+                    <div className="flex items-center gap-1 ml-auto">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const res = bridge.resetBibleBankToDefault?.();
+                          setConfirmResetBible(false);
+                          if (res) {
+                            bridge.showToast(res.msg);
+                            bridge.playSuccess();
+                            forceRefresh();
+                          }
+                        }}
+                        className="btn btn-sm btn-danger"
+                      >
+                        Xác nhận khôi phục 200 câu
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmResetBible(false)}
+                        className="btn btn-sm"
+                        style={{ background: '#64748B' }}
+                      >
+                        Hủy
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmResetBible(true)}
+                      className="btn btn-sm ml-auto"
+                      style={{ background: '#475569' }}
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Khôi phục 200 câu chuẩn</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Add Question Form */}
+              <form
+                onSubmit={handleAddBibleQuestion}
+                className="rounded-xl border-2 border-[#2C3E50] bg-white p-3.5 space-y-2.5"
+              >
+                <div className="font-bold text-xs sm:text-sm text-sky-950 flex items-center gap-1.5">
+                  <PlusCircle className="w-4 h-4 text-sky-600" />
+                  <span>Thêm Câu Hỏi Kinh Thánh Mới</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                  <select
+                    value={newBibleCat}
+                    onChange={(e) => setNewBibleCat(e.target.value as BibleQuestionCategory)}
+                    className="px-2.5 py-1.5 rounded-lg border-2 border-[#2C3E50] bg-white text-xs font-bold"
+                  >
+                    <option value="fact">Dữ kiện (fact)</option>
+                    <option value="verse">Câu gốc (verse)</option>
+                    <option value="parable">Ẩn dụ (parable)</option>
+                    <option value="image">Hình ảnh (image)</option>
+                  </select>
+                  <select
+                    value={newBibleBookEn}
+                    onChange={(e) => setNewBibleBookEn(e.target.value)}
+                    className="px-2.5 py-1.5 rounded-lg border-2 border-[#2C3E50] bg-white text-xs font-bold"
+                  >
+                    {BIBLE_BOOK_PAIRS.map((b) => (
+                      <option key={b.en} value={b.en}>
+                        {b.en} ({b.vi})
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    value={newBibleRef}
+                    onChange={(e) => setNewBibleRef(e.target.value)}
+                    placeholder="Địa chỉ (VD: 3:16)"
+                    className="px-2.5 py-1.5 rounded-lg border-2 border-[#2C3E50] text-xs font-semibold"
+                  />
+                  <select
+                    value={newBibleAns}
+                    onChange={(e) => setNewBibleAns(Number(e.target.value) as 0 | 1 | 2 | 3)}
+                    className="px-2.5 py-1.5 rounded-lg border-2 border-[#2C3E50] bg-white text-xs font-bold"
+                  >
+                    <option value={0}>Đáp án đúng: A</option>
+                    <option value={1}>Đáp án đúng: B</option>
+                    <option value={2}>Đáp án đúng: C</option>
+                    <option value={3}>Đáp án đúng: D</option>
+                  </select>
+                </div>
+                <input
+                  type="text"
+                  value={newBibleQ}
+                  onChange={(e) => setNewBibleQ(e.target.value)}
+                  placeholder="Câu hỏi tiếng Anh (có tên riêng tiếng Việt trong ngoặc, VD: Who was Moses (Môi-se)?)"
+                  className="w-full px-2.5 py-1.5 rounded-lg border-2 border-[#2C3E50] text-xs font-bold"
+                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input type="text" value={newBibleOptA} onChange={(e) => setNewBibleOptA(e.target.value)} placeholder="Đáp án A" className="px-2.5 py-1.5 rounded-lg border border-slate-400 text-xs" />
+                  <input type="text" value={newBibleOptB} onChange={(e) => setNewBibleOptB(e.target.value)} placeholder="Đáp án B" className="px-2.5 py-1.5 rounded-lg border border-slate-400 text-xs" />
+                  <input type="text" value={newBibleOptC} onChange={(e) => setNewBibleOptC(e.target.value)} placeholder="Đáp án C" className="px-2.5 py-1.5 rounded-lg border border-slate-400 text-xs" />
+                  <input type="text" value={newBibleOptD} onChange={(e) => setNewBibleOptD(e.target.value)} placeholder="Đáp án D" className="px-2.5 py-1.5 rounded-lg border border-slate-400 text-xs" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input type="text" value={newBibleVerseEn} onChange={(e) => setNewBibleVerseEn(e.target.value)} placeholder="Trưng dẫn câu Kinh Thánh (NIV)..." className="px-2.5 py-1.5 rounded-lg border border-slate-400 text-xs" />
+                  <input type="text" value={newBibleVerseVi} onChange={(e) => setNewBibleVerseVi(e.target.value)} placeholder="Trưng dẫn câu Kinh Thánh (Truyền Thống 1925)..." className="px-2.5 py-1.5 rounded-lg border border-slate-400 text-xs" />
+                </div>
+                <div className="flex justify-end">
+                  <button type="submit" className="btn btn-sm btn-primary">
+                    ➕ Thêm Câu Kinh Thánh
+                  </button>
+                </div>
+              </form>
+
+              {/* Filter & Search Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap gap-1.5">
+                  {(
+                    [
+                      ['all', 'Tất cả'],
+                      ['fact', 'Dữ kiện'],
+                      ['image', 'Hình ảnh'],
+                      ['verse', 'Câu gốc'],
+                      ['parable', 'Ẩn dụ'],
+                    ] as const
+                  ).map(([cid, label]) => (
+                    <button
+                      key={cid}
+                      type="button"
+                      onClick={() => setBibleCatFilter(cid)}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer border ${
+                        bibleCatFilter === cid
+                          ? 'bg-[#0369A1] text-white border-[#0369A1]'
+                          : 'bg-white text-slate-700 border-slate-300'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  value={bibleSearch}
+                  onChange={(e) => setBibleSearch(e.target.value)}
+                  placeholder="Tìm sách, từ khóa, ID..."
+                  className="px-3 py-1.5 rounded-lg border-2 border-[#2C3E50] bg-white text-xs min-w-[200px]"
+                />
+              </div>
+
+              {/* Question List */}
+              <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1">
+                {sharedBibleBank
+                  .filter((q) => {
+                    if (bibleCatFilter !== 'all' && q.category !== bibleCatFilter) return false;
+                    const term = bibleSearch.trim().toLowerCase();
+                    if (!term) return true;
+                    return (
+                      q.id.toLowerCase().includes(term) ||
+                      q.q.toLowerCase().includes(term) ||
+                      q.bookEn.toLowerCase().includes(term) ||
+                      q.bookVi.toLowerCase().includes(term)
+                    );
+                  })
+                  .slice(0, 80)
+                  .map((item) => (
+                    <div
+                      key={item.id}
+                      className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 flex items-start justify-between gap-2.5"
+                    >
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="text-[11px] font-bold text-sky-900 flex flex-wrap gap-1.5">
+                          <span>#{item.id}</span>
+                          <span>·</span>
+                          <span>{item.category}</span>
+                          <span>·</span>
+                          <span>
+                            {item.bookEn} ({item.bookVi}) {item.ref}
+                          </span>
+                          {item.custom && <span className="text-amber-700">· Tự thêm</span>}
+                        </div>
+                        <div className="text-xs font-bold text-slate-900">{item.q}</div>
+                        <div className="text-[11px] text-slate-600">
+                          Đáp án đúng <b>{['A', 'B', 'C', 'D'][item.ans]}</b>: {item.opts[item.ans]}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const res = bridge.deleteBibleQuestion?.(item.id);
+                          if (res) {
+                            bridge.showToast(res.msg);
+                            if (res.ok) bridge.playClick();
+                            else bridge.playError();
+                            forceRefresh();
+                          }
+                        }}
+                        className="p-1.5 rounded-lg border border-rose-300 bg-rose-50 text-rose-800 hover:bg-rose-100 cursor-pointer shrink-0"
+                        title="Xóa câu hỏi này"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   ))}
               </div>
