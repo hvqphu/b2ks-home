@@ -15,9 +15,9 @@ import {
   KeyRound,
   Lock,
   MapPin,
+  Megaphone,
   MessageSquare,
   Music2,
-  PawPrint,
   PlusCircle,
   RefreshCw,
   RotateCcw,
@@ -51,17 +51,13 @@ import {
   BGM_THEME_OPTIONS,
   BUILDING_SHAPE_OPTIONS,
   DEFAULT_ACTIVITY_CONFIGS,
+  DEFAULT_BILLBOARD_TEXT,
   DEFAULT_MEMBER_AGES,
   NEIGHBORHOOD_LOCATIONS,
-  PET_ACCESSORY_CATALOG,
-  PET_FOOD_CATALOG,
-  PET_SPECIES,
-  PET_VARIANT_DEFS,
   STREET_WORLD,
   formatFamilyBrand,
 } from '../game/constants';
 import {
-  getMemberPetBonuses,
   getPetAccessoryDef,
   getPetSpecies,
   getPetVariantDef,
@@ -88,13 +84,14 @@ interface Props {
 }
 
 export const ParentalDashboardModal: React.FC<Props> = ({ bridge, onClose }) => {
-  const [tab, setTab] = useState<'charts' | 'achievements' | 'rewards' | 'quests' | 'english' | 'speaking' | 'bible' | 'activities' | 'family_map' | 'pets' | 'logs'>('charts');
+  const [tab, setTab] = useState<'charts' | 'achievements' | 'rewards' | 'quests' | 'english' | 'speaking' | 'bible' | 'activities' | 'family_map' | 'logs'>('charts');
   const [, setTick] = useState(0);
   const [pointInputs, setPointInputs] = useState<Record<string, string>>({});
   const [pointReasons, setPointReasons] = useState<Record<string, string>>({});
 
   // Family & Map Editor state
   const [familyNameDraft, setFamilyNameDraft] = useState(() => bridge.getFamilyName?.() || bridge.getState().familyName || 'B2KS');
+  const [billboardDraft, setBillboardDraft] = useState(() => bridge.getBillboardText?.() || bridge.getState().billboardText || DEFAULT_BILLBOARD_TEXT);
   const [gamePwDraft, setGamePwDraft] = useState(() => bridge.getState().gamePassword || '1111');
   const [parentPinDraft, setParentPinDraft] = useState(() => bridge.getState().parentPin || '1234');
   const [pwFeedback, setPwFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
@@ -875,16 +872,6 @@ export const ParentalDashboardModal: React.FC<Props> = ({ bridge, onClose }) => 
           </button>
           <button
             type="button"
-            onClick={() => setTab('pets')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 ${
-              tab === 'pets' ? 'bg-[#9333EA] text-white' : 'bg-white text-[#2C3E50]'
-            }`}
-          >
-            <PawPrint className="w-3.5 h-3.5" />
-            Sổ Tay Thú Cưng
-          </button>
-          <button
-            type="button"
             onClick={() => setTab('logs')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 ${
               tab === 'logs' ? 'bg-[#334155] text-white' : 'bg-white text-[#2C3E50]'
@@ -993,6 +980,75 @@ export const ParentalDashboardModal: React.FC<Props> = ({ bridge, onClose }) => 
                 </div>
                 <div className="rounded-xl border-2 border-[#2C3E50] bg-white p-3 h-64">
                   <canvas ref={englishChartRef} />
+                </div>
+              </div>
+
+              {/* Children's Owned Pets Overview */}
+              <div className="rounded-xl border-2 border-[#2C3E50] bg-purple-50 p-3.5 space-y-2.5">
+                <h3 className="font-bold text-sm text-purple-950">
+                  🐾 Thú Cưng Các Bé Đang Nuôi Trong Nhà
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {kids.map((kid) => {
+                    const pets = kid.pets || [];
+                    return (
+                      <div key={kid.id} className="rounded-xl border-2 border-[#2C3E50] bg-white p-3 space-y-2">
+                        <div className="flex items-center justify-between font-bold text-xs">
+                          <span>
+                            {kid.outfit || '🙂'} {kid.name}
+                          </span>
+                          <span className="text-purple-700">{pets.length} thú cưng</span>
+                        </div>
+                        {pets.length === 0 ? (
+                          <div className="text-[11px] text-slate-400">Chưa nhận trứng thú cưng nào.</div>
+                        ) : (
+                          <div className="space-y-1.5">
+                            {pets.map((p) => {
+                              const sp = getPetSpecies(p.speciesId);
+                              const varDef = getPetVariantDef(p.variant);
+                              const accDef = getPetAccessoryDef(p.accessoryId);
+                              const svg = renderPetArtSVG(p.speciesId, p.hatched ? p.stage : 0, 42, {
+                                variant: p.variant,
+                                gender: p.gender,
+                                accessoryId: p.accessoryId,
+                              });
+                              return (
+                                <div
+                                  key={p.id}
+                                  className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 flex items-center gap-2 text-xs"
+                                >
+                                  <div
+                                    className="w-10 h-10 shrink-0 rounded-lg bg-white border border-slate-200 flex items-center justify-center"
+                                    dangerouslySetInnerHTML={{ __html: svg }}
+                                  />
+                                  <div className="min-w-0 flex-1">
+                                    <div className="font-bold truncate">
+                                      {p.nickname}{' '}
+                                      <span className="text-[10px] text-slate-500">
+                                        ({sp.name} · {p.gender === 'female' ? '♀️ Cái' : '♂️ Đực'})
+                                      </span>
+                                    </div>
+                                    <div className="text-[10.5px] text-slate-600 flex flex-wrap gap-1.5">
+                                      <span>{p.hatched ? `Lv.${p.level} (GĐ ${p.stage}/4)` : `🥚 Ấp ${Math.round(p.hatchProgress)}%`}</span>
+                                      {p.hatched && (
+                                        <span className={p.hunger <= 0 ? 'font-bold text-rose-600' : 'text-emerald-700 font-semibold'}>
+                                          • No: {Math.round(p.hunger)}%
+                                        </span>
+                                      )}
+                                      <span style={{ color: varDef.badgeColor }} className="font-bold">
+                                        • {varDef.label}
+                                      </span>
+                                      {accDef && <span>• {accDef.icon} {accDef.name}</span>}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </>
@@ -1244,12 +1300,12 @@ export const ParentalDashboardModal: React.FC<Props> = ({ bridge, onClose }) => 
                 className="rounded-xl border-2 border-[#2C3E50] bg-violet-50 p-3.5 space-y-3"
               >
                 <h3 className="font-bold text-sm text-violet-900">
-                  🤝 Giao Nhiệm Vụ Đồng Đội (Yêu cầu cả hai bé cùng hoàn thành)
+                  🤝 Giao Nhiệm Vụ Đồng Đội (Yêu cầu các con cùng hoàn thành)
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <input
                     type="text"
-                    placeholder="VD: Hai chị em cùng dọn sạch phòng khách"
+                    placeholder="VD: Các con cùng dọn sạch phòng khách"
                     value={questTitle}
                     onChange={(e) => setQuestTitle(e.target.value)}
                     className="sm:col-span-2 px-3 py-1.5 rounded-lg border-2 border-[#2C3E50] bg-white text-sm"
@@ -2265,7 +2321,7 @@ export const ParentalDashboardModal: React.FC<Props> = ({ bridge, onClose }) => 
                       maxLength={24}
                       value={familyNameDraft}
                       onChange={(e) => setFamilyNameDraft(e.target.value)}
-                      placeholder="VD: B2KS"
+                      placeholder="VD: Gia Đình Hạnh Phúc"
                       className="flex-1 px-3 py-1.5 rounded-lg border-2 border-[#2C3E50] bg-white text-sm font-bold"
                     />
                     <button
@@ -2370,6 +2426,90 @@ export const ParentalDashboardModal: React.FC<Props> = ({ bridge, onClose }) => 
                       </div>
                     )}
                   </div>
+                </div>
+              </div>
+
+              {/* 1b. Synchronized Neighborhood LED Billboard Message Editor */}
+              <div className="rounded-xl border-2 border-[#2C3E50] bg-indigo-50 p-3.5 space-y-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="font-bold text-sm text-indigo-950 flex items-center gap-1.5">
+                    <Megaphone className="w-4 h-4 text-indigo-700" />
+                    <span>Cài Đặt Thông Tin Bảng Quảng Cáo Khu Phố (Đồng bộ 2 bảng LED 3D)</span>
+                  </h3>
+                  <span className="text-[11px] font-bold text-indigo-700">
+                    {billboardDraft.trim().length}/140 ký tự
+                  </span>
+                </div>
+                <p className="text-xs text-indigo-900 leading-snug">
+                  Nội dung bạn nhập sẽ chạy chữ trên <b>2 Bảng Quảng Cáo LED cỡ lớn</b> sát hàng rào phía trên khu phố và tự động đồng bộ tới mọi thành viên.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <input
+                    type="text"
+                    maxLength={140}
+                    value={billboardDraft}
+                    onChange={(e) => setBillboardDraft(e.target.value)}
+                    placeholder="Nhập thông báo chạy chữ trên bảng quảng cáo..."
+                    className="flex-1 min-w-[220px] px-3 py-1.5 rounded-lg border-2 border-[#2C3E50] bg-white text-sm font-bold text-[#0F172A]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const res = bridge.setBillboardText?.(billboardDraft);
+                      if (res) {
+                        bridge.showToast(res.msg);
+                        if (res.ok) {
+                          bridge.playSuccess();
+                          forceRefresh();
+                        } else {
+                          bridge.playError();
+                        }
+                      }
+                    }}
+                    className="btn btn-sm btn-purple"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Lưu &amp; Đồng bộ Bảng QC</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBillboardDraft(DEFAULT_BILLBOARD_TEXT);
+                      const res = bridge.setBillboardText?.(DEFAULT_BILLBOARD_TEXT);
+                      if (res?.ok) {
+                        bridge.playClick();
+                        bridge.showToast(res.msg);
+                        forceRefresh();
+                      }
+                    }}
+                    className="btn btn-sm bg-white text-slate-700 border-2 border-slate-300"
+                    title="Khôi phục thông báo mặc định"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Mặc định</span>
+                  </button>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-indigo-800">Gợi ý nhanh:</span>
+                  {[
+                    DEFAULT_BILLBOARD_TEXT,
+                    '🏆 Hoàn thành việc nhà & bài tập hôm nay để nhận Sao thưởng cùng cả nhà!',
+                    '⛪ Ghé Nhà Thờ Tin Lành chơi Đố Kinh Thánh & nhận thưởng chuỗi 3 câu đúng!',
+                    '🐾 Cho thú cưng ăn no đầy đủ để nhận tối đa +Tốc độ và +Sao thưởng!',
+                  ].map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        bridge.playClick();
+                        setBillboardDraft(preset);
+                      }}
+                      className="px-2 py-0.5 rounded-md bg-white border border-indigo-300 hover:bg-indigo-100 text-[10.5px] font-semibold text-indigo-900 cursor-pointer truncate max-w-[260px]"
+                      title={preset}
+                    >
+                      {preset}
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -2921,187 +3061,6 @@ export const ParentalDashboardModal: React.FC<Props> = ({ bridge, onClose }) => 
                     </div>
                   </div>
                 )}
-              </div>
-            </div>
-          )}
-
-          {tab === 'pets' && (
-            <div className="space-y-4">
-              {/* 0. Clear Hunger & Bonus Rules Handbook */}
-              <div className="rounded-xl border-2 border-[#2C3E50] bg-emerald-50 p-3.5 space-y-1.5">
-                <h3 className="font-extrabold text-sm text-emerald-950">
-                  📜 Cơ Chế Độ No &amp; Cộng Thưởng Sao Thú Cưng
-                </h3>
-                <ul className="text-xs text-emerald-900 space-y-1 list-disc pl-4 leading-relaxed">
-                  <li>
-                    <b>Độ no giảm chậm khi đồng hành:</b> Chỉ khi thú cưng đang được chọn <b>Đồng hành ngoài map</b> thì Độ no mới giảm dần theo tốc độ riêng của từng loài (~<b>0.45% – 0.70%/phút</b>). Nếu cất thú cưng vào túi, độ no sẽ giữ nguyên.
-                  </li>
-                  <li>
-                    <b>Điều kiện kích hoạt cộng thưởng:</b> Thú cưng mang lại <b>+Tốc độ di chuyển</b> &amp; <b>+Điểm Sao</b> (khi hoàn thành việc nhà, bài tập, nhiệm vụ đồng đội, quiz Tiếng Anh, nói Tiếng Anh, ăn cơm, đi ngủ, nghỉ chân công viên, đọc truyện) chỉ khi đang <b>Đồng hành</b> và <b>Độ no &gt; 0%</b>.
-                  </li>
-                  <li>
-                    <b>Khi Độ no về 0% (❗ ĐÓI!):</b> Thú cưng hiện cảnh báo đói trên đầu và <b>tạm ngưng toàn bộ cộng Tốc độ &amp; Sao thưởng</b> cho đến khi được cho ăn lại.
-                  </li>
-                </ul>
-              </div>
-
-              {/* 1. Children's Owned Pets Overview */}
-              <div className="rounded-xl border-2 border-[#2C3E50] bg-purple-50 p-3.5 space-y-2.5">
-                <h3 className="font-bold text-sm text-purple-950">
-                  🐾 Thú Cưng Các Bé Đang Nuôi Trong Nhà
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {kids.map((kid) => {
-                    const pets = kid.pets || [];
-                    return (
-                      <div key={kid.id} className="rounded-xl border-2 border-[#2C3E50] bg-white p-3 space-y-2">
-                        <div className="flex items-center justify-between font-bold text-xs">
-                          <span>
-                            {kid.outfit || '🙂'} {kid.name}
-                          </span>
-                          <span className="text-purple-700">{pets.length} thú cưng</span>
-                        </div>
-                        {pets.length === 0 ? (
-                          <div className="text-[11px] text-slate-400">Chưa nhận trứng thú cưng nào.</div>
-                        ) : (
-                          <div className="space-y-1.5">
-                            {pets.map((p) => {
-                              const sp = getPetSpecies(p.speciesId);
-                              const varDef = getPetVariantDef(p.variant);
-                              const accDef = getPetAccessoryDef(p.accessoryId);
-                              const svg = renderPetArtSVG(p.speciesId, p.hatched ? p.stage : 0, 42, {
-                                variant: p.variant,
-                                gender: p.gender,
-                                accessoryId: p.accessoryId,
-                              });
-                              return (
-                                <div
-                                  key={p.id}
-                                  className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 flex items-center gap-2 text-xs"
-                                >
-                                  <div
-                                    className="w-10 h-10 shrink-0 rounded-lg bg-white border border-slate-200 flex items-center justify-center"
-                                    dangerouslySetInnerHTML={{ __html: svg }}
-                                  />
-                                  <div className="min-w-0 flex-1">
-                                    <div className="font-bold truncate">
-                                      {p.nickname}{' '}
-                                      <span className="text-[10px] text-slate-500">
-                                        ({sp.name} · {p.gender === 'female' ? '♀️ Cái' : '♂️ Đực'})
-                                      </span>
-                                    </div>
-                                    <div className="text-[10.5px] text-slate-600 flex flex-wrap gap-1.5">
-                                      <span>{p.hatched ? `Lv.${p.level} (GĐ ${p.stage}/4)` : `🥚 Ấp ${Math.round(p.hatchProgress)}%`}</span>
-                                      {p.hatched && (
-                                        <span className={p.hunger <= 0 ? 'font-bold text-rose-600' : 'text-emerald-700 font-semibold'}>
-                                          • No: {Math.round(p.hunger)}%
-                                        </span>
-                                      )}
-                                      <span style={{ color: varDef.badgeColor }} className="font-bold">
-                                        • {varDef.label}
-                                      </span>
-                                      {accDef && <span>• {accDef.icon} {accDef.name}</span>}
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 2. Rare Variant Probabilities & Accessories & Food */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="rounded-xl border-2 border-[#2C3E50] bg-amber-50 p-3 space-y-2">
-                  <h4 className="font-bold text-xs text-amber-950">🎲 Tỉ Lệ Nở Màu Hiếm &amp; Giới Tính (50% ♂️ / 50% ♀️)</h4>
-                  <div className="flex flex-wrap gap-1.5">
-                    {PET_VARIANT_DEFS.map((v) => (
-                      <span
-                        key={v.id}
-                        className="px-2 py-1 rounded-lg bg-white border border-amber-300 text-[11px] font-bold"
-                        style={{ color: v.badgeColor }}
-                      >
-                        {v.label}: {v.chancePercent}%
-                      </span>
-                    ))}
-                  </div>
-                  <h4 className="font-bold text-xs text-amber-950 pt-1">🍖 Thức Ăn Chăm Nuôi</h4>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {PET_FOOD_CATALOG.map((fd) => (
-                      <div key={fd.id} className="rounded-lg bg-white border border-slate-200 px-2 py-1 text-[11px]">
-                        <b>{fd.icon} {fd.name}</b> ({fd.price}⭐) • +{fd.xpGain}XP · +{fd.hungerGain}% no
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="rounded-xl border-2 border-[#2C3E50] bg-pink-50 p-3 space-y-2">
-                  <h4 className="font-bold text-xs text-pink-950">🎀 Phụ Kiện Thời Trang Thú Cưng</h4>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {PET_ACCESSORY_CATALOG.map((acc) => (
-                      <div key={acc.id} className="rounded-lg bg-white border border-pink-200 px-2 py-1.5 text-[11px]">
-                        <div className="font-bold">{acc.icon} {acc.name} · {acc.price}⭐</div>
-                        <div className="text-[10px] text-slate-500 truncate">{acc.desc}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* 3. Full 10 Species x 5 Stages Encyclopedia */}
-              <div className="rounded-xl border-2 border-[#2C3E50] bg-white p-3.5 space-y-3">
-                <h3 className="font-bold text-sm text-[#2C3E50]">
-                  📖 Từ Điển 10 Loài Thú Cưng &amp; 5 Giai Đoạn Tiến Hóa
-                </h3>
-                <div className="space-y-3">
-                  {PET_SPECIES.map((sp) => (
-                    <div
-                      key={sp.id}
-                      className="rounded-xl border-2 p-3 space-y-2"
-                      style={{ borderColor: sp.primaryColor, background: `${sp.accentColor}40` }}
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div>
-                          <div className="font-extrabold text-sm" style={{ color: sp.primaryColor }}>
-                            {sp.name} ({sp.eggName})
-                          </div>
-                          <div className="text-[11px] text-slate-600">
-                            {sp.desc} • Chỉ số: <b>{sp.statLabel}</b> • ⏳ Đói: <b>-{sp.hungerDecayPerMin}%/phút</b>
-                          </div>
-                        </div>
-                        <span className="points-pill text-xs">🥚 {sp.eggPrice}⭐</span>
-                      </div>
-                      <div className="grid grid-cols-5 gap-1.5">
-                        {sp.stages.map((stInfo) => {
-                          const svg = renderPetArtSVG(sp.id, stInfo.stage, 48);
-                          return (
-                            <div
-                              key={stInfo.stage}
-                              className="rounded-lg border border-slate-300 bg-white p-1.5 text-center space-y-0.5"
-                            >
-                              <div
-                                className="mx-auto w-12 h-12 flex items-center justify-center"
-                                dangerouslySetInnerHTML={{ __html: svg }}
-                              />
-                              <div className="text-[10px] font-extrabold text-slate-800 truncate">
-                                GĐ{stInfo.stage}: {stInfo.title}
-                              </div>
-                              <div className="text-[9.5px] text-slate-500">
-                                {stInfo.stage === 0
-                                  ? 'Ấp 100%'
-                                  : `⚡+${stInfo.speedBonus} · ⭐+${stInfo.starBonus}`}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </div>
             </div>
           )}

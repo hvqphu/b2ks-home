@@ -16,6 +16,7 @@ export const APP_VERSION = 'v2.6.0';
 export const APP_UPDATED_AT = '27/11/2026 — 07:30';
 export const MAX_PARENT_POINTS = 500;
 export const DAILY_PARENT_ALLOWANCE = 150;
+export const DEFAULT_BILLBOARD_TEXT = 'Hãy đến Trung Tâm Tiếng Anh để làm bài và đổi điểm ngay nào!';
 export const DEFAULT_FIREBASE_URL = 'https://b2ks-home-default-rtdb.asia-southeast1.firebasedatabase.app';
 
 // Expanded neighborhood world with outer city avenues, decorative buildings & extra exploration blocks
@@ -80,7 +81,7 @@ export const FASHION_CATALOG = [
   // Quần & Váy riêng (Pants & Skirts)
   { id: 'f_pants_sky_jeans', sub: 'pants', name: 'Quần Jeans Xanh Rách Cá Tính', icon: '👖', price: 34, pantsColor: '#2563EB', pantsStyle: 'pants', desc: 'Quần jeans dài xanh tươi tôn dáng, hợp với mọi mẫu áo' },
   { id: 'f_pants_beige_chino', sub: 'pants', name: 'Quần Tây Kaki Kem Thanh Lịch', icon: '🩳', price: 36, pantsColor: '#B45309', pantsStyle: 'pants', desc: 'Quần dài kaki tông nâu ấm sang trọng' },
-  { id: 'f_pants_sport_shorts', sub: 'pants', name: 'Quần Short Đá Bóng B2KS', icon: '🩳', price: 28, pantsColor: '#DC2626', pantsStyle: 'shorts', desc: 'Quần short đỏ siêu nhẹ giúp chạy nhảy ghi bàn cực nhanh' },
+  { id: 'f_pants_sport_shorts', sub: 'pants', name: 'Quần Short Đá Bóng Ngôi Sao', icon: '🩳', price: 28, pantsColor: '#DC2626', pantsStyle: 'shorts', desc: 'Quần short đỏ siêu nhẹ giúp chạy nhảy ghi bàn cực nhanh' },
   { id: 'f_skirt_lavender', sub: 'pants', name: 'Chân Váy Xếp Ly Lavender', icon: '🩰', price: 38, pantsColor: '#9333EA', pantsStyle: 'skirt', desc: 'Chân váy xòe tím lavender bồng bềnh duyên dáng' },
   { id: 'f_skirt_mint', sub: 'pants', name: 'Chân Váy Xanh Ngọc Năng Động', icon: '🩰', price: 36, pantsColor: '#0D9488', pantsStyle: 'skirt', desc: 'Chân váy xếp ly xanh ngọc tươi mát dễ phối áo thun & sơ mi' },
   // Mũ & Phụ kiện
@@ -432,7 +433,7 @@ export const PET_SPECIES = [
     primaryColor: '#DC2626',
     accentColor: '#FEF9C3',
     statLabel: '🦅 Huyền Thoại Tối Cao & +Sao Kỷ Lục',
-    desc: 'Loài thần thú quý hiếm nhất B2KS với bộ lông rực sáng bầu trời — phần thưởng xứng đáng cho quán quân!',
+    desc: 'Loài thần thú quý hiếm nhất khu phố với bộ lông rực sáng bầu trời — phần thưởng xứng đáng cho quán quân!',
     hungerDecayPerMin: 0.65,
     stages: [
       { stage: 0 as const, title: 'Trứng Phượng Hoàng', minXp: 0, scale: 0.9, speedBonus: 0, starBonus: 0 },

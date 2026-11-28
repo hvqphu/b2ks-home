@@ -1417,10 +1417,10 @@
                 <section class="guide-section" data-guide-cat="tasks" style="background:#FFFBEB; border:2px solid #FDE68A; border-radius:10px; padding:10px 12px;">
                     <h3 style="margin:0 0 6px; font-size:14.5px; color:#78350F;">📋 3. Nhiệm Vụ, Điểm Sao &amp; Quy Đổi Ngoài Đời</h3>
                     <ul style="margin:0; padding-left:18px;">
-                        <li><b>Bảng Nhiệm Vụ (📋):</b> Ba mẹ giao <b>Việc nhà</b>, <b>Bài tập học tập</b> (đính kèm ảnh/tệp &amp; chấm điểm), hoặc <b>Nhiệm vụ Đồng đội</b> cho cả hai bé cùng hoàn thành.</li>
-                        <li><b>Giới hạn điểm Phụ Huynh:</b> Điểm ba mẹ tối đa mặc định <b>500⭐</b> (Admin có thể tùy chỉnh giới hạn này cho từng gia đình).</li>
-                        <li><b>🌌 Trung Tâm Xuyên Thế Giới:</b> Con dùng điểm sao tích lũy gửi yêu cầu đổi quà/tiền thưởng/đặc quyền thật ngoài đời để ba mẹ duyệt.</li>
-                        <li><b>🎪 Chợ Trời B2KS &amp; 🏪 Siêu Thị:</b> Mua nội thất, thẻ TV, phụ kiện thú cưng hoặc đăng bán/mua trao đổi vật phẩm giữa các thành viên.</li>
+                        <li><b>Bảng Nhiệm Vụ (📋):</b> Bố mẹ giao <b>Việc nhà</b>, <b>Bài tập học tập</b> (đính kèm ảnh/tệp &amp; chấm điểm), hoặc <b>Nhiệm vụ Đồng đội</b> cho các con cùng hoàn thành.</li>
+                        <li><b>Giới hạn điểm Phụ Huynh:</b> Điểm bố mẹ tối đa mặc định <b>500⭐</b> (Admin có thể tùy chỉnh giới hạn này cho từng gia đình).</li>
+                        <li><b>🌌 Trung Tâm Xuyên Thế Giới:</b> Các con dùng điểm sao tích lũy gửi yêu cầu đổi quà/tiền thưởng/đặc quyền thật ngoài đời để bố mẹ duyệt.</li>
+                        <li><b>🎪 Chợ Trời &amp; 🏪 Siêu Thị Gia Đình:</b> Mua nội thất, thẻ TV, phụ kiện thú cưng hoặc đăng bán/mua trao đổi vật phẩm giữa các thành viên.</li>
                     </ul>
                 </section>
 
@@ -1495,7 +1495,7 @@
                         <select id="task-type" onchange="toggleHomeworkUpload()">
                             <option value="chore">🧹 Việc nhà / Thói quen tốt</option>
                             <option value="homework">📚 Bài tập học tập (Chấm điểm 10)</option>
-                            <option value="family_quest">🤝 Nhiệm vụ Đồng đội (Cả hai bé)</option>
+                            <option value="family_quest">🤝 Nhiệm vụ Đồng đội (Các con cùng làm)</option>
                         </select>
                     </div>
                     <div class="form-group" id="task-assignee-group">
@@ -1964,14 +1964,14 @@
     <div class="modal-overlay" id="family-sync-modal">
         <div class="modal-content pixel-box" style="max-width:540px;">
             <div class="modal-header">
-                <h2>🔗 Kết Nối 4 Máy &amp; Khóa PIN Thiết Bị</h2>
+                <h2>🔗 Kết Nối Gia Đình &amp; Khóa PIN Thiết Bị</h2>
                 <button class="btn btn-primary btn-sm" onclick="closeModal('family-sync-modal')">Đóng</button>
             </div>
 
             <div style="background:#FDEDEC; border:2px solid #E74C3C; border-radius:10px; padding:10px; margin-bottom:12px;">
                 <div style="font-weight:700; font-size:14px; color:#922B21; margin-bottom:4px;">🔒 Khóa cố định thiết bị này cho nhân vật hiện tại</div>
                 <div style="font-size:12px; color:#78281F; margin-bottom:8px;">
-                    Đang điều khiển: <b id="sync-cur-member-label">Bố</b>. Khi bật khóa máy (dùng cho điện thoại của <b>Kem</b> và <b>Sóc</b>), máy sẽ luôn giữ nhân vật đó và yêu cầu mã PIN nếu bấm Đổi người hoặc mở Bảng Phụ Huynh.
+                    Đang điều khiển: <b id="sync-cur-member-label">Bố</b>. Khi bật khóa máy (dùng cho điện thoại của <b>các con</b>), máy sẽ luôn giữ nhân vật đó và yêu cầu mã PIN nếu bấm Đổi người hoặc mở Bảng Phụ Huynh.
                 </div>
                 <button type="button" id="btn-toggle-device-lock" class="btn btn-danger" style="width:100%;" onclick="toggleDeviceLock()">
                     🔒 Bật Khóa Máy Cho Nhân Vật Này
@@ -1987,12 +1987,12 @@
             </div>
 
             <div style="background:#EBF5FB; border:2px solid #2980B9; border-radius:10px; padding:10px; margin-bottom:12px;">
-                <div style="font-weight:700; font-size:13.5px; color:#1B4F72; margin-bottom:4px;">☁️ Đồng bộ tự động 4 máy qua Firebase (Map chung thời gian thực)</div>
+                <div style="font-weight:700; font-size:13.5px; color:#1B4F72; margin-bottom:4px;">☁️ Đồng bộ tự động các máy qua Firebase (Map chung thời gian thực)</div>
                 <div style="font-size:12px; color:#21618C; margin-bottom:6px;">
-                    Nhập chung 1 link <b>Firebase Realtime Database</b> trên cả 4 điện thoại để Bố, Mẹ, Kem, Sóc thấy nhau đi lại ngoài khu phố &amp; trong nhà, đồng bộ điểm sao và nhiệm vụ tự động:
+                    Nhập chung 1 link <b>Firebase Realtime Database</b> trên các điện thoại để bố, mẹ và các con thấy nhau đi lại ngoài khu phố &amp; trong nhà, đồng bộ điểm sao và nhiệm vụ tự động:
                 </div>
                 <div style="display:flex; gap:6px;">
-                    <input type="text" id="firebase-url-input" placeholder="https://b2ks-home-default-rtdb.firebaseio.com" style="flex:1; padding:6px; border:2px solid #2C3E50; border-radius:6px;">
+                    <input type="text" id="firebase-url-input" placeholder="https://family-home-default-rtdb.firebaseio.com" style="flex:1; padding:6px; border:2px solid #2C3E50; border-radius:6px;">
                     <button type="button" class="btn btn-accent" onclick="saveFirebaseUrl()">Kết nối</button>
                 </div>
                 <div id="firebase-status-text" style="font-size:11.5px; color:#555; margin-top:6px;">Trạng thái: Đang lưu cục bộ trên máy này</div>
@@ -2109,7 +2109,7 @@
             </div>
             <div id="pet-hud-guide-banner" style="display:none; background:#E0F2FE; border:2px solid #0284C7; border-radius:12px; padding:9px 12px; margin-bottom:10px; font-size:12.5px; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
                 <div style="flex:1; min-width:210px; color:#0C4A6E;">
-                    <b>🐾 Quản lý Thú Cưng Đang Sở Hữu:</b> Xem trạng thái ấp trứng, cho ăn bằng thức ăn đang có hoặc chọn thú cưng đi cùng! Muốn mua thêm trứng mới hoặc thức ăn, hãy ghé <b>🐾 Cửa Hàng Thú Cưng B2KS</b> trên bản đồ.
+                    <b>🐾 Quản lý Thú Cưng Đang Sở Hữu:</b> Xem trạng thái ấp trứng, cho ăn bằng thức ăn đang có hoặc chọn thú cưng đi cùng! Muốn mua thêm trứng mới hoặc thức ăn, hãy ghé <b>🐾 Cửa Hàng Thú Cưng</b> trên bản đồ.
                 </div>
                 <button type="button" class="btn btn-sm btn-accent" onclick="navigateToPetShopFromHud()">🧭 Chỉ đường tới Cửa Hàng</button>
             </div>

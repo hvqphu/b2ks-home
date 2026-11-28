@@ -42,6 +42,7 @@ import {
   BGM_THEME_OPTIONS,
   DAILY_PARENT_ALLOWANCE,
   DEFAULT_ACTIVITY_CONFIGS,
+  DEFAULT_BILLBOARD_TEXT,
   DEFAULT_CROSS_WORLD_ITEMS,
   DEFAULT_ENGLISH_BANK,
   DEFAULT_FIREBASE_URL,
@@ -668,7 +669,8 @@ export function initB2KSGameEngine() {
       if (res === 'granted') {
         localStorage.setItem('b2ks_task_notif_enabled', '1');
         updateNotificationHudUI();
-        dispatchSystemNotification('🔔 Đã bật thông báo B2KS!', 'Khi Bố/Mẹ giao bài tập hoặc việc nhà mới, con sẽ nhận được thông báo ngay.');
+        const brand = (state.familyName || 'Gia Đình').trim() || 'Gia Đình';
+        dispatchSystemNotification(`🔔 Đã bật thông báo ${brand}!`, 'Khi bố/mẹ giao bài tập hoặc việc nhà mới, các con sẽ nhận được thông báo ngay.');
         return { ok: true, permission: 'granted', msg: '🔔 Đã bật thông báo bài tập & nhiệm vụ mới!' };
       }
       updateNotificationHudUI();
@@ -696,7 +698,8 @@ export function initB2KSGameEngine() {
     const cur = getCurrentUser();
     const msg = `Chào ${cur.name}! Thông báo bài tập đang hoạt động tốt trên thiết bị này.`;
     showToast(`🔔 ${msg}`);
-    await dispatchSystemNotification('📬 Thử Thông Báo B2KS', msg, 'b2ks-test-notif');
+    const brand = (state.familyName || 'Gia Đình').trim() || 'Gia Đình';
+    await dispatchSystemNotification(`📬 Thử Thông Báo ${brand}`, msg, 'b2ks-test-notif');
     return true;
   }
 
@@ -740,7 +743,8 @@ export function initB2KSGameEngine() {
     AudioEngine.playNotificationChime();
     showToast(`🔔 ${summary}`);
     triggerSpeechBubble(cur, `Có nhiệm vụ mới: ${latest.title}! 📬`, false);
-    dispatchSystemNotification('📬 B2KS — Nhiệm vụ mới!', summary, `b2ks-task-${latest.id}`, latest.id);
+    const brand = (state.familyName || 'Gia Đình').trim() || 'Gia Đình';
+    dispatchSystemNotification(`📬 ${brand} — Nhiệm vụ mới!`, summary, `b2ks-task-${latest.id}`, latest.id);
 
     const status = getNotificationStatus();
     if (!notifPromptShownForSession && status.supported && status.permission === 'default') {
@@ -1177,6 +1181,8 @@ export function initB2KSGameEngine() {
       bgmTheme: AudioEngine.themeId || 'sunny_town',
       buildingLayouts: {},
       buildingLayoutsUpdatedAt: 0,
+      billboardText: DEFAULT_BILLBOARD_TEXT,
+      billboardUpdatedAt: 0,
       dailyParentAllowance: DAILY_PARENT_ALLOWANCE,
       maxParentPoints: MAX_PARENT_POINTS,
       maxParentPointsUpdatedAt: 0,
@@ -1462,6 +1468,10 @@ export function initB2KSGameEngine() {
     if (!state.bgmTheme) state.bgmTheme = AudioEngine.themeId || 'sunny_town';
     if (!state.buildingLayouts || typeof state.buildingLayouts !== 'object') state.buildingLayouts = {};
     if (typeof state.buildingLayoutsUpdatedAt !== 'number') state.buildingLayoutsUpdatedAt = 0;
+    if (typeof state.billboardText !== 'string' || !state.billboardText.trim()) {
+      state.billboardText = DEFAULT_BILLBOARD_TEXT;
+    }
+    if (typeof state.billboardUpdatedAt !== 'number') state.billboardUpdatedAt = 0;
     if (typeof state.houseUpdatedAt !== 'number') state.houseUpdatedAt = 0;
     if (typeof state.dailyParentAllowance !== 'number' || Number.isNaN(state.dailyParentAllowance)) {
       state.dailyParentAllowance = DAILY_PARENT_ALLOWANCE;
@@ -3154,7 +3164,7 @@ export function initB2KSGameEngine() {
 
     AudioEngine.playSuccess();
     triggerSpeechBubble(user, `Đã xong phần mình trong nhiệm vụ "${task.title}"! 🤝`, false);
-    showToast(allDone ? '🎉 Cả hai bé đã hoàn thành! Chờ Bố/Mẹ duyệt thưởng đồng đội!' : '✅ Đã ghi nhận phần của con! Chờ đồng đội xong cùng nhé!');
+    showToast(allDone ? '🎉 Các con đã hoàn thành! Chờ bố/mẹ duyệt thưởng đồng đội!' : '✅ Đã ghi nhận phần của con! Chờ đồng đội xong cùng nhé!');
     updateHUD();
     renderTasksModal();
     saveGame();
@@ -3428,7 +3438,8 @@ export function initB2KSGameEngine() {
     if (currentBagTab === 'lab') {
       const labItems = user.customLabItems || [];
       if (labItems.length === 0) {
-        grid.innerHTML = '<p style="color:#666; font-size:13px;">Chưa có vật phẩm sáng tạo nào. Hãy ghé <b>🧪 Phòng Thí Nghiệm B2KS</b> trên phố để chế tạo bằng Tiếng Anh nhé!</p>';
+        const brand = (state.familyName || 'Gia Đình').trim() || 'Gia Đình';
+        grid.innerHTML = `<p style="color:#666; font-size:13px;">Chưa có vật phẩm sáng tạo nào. Hãy ghé <b>🧪 Phòng Thí Nghiệm ${escapeHtml(brand)}</b> trên phố để chế tạo bằng Tiếng Anh nhé!</p>`;
         return;
       }
       grid.innerHTML = labItems
@@ -4349,7 +4360,7 @@ export function initB2KSGameEngine() {
     const statusEl = document.getElementById('firebase-status-text');
     if (statusEl) {
       statusEl.textContent = deviceConfig.firebaseUrl
-        ? '🟢 Đang kết nối Firebase: Tự động đồng bộ 4 máy mỗi 2.5 giây'
+        ? '🟢 Đang kết nối Firebase: Tự động đồng bộ các máy mỗi 2.5 giây'
         : '⚪ Chế độ Offline: Dữ liệu đang lưu trên máy này';
     }
   }
@@ -5912,7 +5923,8 @@ export function initB2KSGameEngine() {
       if (nextEnabled) {
         AudioEngine.playNotificationChime();
         showToast('🔔 Đã bật thông báo khi có bài tập/nhiệm vụ mới!');
-        dispatchSystemNotification('🔔 Đã bật thông báo B2KS!', 'Bạn sẽ nhận thông báo khi Bố/Mẹ giao bài tập mới.', 'b2ks-notif-toggle');
+        const brand = (state.familyName || 'Gia Đình').trim() || 'Gia Đình';
+        dispatchSystemNotification(`🔔 Đã bật thông báo ${brand}!`, 'Bạn sẽ nhận thông báo khi bố/mẹ giao bài tập mới.', 'b2ks-notif-toggle');
       } else {
         showToast('🔕 Đã tạm tắt thông báo OS (vẫn hiện chấm đỏ trong game).');
       }
@@ -6840,7 +6852,7 @@ export function initB2KSGameEngine() {
     deviceConfig.firebaseUrl = url;
     saveDeviceConfig();
     renderFamilySyncModal();
-    if (url) { syncToFirebase(); showToast('☁️ Đã lưu link Firebase! Đang đồng bộ 4 máy...'); }
+    if (url) { syncToFirebase(); showToast('☁️ Đã lưu link Firebase! Đang đồng bộ các máy...'); }
     else showToast('⚪ Đã ngắt kết nối Firebase.');
   };
   w.exportFamilyCode = () => {
@@ -7115,6 +7127,18 @@ export function initB2KSGameEngine() {
       state.buildingLayouts = {};
       state.buildingLayoutsUpdatedAt = Date.now();
       saveGame(true);
+    },
+    getBillboardText: () =>
+      typeof state.billboardText === 'string' && state.billboardText.trim()
+        ? state.billboardText.trim()
+        : DEFAULT_BILLBOARD_TEXT,
+    setBillboardText: (nextText: string) => {
+      const clean = String(nextText || '').replace(/\s+/g, ' ').trim().slice(0, 140);
+      if (!clean) return { ok: false, msg: '⚠️ Nội dung bảng quảng cáo không được để trống!' };
+      state.billboardText = clean;
+      state.billboardUpdatedAt = Date.now();
+      saveGame(true);
+      return { ok: true, msg: '✅ Đã cập nhật & đồng bộ nội dung Bảng quảng cáo cho cả khu phố!' };
     },
     setGamePassword: (nextPw: string) => {
       const clean = String(nextPw || '').trim();
@@ -7952,13 +7976,13 @@ export function initB2KSGameEngine() {
     },
     adminCreateNeighborhood: async (familyNameInput: string, dadName?: string, momName?: string) => {
       if (getActiveFamilySlug() !== 'b2ks' || getCurrentUser().role !== 'Bố') {
-        return { ok: false, msg: '❌ Chỉ Admin (Bố B2KS) mới có quyền tạo khu phố mới!' };
+        return { ok: false, msg: '❌ Chỉ Quản trị viên mới có quyền tạo khu phố mới!' };
       }
       const cleanName = String(familyNameInput || '').trim().slice(0, 24);
       if (!cleanName) return { ok: false, msg: '⚠️ Tên khu phố không được để trống!' };
       const slug = normalizeFamilySlug(cleanName);
       if (!slug || slug === 'b2ks') {
-        return { ok: false, msg: '⚠️ Tên khu phố này trùng với B2KS hoặc không hợp lệ!' };
+        return { ok: false, msg: '⚠️ Tên khu phố này trùng với khu phố gốc hệ thống hoặc không hợp lệ!' };
       }
 
       const fbUrl = deviceConfig.firebaseUrl;
@@ -8067,11 +8091,11 @@ export function initB2KSGameEngine() {
     },
     adminDeleteNeighborhood: async (slugInput: string) => {
       if (getActiveFamilySlug() !== 'b2ks' || getCurrentUser().role !== 'Bố') {
-        return { ok: false, msg: '❌ Chỉ Admin (Bố B2KS) mới có quyền xóa khu phố!' };
+        return { ok: false, msg: '❌ Chỉ Quản trị viên mới có quyền xóa khu phố!' };
       }
       const slug = normalizeFamilySlug(slugInput);
       if (!slug || slug === 'b2ks') {
-        return { ok: false, msg: '⚠️ Không thể xóa khu phố gốc B2KS!' };
+        return { ok: false, msg: '⚠️ Không thể xóa khu phố gốc của hệ thống!' };
       }
       const keysToRemove = [
         `b2ks_state_${slug}`,
@@ -8115,7 +8139,7 @@ export function initB2KSGameEngine() {
     },
     adminResetNeighborhoodPasswords: async (slugInput: string) => {
       if (getActiveFamilySlug() !== 'b2ks' || getCurrentUser().role !== 'Bố') {
-        return { ok: false, msg: '❌ Chỉ Admin (Bố B2KS) mới có quyền reset mật khẩu!' };
+        return { ok: false, msg: '❌ Chỉ Quản trị viên mới có quyền reset mật khẩu!' };
       }
       const slug = normalizeFamilySlug(slugInput);
       const now = Date.now();
@@ -8194,7 +8218,7 @@ export function initB2KSGameEngine() {
       payload: { dailyParentAllowance?: number; maxParentPoints?: number; parentPoints?: Record<string, number> }
     ) => {
       if (getActiveFamilySlug() !== 'b2ks' || getCurrentUser().role !== 'Bố') {
-        return { ok: false, msg: '❌ Chỉ Admin (Bố B2KS) mới có quyền điều chỉnh!' };
+        return { ok: false, msg: '❌ Chỉ Quản trị viên mới có quyền điều chỉnh!' };
       }
       const slug = normalizeFamilySlug(slugInput);
       const now = Date.now();
@@ -8385,7 +8409,7 @@ export function initB2KSGameEngine() {
         AudioEngine.playError();
         return {
           ok: false,
-          msg: `❌ Khu phố "${cleanFamily}" chưa tồn tại! Chỉ Admin (Bố B2KS) mới có thể tạo khu phố mới.`,
+          msg: `❌ Khu phố "${cleanFamily}" chưa tồn tại! Chỉ Quản trị viên mới có thể tạo khu phố mới.`,
           familyName: cleanFamily
         };
       }
@@ -9162,6 +9186,11 @@ export function initB2KSGameEngine() {
             state.buildingLayoutsUpdatedAt = remote.buildingLayoutsUpdatedAt || 0;
             sideChanged = true;
           }
+          if ((remote.billboardUpdatedAt || 0) > (state.billboardUpdatedAt || 0) && typeof remote.billboardText === 'string' && remote.billboardText.trim()) {
+            state.billboardText = remote.billboardText.trim();
+            state.billboardUpdatedAt = remote.billboardUpdatedAt || 0;
+            sideChanged = true;
+          }
           if ((remote.houseUpdatedAt || 0) > (state.houseUpdatedAt || 0) && remote.house && typeof remote.house === 'object') {
             state.house = { ...remote.house };
             state.houseUpdatedAt = remote.houseUpdatedAt || 0;
@@ -9206,6 +9235,8 @@ export function initB2KSGameEngine() {
           const localFamNameTs = state.familyNameUpdatedAt || 0;
           const localLayouts = state.buildingLayouts;
           const localLayoutsTs = state.buildingLayoutsUpdatedAt || 0;
+          const localBillboardText = state.billboardText;
+          const localBillboardTs = state.billboardUpdatedAt || 0;
           const localHouse = state.house;
           const localHouseTs = state.houseUpdatedAt || 0;
           const localMaxParentPts = state.maxParentPoints;
@@ -9239,6 +9270,13 @@ export function initB2KSGameEngine() {
             state.buildingLayouts =
               remote.buildingLayouts && typeof remote.buildingLayouts === 'object' ? { ...remote.buildingLayouts } : {};
             state.buildingLayoutsUpdatedAt = remote.buildingLayoutsUpdatedAt || 0;
+          }
+          if (localBillboardTs > (remote.billboardUpdatedAt || 0) && localBillboardText) {
+            state.billboardText = localBillboardText;
+            state.billboardUpdatedAt = localBillboardTs;
+          } else if (typeof remote.billboardText === 'string' && remote.billboardText.trim()) {
+            state.billboardText = remote.billboardText.trim();
+            state.billboardUpdatedAt = remote.billboardUpdatedAt || 0;
           }
           if (localHouseTs > (remote.houseUpdatedAt || 0) && localHouse) {
             state.house = localHouse;

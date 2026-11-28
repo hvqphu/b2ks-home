@@ -5913,30 +5913,121 @@ export async function createScene3D(canvasEl) {
     leaderTex.needsUpdate = true;
   }
 
-  // Cached Scrolling LED Billboard CanvasTexture (RepeatWrapping offset animated per frame, ZERO redraw!)
+  // Cached Scrolling LED Billboard CanvasTexture + Crown Header Plate (redrawn ONLY when text/brand/night changes)
+  const DEFAULT_LED_AD_TEXT = 'Hãy đến Trung Tâm Tiếng Anh để làm bài và đổi điểm ngay nào!';
   const ledCanvas = document.createElement('canvas');
-  ledCanvas.width = 1024;
-  ledCanvas.height = 128;
+  ledCanvas.width = 2048;
+  ledCanvas.height = 384;
   const ledCtx = ledCanvas.getContext('2d');
-  ledCtx.fillStyle = '#0B1221';
-  ledCtx.fillRect(0, 0, 1024, 128);
-  ledCtx.fillStyle = '#1E293B';
-  for (let gx = 4; gx < 1024; gx += 12) {
-    for (let gy = 4; gy < 128; gy += 12) {
-      ledCtx.fillRect(gx, gy, 3, 3);
-    }
-  }
-  ledCtx.font = 'bold 42px sans-serif';
-  ledCtx.textAlign = 'left';
-  ledCtx.textBaseline = 'middle';
-  ledCtx.fillStyle = '#FACC15';
-  ledCtx.fillText('★★★ Hãy đến Trung Tâm Tiếng Anh để làm bài và đổi điểm ngay nào!!!   ', 18, 66);
   const ledAdTex = new THREE.CanvasTexture(ledCanvas);
   ledAdTex.wrapS = THREE.RepeatWrapping;
   ledAdTex.wrapT = THREE.ClampToEdgeWrapping;
-  ledAdTex.repeat.set(0.62, 1);
+  ledAdTex.repeat.set(0.72, 1);
   ledAdTex.colorSpace = THREE.SRGBColorSpace;
   ledAdTex.anisotropy = maxAniso;
+  let lastLedAdSig = '';
+
+  const bbHeaderCanvas = document.createElement('canvas');
+  bbHeaderCanvas.width = 768;
+  bbHeaderCanvas.height = 128;
+  const bbHeaderCtx = bbHeaderCanvas.getContext('2d');
+  const billboardHeaderTex = new THREE.CanvasTexture(bbHeaderCanvas);
+  billboardHeaderTex.colorSpace = THREE.SRGBColorSpace;
+  billboardHeaderTex.anisotropy = maxAniso;
+  let lastBbHeaderSig = '';
+
+  function updateLedAdTexture(rawText, brand, isNight) {
+    const cleanText = String(rawText || '').replace(/\s+/g, ' ').trim() || DEFAULT_LED_AD_TEXT;
+    const cleanBrand = String(brand || 'B2KS').trim() || 'B2KS';
+    const adSig = `${cleanText}|${cleanBrand}|${isNight ? 'N' : 'D'}`;
+    if (adSig !== lastLedAdSig) {
+      lastLedAdSig = adSig;
+      const unit = `★ ${cleanText}   ✦   `;
+      let fontSize = 108;
+      ledCtx.font = `900 ${fontSize}px sans-serif`;
+      let unitW = Math.ceil(ledCtx.measureText(unit).width);
+      if (unitW > 2600) {
+        fontSize = Math.max(64, Math.floor((fontSize * 2400) / Math.max(1, unitW)));
+        ledCtx.font = `900 ${fontSize}px sans-serif`;
+        unitW = Math.ceil(ledCtx.measureText(unit).width);
+      }
+      const reps = Math.max(1, Math.ceil(1600 / Math.max(240, unitW)));
+      const targetW = Math.min(4096, Math.max(1024, unitW * reps));
+      if (ledCanvas.width !== targetW) {
+        ledCanvas.width = targetW;
+      }
+
+      const Wc = ledCanvas.width;
+      const Hc = ledCanvas.height;
+      const bgGrad = ledCtx.createLinearGradient(0, 0, 0, Hc);
+      bgGrad.addColorStop(0, '#060B1A');
+      bgGrad.addColorStop(0.5, '#0F172A');
+      bgGrad.addColorStop(1, '#060B1A');
+      ledCtx.fillStyle = bgGrad;
+      ledCtx.fillRect(0, 0, Wc, Hc);
+
+      // Subtle LED pixel matrix dots
+      ledCtx.fillStyle = isNight ? 'rgba(56, 189, 248, 0.14)' : 'rgba(148, 163, 184, 0.18)';
+      for (let gx = 6; gx < Wc; gx += 18) {
+        for (let gy = 48; gy < Hc - 48; gy += 18) {
+          ledCtx.fillRect(gx, gy, 5, 5);
+        }
+      }
+
+      // Top & bottom neon chase bands (seamless 36px repeating pattern)
+      for (let bx = 0; bx < Wc; bx += 36) {
+        const isCyan = (bx / 36) % 2 === 0;
+        ledCtx.fillStyle = isCyan ? '#38BDF8' : '#FACC15';
+        ledCtx.fillRect(bx + 2, 10, 26, 16);
+        ledCtx.fillStyle = isCyan ? '#FACC15' : '#F472B6';
+        ledCtx.fillRect(bx + 2, Hc - 26, 26, 16);
+      }
+      ledCtx.fillStyle = 'rgba(14, 165, 233, 0.25)';
+      ledCtx.fillRect(0, 34, Wc, 4);
+      ledCtx.fillRect(0, Hc - 38, Wc, 4);
+
+      // Glowing golden-white headline text seamlessly tiled edge-to-edge
+      ledCtx.font = `900 ${fontSize}px sans-serif`;
+      ledCtx.textAlign = 'left';
+      ledCtx.textBaseline = 'middle';
+      ledCtx.shadowColor = isNight ? '#F59E0B' : '#EA580C';
+      ledCtx.shadowBlur = isNight ? 20 : 10;
+      const txtGrad = ledCtx.createLinearGradient(0, 70, 0, Hc - 70);
+      txtGrad.addColorStop(0, '#FFFFFF');
+      txtGrad.addColorStop(0.5, '#FEF08A');
+      txtGrad.addColorStop(1, '#FBBF24');
+      ledCtx.fillStyle = txtGrad;
+      for (let i = 0; i < reps; i++) {
+        ledCtx.fillText(unit, i * unitW, Hc * 0.5 + 4);
+      }
+      ledCtx.shadowBlur = 0;
+
+      ledAdTex.repeat.set(Math.min(0.96, 1466 / Wc), 1);
+      ledAdTex.needsUpdate = true;
+    }
+
+    const hdrSig = `${cleanBrand}|${isNight ? 'N' : 'D'}`;
+    if (hdrSig !== lastBbHeaderSig) {
+      lastBbHeaderSig = hdrSig;
+      const ctx = bbHeaderCtx;
+      const g = ctx.createLinearGradient(0, 0, 768, 128);
+      g.addColorStop(0, '#1D4ED8');
+      g.addColorStop(0.5, '#4338CA');
+      g.addColorStop(1, '#0284C7');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, 768, 128);
+      ctx.strokeStyle = '#FACC15';
+      ctx.lineWidth = 10;
+      ctx.strokeRect(5, 5, 758, 118);
+      ctx.fillStyle = '#FEF08A';
+      ctx.font = '900 40px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`📢 BẢNG TIN GIA ĐÌNH ${cleanBrand.toUpperCase()}`, 384, 66);
+      billboardHeaderTex.needsUpdate = true;
+    }
+  }
+  updateLedAdTexture(DEFAULT_LED_AD_TEXT, 'B2KS', false);
 
   function getOrCreateRobotBannerTex(childId, text) {
     let entry = robotBannerCache.get(childId);
@@ -6146,7 +6237,8 @@ export async function createScene3D(canvasEl) {
     ];
     const occupiedBoxes = [
       { x: 670, y: 695, hw: 135, hd: 95 }, // Leader Board
-      { x: 1382, y: 620, hw: 125, hd: 95 }, // Ad Billboard
+      { x: 650, y: 236, hw: 170, hd: 55 }, // Left Northern Fence Grand Billboard
+      { x: 2165, y: 236, hw: 170, hd: 55 }, // Right Northern Fence Grand Billboard
     ];
     const houseOv = state.buildingLayouts?.house;
     plots.forEach((p, idx) => {
@@ -6358,8 +6450,8 @@ export async function createScene3D(canvasEl) {
 
     // 26 Trees + perimeter grove spanning expanded 3200x2200 city
     const treeCoords = [
-      [60, 290, 'sakura'], [285, 290, 'pine'], [490, 315, 'orange'], [640, 320, 'oak'], [1065, 310, 'sakura'],
-      [1365, 300, 'pine'], [1760, 315, 'orange'], [2180, 330, 'palm'], [2930, 310, 'sakura'], [3140, 340, 'palm'],
+      [60, 290, 'sakura'], [285, 290, 'pine'], [490, 315, 'orange'], [555, 315, 'oak'], [1065, 310, 'sakura'],
+      [1365, 300, 'pine'], [1760, 315, 'orange'], [2265, 335, 'palm'], [2930, 310, 'sakura'], [3140, 340, 'palm'],
       [80, 730, 'oak'], [420, 685, 'sakura'], [770, 745, 'pine'], [1360, 740, 'orange'], [2185, 760, 'palm'],
       [2930, 740, 'pine'], [90, 1290, 'sakura'], [560, 1340, 'oak'], [1080, 1360, 'pine'], [1350, 1290, 'orange'],
       [2340, 1490, 'palm'], [1830, 1320, 'sakura'], [2468, 780, 'oak'], [350, 1950, 'sakura'], [1380, 1960, 'pine'],
@@ -6441,26 +6533,164 @@ export async function createScene3D(canvasEl) {
     lbGroup.add(lbBase, lbTrim, lbFrame, lbScreen, lbTrophy);
     grp.add(lbGroup);
 
-    // Tall Scrolling LED Ad Billboard at main intersection SE corner
-    const adGroup = new THREE.Group();
-    adGroup.position.set(1382 * WORLD_SCALE, 0, 620 * WORLD_SCALE);
-    adGroup.rotation.y = Math.PI * 0.25;
-    const adSteel = mats.get('#334155', { roughness: 0.42, metalness: 0.4 });
-    const adPed = makeBox(THREE, 5.8, 0.3, 1.5, mats.get('#64748B', { roughness: 0.7 }));
-    adPed.position.y = 0.15;
-    [-2.4, 2.4].forEach((px) => {
-      const pole = makeCyl(THREE, 0.2, 0.24, 6.4, 10, adSteel);
-      pole.position.set(px, 3.2, 0);
-      adGroup.add(pole);
-    });
-    const adHousing = makeBox(THREE, 8.6, 2.1, 0.45, mats.get('#0F172A', { roughness: 0.35 }));
-    adHousing.position.y = 5.45;
-    const adBorder = makeBox(THREE, 8.85, 2.32, 0.3, mats.get('#F59E0B', { roughness: 0.3, emissive: '#F59E0B', emissiveIntensity: 0.25 }));
-    adBorder.position.y = 5.45;
-    const adScreen = new THREE.Mesh(new THREE.PlaneGeometry(8.2, 1.72), new THREE.MeshBasicMaterial({ map: ledAdTex }));
-    adScreen.position.set(0, 5.45, 0.235);
-    adGroup.add(adPed, adBorder, adHousing, adScreen);
-    grp.add(adGroup);
+    // Twin Monumental Scrolling LED Ad Billboards flush against northern picket fence (left-mid & right-mid, aligned with buildings)
+    function buildGrandBillboard3D(bx2d, by2d) {
+      const adGroup = new THREE.Group();
+      const wx = bx2d * WORLD_SCALE;
+      const wz = by2d * WORLD_SCALE;
+      adGroup.position.set(wx, 0, wz);
+      adGroup.rotation.y = 0; // Same orientation as northern row buildings (+Z facing avenue)
+
+      const steelDark = mats.get('#1E293B', { roughness: 0.42, metalness: 0.55 });
+      const steelMid = mats.get('#475569', { roughness: 0.38, metalness: 0.6 });
+      const plinthMat = mats.get('#94A3B8', { roughness: 0.72 });
+      const plinthTopMat = mats.get('#CBD5E1', { roughness: 0.65 });
+      const goldTrimMat = mats.get('#FACC15', {
+        roughness: 0.25,
+        metalness: 0.5,
+        emissive: '#F59E0B',
+        emissiveIntensity: lighting.isNight ? 1.25 : 0.2,
+      });
+      const neonRimMat = mats.get('#0EA5E9', {
+        roughness: 0.22,
+        metalness: 0.35,
+        emissive: '#38BDF8',
+        emissiveIntensity: lighting.isNight ? 1.75 : 0.32,
+      });
+
+      // Stepped stone foundation & side planter hedges
+      const pedBase = makeBox(THREE, 15.6, 0.52, 2.5, plinthMat, true, true);
+      pedBase.position.y = 0.26;
+      const pedStep = makeBox(THREE, 14.4, 0.24, 1.9, plinthTopMat, true, true);
+      pedStep.position.y = 0.64;
+      adGroup.add(pedBase, pedStep);
+
+      [-6.5, 6.5].forEach((px) => {
+        const planter = makeBox(THREE, 2.0, 0.48, 1.4, mats.get('#B45309', { roughness: 0.72 }));
+        planter.position.set(px, 0.76, 0.25);
+        const shrub = makeBox(THREE, 1.8, 0.45, 1.1, mats.get('#16A34A', { roughness: 0.85 }));
+        shrub.position.set(px, 1.12, 0.25);
+        adGroup.add(planter, shrub);
+        [-0.5, 0, 0.5].forEach((fx, fi) => {
+          const bloom = makeSphere(THREE, 0.16, 7, 6, mats.get(fi % 2 === 0 ? '#F43F5E' : '#FACC15', { roughness: 0.6 }));
+          bloom.position.set(px + fx, 1.38, 0.28);
+          adGroup.add(bloom);
+        });
+      });
+
+      // Heavy steel support pylons + cross truss
+      [-4.9, 4.9].forEach((px) => {
+        const footing = makeBox(THREE, 1.35, 0.65, 1.35, steelMid);
+        footing.position.set(px, 1.05, 0);
+        const col = makeCyl(THREE, 0.34, 0.42, 10.6, 10, steelDark);
+        col.position.set(px, 6.2, 0);
+        const collar = makeCyl(THREE, 0.46, 0.46, 0.35, 10, goldTrimMat);
+        collar.position.set(px, 6.3, 0);
+        adGroup.add(footing, col, collar);
+      });
+
+      // Structural cross-girder & X-brace between pylons
+      const midGirder = makeBox(THREE, 10.2, 0.38, 0.42, steelMid);
+      midGirder.position.set(0, 3.6, 0);
+      adGroup.add(midGirder);
+      [-1, 1].forEach((side) => {
+        const brace = makeBox(THREE, 10.4, 0.2, 0.22, steelMid);
+        brace.position.set(0, 5.0, 0);
+        brace.rotation.z = side * 0.26;
+        adGroup.add(brace);
+      });
+
+      // Maintenance catwalk + safety railing below screen
+      const catwalk = makeBox(THREE, 15.2, 0.2, 1.15, steelMid);
+      catwalk.position.set(0, 6.45, 0.58);
+      const railBar = makeBox(THREE, 15.2, 0.08, 0.08, goldTrimMat);
+      railBar.position.set(0, 7.1, 1.1);
+      adGroup.add(catwalk, railBar);
+      for (let rx = -7.2; rx <= 7.2; rx += 1.8) {
+        const post = makeBox(THREE, 0.08, 0.65, 0.08, steelMid);
+        post.position.set(rx, 6.78, 1.1);
+        adGroup.add(post);
+      }
+
+      // Giant double-framed LED screen cabinet
+      const housing = makeBox(THREE, 15.4, 4.55, 0.72, mats.get('#0F172A', { roughness: 0.35, metalness: 0.3 }));
+      housing.position.set(0, 9.0, 0.12);
+      const neonOuter = makeBox(THREE, 15.9, 5.0, 0.44, neonRimMat);
+      neonOuter.position.set(0, 9.0, 0.06);
+      const innerGold = makeBox(THREE, 15.1, 4.25, 0.58, goldTrimMat);
+      innerGold.position.set(0, 9.0, 0.2);
+      const screenMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(14.7, 3.85),
+        new THREE.MeshBasicMaterial({ map: ledAdTex })
+      );
+      screenMesh.position.set(0, 9.0, 0.505);
+      adGroup.add(neonOuter, housing, innerGold, screenMesh);
+
+      // Architectural top crown header sign + corner glowing star beacons
+      const crownFrame = makeBox(THREE, 8.8, 1.38, 0.48, goldTrimMat);
+      crownFrame.position.set(0, 12.05, 0.18);
+      const crownBacking = makeBox(THREE, 8.4, 1.18, 0.52, mats.get('#1E1B4B', { roughness: 0.4 }));
+      crownBacking.position.set(0, 12.05, 0.2);
+      const crownPlate = new THREE.Mesh(
+        new THREE.PlaneGeometry(8.1, 1.06),
+        new THREE.MeshBasicMaterial({ map: billboardHeaderTex })
+      );
+      crownPlate.position.set(0, 12.05, 0.475);
+      adGroup.add(crownFrame, crownBacking, crownPlate);
+
+      [-7.7, 7.7].forEach((bx, bi) => {
+        const pole = makeCyl(THREE, 0.12, 0.14, 1.0, 8, steelMid);
+        pole.position.set(bx, 11.75, 0.18);
+        const beaconMat = mats.get(bi === 0 ? '#FACC15' : '#38BDF8', {
+          emissive: bi === 0 ? '#F59E0B' : '#0EA5E9',
+          emissiveIntensity: lighting.isNight ? 2.4 : 0.55,
+        });
+        const orb = makeSphere(THREE, 0.32, 10, 8, beaconMat, false, false);
+        orb.position.set(bx, 12.35, 0.18);
+        if (bi === 0) adGroup.userData.beacon = orb;
+        adGroup.add(pole, orb);
+      });
+
+      // 3 Overhead Gooseneck Floodlights
+      const lampBulbMat = mats.get('#FEF9C3', {
+        emissive: '#FDE047',
+        emissiveIntensity: lighting.isNight ? 2.4 : 0.25,
+      });
+      [-4.8, 0, 4.8].forEach((lx) => {
+        const arm = makeBox(THREE, 0.12, 0.12, 1.15, steelDark);
+        arm.position.set(lx, 11.45, 0.85);
+        const hood = makeCyl(THREE, 0.16, 0.34, 0.36, 8, steelMid);
+        hood.rotation.x = 0.5;
+        hood.position.set(lx, 11.35, 1.38);
+        const bulb = makeSphere(THREE, 0.14, 8, 6, lampBulbMat, false, false);
+        bulb.position.set(lx, 11.24, 1.42);
+        adGroup.add(arm, hood, bulb);
+      });
+
+      if (lighting.isNight) {
+        const nightWash = new THREE.Mesh(
+          new THREE.PlaneGeometry(17.5, 6.2),
+          new THREE.MeshBasicMaterial({
+            color: '#38BDF8',
+            transparent: true,
+            opacity: 0.14,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            side: THREE.DoubleSide,
+          })
+        );
+        nightWash.rotation.x = -Math.PI / 2;
+        nightWash.position.set(0, 0.09, 2.2);
+        adGroup.add(nightWash);
+      }
+
+      grp.add(adGroup);
+      animatedProps.push(adGroup);
+      nightBuildingAnchors.push({ x: wx, y: 8.2, z: wz + 3.2, color: '#38BDF8', intensity: 18 });
+    }
+
+    buildGrandBillboard3D(650, 236);   // Left-side middle along northern fence
+    buildGrandBillboard3D(2165, 236);  // Right-side middle along northern fence
 
     return grp;
   }
@@ -6666,9 +6896,11 @@ export async function createScene3D(canvasEl) {
       labelLayerEl,
     } = params;
 
+    const brandName = (state.familyName || 'B2KS').trim() || 'B2KS';
     updateAtmosphere(lighting, weather, me.scene, nowMs);
-    updateLeaderBoardTexture(kidsLeaderboard, (state.familyName || 'B2KS').trim() || 'B2KS');
-    ledAdTex.offset.x = (nowMs * 0.00018) % 1;
+    updateLeaderBoardTexture(kidsLeaderboard, brandName);
+    updateLedAdTexture(state.billboardText, brandName, Boolean(lighting.isNight));
+    ledAdTex.offset.x = (nowMs * 0.00014) % 1;
 
     // 1. Rebuild static world only when scene / building layouts / night state / rooms change
     const locSig = locations.map((l) => `${l.id}:${l.x}:${l.y}:${l.shape}`).join('|');
@@ -7405,6 +7637,7 @@ export async function createScene3D(canvasEl) {
       skyDome.mat.dispose();
       leaderTex.dispose();
       ledAdTex.dispose();
+      billboardHeaderTex.dispose();
       robotBannerCache.forEach((b) => b.tex.dispose());
       robotBannerCache.clear();
       _petGeoCache.forEach((g) => g.dispose());

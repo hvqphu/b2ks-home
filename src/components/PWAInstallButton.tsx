@@ -14,7 +14,7 @@ export const PWAInstallButton: React.FC = () => {
         type="button"
         onClick={install}
         className="hud-tile-btn tone-sky"
-        title="Cài đặt ứng dụng B2KS ra màn hình chính"
+        title="Cài đặt ứng dụng Khu Phố Gia Đình ra màn hình chính"
       >
         <Download className="w-[18px] h-[18px]" />
         <span className="hud-tile-lbl">Cài App</span>
@@ -39,7 +39,7 @@ export const PWAInstallButton: React.FC = () => {
           <div className="fixed inset-0 z-[270] flex items-center justify-center bg-black/60 p-4">
             <div className="w-full max-w-sm rounded-xl border-[3px] border-[#2C3E50] bg-white p-5 shadow-xl">
               <div className="flex items-center justify-between border-b-2 border-[#2C3E50] pb-2 mb-3">
-                <h3 className="text-base font-bold text-[#2C3E50]">Cài B2KS lên iPhone / iPad</h3>
+                <h3 className="text-base font-bold text-[#2C3E50]">Cài ứng dụng lên iPhone / iPad</h3>
                 <button
                   type="button"
                   onClick={() => setShowIOSGuide(false)}

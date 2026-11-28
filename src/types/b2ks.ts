@@ -588,6 +588,8 @@ export interface B2KSState {
   houseUpdatedAt?: number;
   buildingLayouts?: Record<string, BuildingLayoutOverride>;
   buildingLayoutsUpdatedAt?: number;
+  billboardText?: string;
+  billboardUpdatedAt?: number;
   bgmTheme?: BgmThemeId;
   members: Member[];
   tasks: TaskItem[];
@@ -694,6 +696,8 @@ export interface B2KSBridge {
   getResolvedLocations?: () => NavDestination[];
   setBuildingLayouts?: (layouts: Record<string, BuildingLayoutOverride>) => void;
   resetBuildingLayouts?: () => void;
+  getBillboardText?: () => string;
+  setBillboardText?: (nextText: string) => { ok: boolean; msg: string };
   setGamePassword?: (nextPw: string) => { ok: boolean; msg: string };
   setParentPin?: (nextPin: string) => { ok: boolean; msg: string };
   updateMemberProfile?: (memberId: string, updates: { name?: string; age?: number; role?: string }) => { ok: boolean; msg: string };

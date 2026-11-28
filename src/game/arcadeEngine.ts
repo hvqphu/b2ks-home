@@ -776,7 +776,7 @@ export function createArcadeEngine(deps: ArcadeHostDeps) {
         ${
           !meInZone
             ? `<div style="background:#FDEDEC; border:2px solid #E74C3C; border-radius:10px; padding:10px; margin-bottom:12px; text-align:center; font-size:13px; color:#C0392B; font-weight:700;">
-                🚶 Nhân vật <b>${me.name}</b> chưa đứng tại Khu Vui Chơi! Hãy đóng bảng này và di chuyển lại gần Khu Vui Chơi B2KS để tạo phòng.
+                🚶 Nhân vật <b>${me.name}</b> chưa đứng tại Khu Vui Chơi! Hãy đóng bảng này và di chuyển lại gần Khu Vui Chơi ${((deps.getState().familyName || 'Gia Đình').trim() || 'Gia Đình').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] || c))} để tạo phòng.
               </div>`
             : ''
         }

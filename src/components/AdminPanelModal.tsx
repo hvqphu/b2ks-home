@@ -7,6 +7,7 @@ import {
   KeyRound,
   Package,
   Palette,
+  PawPrint,
   PlusCircle,
   RefreshCw,
   RotateCcw,
@@ -16,6 +17,13 @@ import {
   X,
 } from 'lucide-react';
 import { AdminNeighborhoodRecord, B2KSBridge } from '../types/b2ks';
+import {
+  PET_ACCESSORY_CATALOG,
+  PET_FOOD_CATALOG,
+  PET_SPECIES,
+  PET_VARIANT_DEFS,
+} from '../game/constants';
+import { renderPetArtSVG } from '../game/petSystem';
 import { AssetLibraryTab } from './AssetLibraryTab';
 
 interface Props {
@@ -24,7 +32,7 @@ interface Props {
 }
 
 export const AdminPanelModal: React.FC<Props> = ({ bridge, onClose }) => {
-  const [tab, setTab] = useState<'neighborhoods' | 'parent_points' | 'assets' | 'export_zip'>('neighborhoods');
+  const [tab, setTab] = useState<'neighborhoods' | 'parent_points' | 'assets' | 'pet_codex' | 'export_zip'>('neighborhoods');
   const [downloadingZip, setDownloadingZip] = useState(false);
   const [records, setRecords] = useState<AdminNeighborhoodRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -85,7 +93,7 @@ export const AdminPanelModal: React.FC<Props> = ({ bridge, onClose }) => {
             <span>Không có quyền truy cập Admin</span>
           </div>
           <p className="text-sm text-slate-600">
-            Công cụ Admin chỉ dành riêng cho nhân vật <b>Bố</b> của khu phố gốc <b>B2KS</b>.
+            Công cụ Admin chỉ dành riêng cho <b>Quản trị viên</b> của hệ thống.
           </p>
           <button
             type="button"
@@ -282,14 +290,14 @@ export const AdminPanelModal: React.FC<Props> = ({ bridge, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-[260] flex items-center justify-center bg-black/75 p-3">
-      <div className={`w-full ${tab === 'assets' ? 'max-w-5xl' : 'max-w-4xl'} max-h-[90dvh] flex flex-col rounded-2xl border-[3px] border-[#2C3E50] bg-[#F8FAFC] text-[#2C3E50] shadow-2xl overflow-hidden`}>
+      <div className={`w-full ${tab === 'assets' || tab === 'pet_codex' ? 'max-w-5xl' : 'max-w-4xl'} max-h-[90dvh] flex flex-col rounded-2xl border-[3px] border-[#2C3E50] bg-[#F8FAFC] text-[#2C3E50] shadow-2xl overflow-hidden`}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-[#4C1D95] via-[#6D28D9] to-[#7C3AED] text-white border-b-[3px] border-[#2C3E50]">
           <div className="flex items-center gap-2.5">
             <span className="text-2xl">🛠️</span>
             <div>
               <h2 className="text-base sm:text-lg font-extrabold">
-                Công Cụ Admin Hệ Thống (Chỉ Bố B2KS)
+                Công Cụ Admin Hệ Thống (Quản Trị Viên)
               </h2>
               <p className="text-xs text-violet-100">
                 Quản lý danh sách khu phố, reset mật khẩu mặc định (1111 / 1234) &amp; điều chỉnh ngân sách Phụ huynh toàn hệ thống
@@ -354,6 +362,19 @@ export const AdminPanelModal: React.FC<Props> = ({ bridge, onClose }) => {
               type="button"
               onClick={() => {
                 bridge.playClick();
+                setTab('pet_codex');
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer ${
+                tab === 'pet_codex' ? 'bg-[#9333EA] text-white shadow' : 'bg-white text-[#2C3E50]'
+              }`}
+            >
+              <PawPrint className="w-3.5 h-3.5" />
+              <span>Sổ Tay Thú Cưng</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                bridge.playClick();
                 setTab('export_zip');
               }}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer ${
@@ -364,7 +385,7 @@ export const AdminPanelModal: React.FC<Props> = ({ bridge, onClose }) => {
               <span>Xuất ZIP</span>
             </button>
           </div>
-          {tab !== 'assets' && tab !== 'export_zip' && (
+          {tab !== 'assets' && tab !== 'pet_codex' && tab !== 'export_zip' && (
             <button
               type="button"
               disabled={loading}
@@ -542,7 +563,7 @@ export const AdminPanelModal: React.FC<Props> = ({ bridge, onClose }) => {
                                 setConfirmResetSlug(null);
                                 setConfirmDeleteSlug(rec.slug);
                               }}
-                              title={isB2KS ? 'Không thể xóa khu phố gốc B2KS' : `Xóa khu phố ${rec.familyName}`}
+                              title={isB2KS ? 'Không thể xóa khu phố gốc hệ thống' : `Xóa khu phố ${rec.familyName}`}
                               className="btn btn-sm bg-rose-100 text-rose-700 border border-rose-300 disabled:opacity-40 disabled:cursor-not-allowed"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -561,7 +582,7 @@ export const AdminPanelModal: React.FC<Props> = ({ bridge, onClose }) => {
           {tab === 'parent_points' && (
             <div className="space-y-3">
               <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-3 text-xs text-amber-950">
-                Tại đây Admin <b>Bố B2KS</b> có thể điều chỉnh <b>điểm ngân sách hàng ngày</b>, <b>điểm số tối đa của Phụ huynh</b> (mặc định 500⭐ — đạt mức này ba mẹ sẽ không nhận thêm điểm) và <b>số điểm hiện có</b> của tất cả Phụ huynh (Bố/Mẹ) trong từng khu phố.
+                Tại đây <b>Quản trị viên</b> có thể điều chỉnh <b>điểm ngân sách hàng ngày</b>, <b>điểm số tối đa của Phụ huynh</b> (mặc định 500⭐ — đạt mức này bố mẹ sẽ không nhận thêm điểm) và <b>số điểm hiện có</b> của tất cả Phụ huynh (Bố/Mẹ) trong từng khu phố.
               </div>
 
               {records.map((rec) => {
@@ -692,6 +713,118 @@ export const AdminPanelModal: React.FC<Props> = ({ bridge, onClose }) => {
           )}
 
           {tab === 'assets' && <AssetLibraryTab bridge={bridge} />}
+
+          {tab === 'pet_codex' && (
+            <div className="space-y-4">
+              {/* 0. Clear Hunger & Bonus Rules Handbook */}
+              <div className="rounded-xl border-2 border-[#2C3E50] bg-emerald-50 p-3.5 space-y-1.5">
+                <h3 className="font-extrabold text-sm text-emerald-950">
+                  📜 Cơ Chế Độ No &amp; Cộng Thưởng Sao Thú Cưng
+                </h3>
+                <ul className="text-xs text-emerald-900 space-y-1 list-disc pl-4 leading-relaxed">
+                  <li>
+                    <b>Độ no giảm chậm khi đồng hành:</b> Chỉ khi thú cưng đang được chọn <b>Đồng hành ngoài map</b> thì Độ no mới giảm dần theo tốc độ riêng của từng loài (~<b>0.45% – 0.70%/phút</b>). Nếu cất thú cưng vào túi, độ no sẽ giữ nguyên.
+                  </li>
+                  <li>
+                    <b>Điều kiện kích hoạt cộng thưởng:</b> Thú cưng mang lại <b>+Tốc độ di chuyển</b> &amp; <b>+Điểm Sao</b> (khi hoàn thành việc nhà, bài tập, nhiệm vụ đồng đội, quiz Tiếng Anh, nói Tiếng Anh, ăn cơm, đi ngủ, nghỉ chân công viên, đọc truyện) chỉ khi đang <b>Đồng hành</b> và <b>Độ no &gt; 0%</b>.
+                  </li>
+                  <li>
+                    <b>Khi Độ no về 0% (❗ ĐÓI!):</b> Thú cưng hiện cảnh báo đói trên đầu và <b>tạm ngưng toàn bộ cộng Tốc độ &amp; Sao thưởng</b> cho đến khi được cho ăn lại.
+                  </li>
+                </ul>
+              </div>
+
+              {/* 1. Rare Variant Probabilities & Accessories & Food */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="rounded-xl border-2 border-[#2C3E50] bg-amber-50 p-3 space-y-2">
+                  <h4 className="font-bold text-xs text-amber-950">🎲 Tỉ Lệ Nở Màu Hiếm &amp; Giới Tính (50% ♂️ / 50% ♀️)</h4>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PET_VARIANT_DEFS.map((v) => (
+                      <span
+                        key={v.id}
+                        className="px-2 py-1 rounded-lg bg-white border border-amber-300 text-[11px] font-bold"
+                        style={{ color: v.badgeColor }}
+                      >
+                        {v.label}: {v.chancePercent}%
+                      </span>
+                    ))}
+                  </div>
+                  <h4 className="font-bold text-xs text-amber-950 pt-1">🍖 Thức Ăn Chăm Nuôi</h4>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {PET_FOOD_CATALOG.map((fd) => (
+                      <div key={fd.id} className="rounded-lg bg-white border border-slate-200 px-2 py-1 text-[11px]">
+                        <b>{fd.icon} {fd.name}</b> ({fd.price}⭐) • +{fd.xpGain}XP · +{fd.hungerGain}% no
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border-2 border-[#2C3E50] bg-pink-50 p-3 space-y-2">
+                  <h4 className="font-bold text-xs text-pink-950">🎀 Phụ Kiện Thời Trang Thú Cưng</h4>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {PET_ACCESSORY_CATALOG.map((acc) => (
+                      <div key={acc.id} className="rounded-lg bg-white border border-pink-200 px-2 py-1.5 text-[11px]">
+                        <div className="font-bold">{acc.icon} {acc.name} · {acc.price}⭐</div>
+                        <div className="text-[10px] text-slate-500 truncate">{acc.desc}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Full 10 Species x 5 Stages Encyclopedia */}
+              <div className="rounded-xl border-2 border-[#2C3E50] bg-white p-3.5 space-y-3">
+                <h3 className="font-bold text-sm text-[#2C3E50]">
+                  📖 Từ Điển 10 Loài Thú Cưng &amp; 5 Giai Đoạn Tiến Hóa
+                </h3>
+                <div className="space-y-3">
+                  {PET_SPECIES.map((sp) => (
+                    <div
+                      key={sp.id}
+                      className="rounded-xl border-2 p-3 space-y-2"
+                      style={{ borderColor: sp.primaryColor, background: `${sp.accentColor}40` }}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <div className="font-extrabold text-sm" style={{ color: sp.primaryColor }}>
+                            {sp.name} ({sp.eggName})
+                          </div>
+                          <div className="text-[11px] text-slate-600">
+                            {sp.desc} • Chỉ số: <b>{sp.statLabel}</b> • ⏳ Đói: <b>-{sp.hungerDecayPerMin}%/phút</b>
+                          </div>
+                        </div>
+                        <span className="points-pill text-xs">🥚 {sp.eggPrice}⭐</span>
+                      </div>
+                      <div className="grid grid-cols-5 gap-1.5">
+                        {sp.stages.map((stInfo) => {
+                          const svg = renderPetArtSVG(sp.id, stInfo.stage, 48);
+                          return (
+                            <div
+                              key={stInfo.stage}
+                              className="rounded-lg border border-slate-300 bg-white p-1.5 text-center space-y-0.5"
+                            >
+                              <div
+                                className="mx-auto w-12 h-12 flex items-center justify-center"
+                                dangerouslySetInnerHTML={{ __html: svg }}
+                              />
+                              <div className="text-[10px] font-extrabold text-slate-800 truncate">
+                                GĐ{stInfo.stage}: {stInfo.title}
+                              </div>
+                              <div className="text-[9.5px] text-slate-500">
+                                {stInfo.stage === 0
+                                  ? 'Ấp 100%'
+                                  : `⚡+${stInfo.speedBonus} · ⭐+${stInfo.starBonus}`}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {tab === 'export_zip' && (
             <div className="space-y-3">
