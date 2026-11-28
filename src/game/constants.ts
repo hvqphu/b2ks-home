@@ -3,6 +3,8 @@ import {
   ActivityConfigItem,
   B2KSState,
   BgmThemeDef,
+  BillboardPanelConfig,
+  BillboardSettings,
   BuildingShape,
   CrossWorldItem,
   EnglishQuestion,
@@ -17,6 +19,29 @@ export const APP_UPDATED_AT = '27/11/2026 — 07:30';
 export const MAX_PARENT_POINTS = 500;
 export const DAILY_PARENT_ALLOWANCE = 150;
 export const DEFAULT_BILLBOARD_TEXT = 'Hãy đến Trung Tâm Tiếng Anh để làm bài và đổi điểm ngay nào!';
+export const DEFAULT_BILLBOARD_2_TEXT = 'Hoàn thành việc nhà & bài tập hôm nay để nhận nhiều Sao thưởng nhé!';
+export const DEFAULT_BILLBOARD_PANEL_1: BillboardPanelConfig = {
+  text: DEFAULT_BILLBOARD_TEXT,
+  headerText: '',
+  fontSize: 108,
+  textColor: '#FEF08A',
+  bgColor: '#0F172A',
+  borderColor: '#38BDF8',
+  scrollSpeed: 1
+};
+export const DEFAULT_BILLBOARD_PANEL_2: BillboardPanelConfig = {
+  text: DEFAULT_BILLBOARD_2_TEXT,
+  headerText: '',
+  fontSize: 108,
+  textColor: '#FFFFFF',
+  bgColor: '#1E1B4B',
+  borderColor: '#FACC15',
+  scrollSpeed: 1
+};
+export const DEFAULT_BILLBOARD_SETTINGS: BillboardSettings = {
+  board1: DEFAULT_BILLBOARD_PANEL_1,
+  board2: DEFAULT_BILLBOARD_PANEL_2
+};
 export const DEFAULT_FIREBASE_URL = 'https://b2ks-home-default-rtdb.asia-southeast1.firebasedatabase.app';
 
 // Expanded neighborhood world with outer city avenues, decorative buildings & extra exploration blocks
@@ -695,6 +720,49 @@ export function getFamilyFirebaseRoot(familyName?: string | null): string {
   const slug = normalizeFamilySlug(familyName);
   return slug === 'b2ks' ? 'b2ks_family_rpg_v16' : `b2ks_family_ns_${slug}`;
 }
+
+function sanitizeHexColor(raw: unknown, fallback: string): string {
+  const s = typeof raw === 'string' ? raw.trim() : '';
+  return /^#[0-9a-fA-F]{6}$/.test(s) ? s.toUpperCase() : fallback;
+}
+
+export function normalizeBillboardPanel(
+  raw: Partial<BillboardPanelConfig> | undefined | null,
+  fallback: BillboardPanelConfig
+): BillboardPanelConfig {
+  const cleanText = String(raw?.text ?? '').replace(/\s+/g, ' ').trim().slice(0, 140) || fallback.text;
+  const cleanHeader = String(raw?.headerText ?? '').replace(/\s+/g, ' ').trim().slice(0, 44);
+  const rawFont = Number(raw?.fontSize);
+  const fontSize = Number.isFinite(rawFont) ? Math.max(64, Math.min(144, Math.round(rawFont))) : (fallback.fontSize ?? 108);
+  const rawSpeed = Number(raw?.scrollSpeed);
+  const scrollSpeed = Number.isFinite(rawSpeed)
+    ? Math.max(0.4, Math.min(2.5, Math.round(rawSpeed * 10) / 10))
+    : (fallback.scrollSpeed ?? 1);
+  return {
+    text: cleanText,
+    headerText: cleanHeader,
+    fontSize,
+    textColor: sanitizeHexColor(raw?.textColor, fallback.textColor ?? '#FEF08A'),
+    bgColor: sanitizeHexColor(raw?.bgColor, fallback.bgColor ?? '#0F172A'),
+    borderColor: sanitizeHexColor(raw?.borderColor, fallback.borderColor ?? '#38BDF8'),
+    scrollSpeed
+  };
+}
+
+export function normalizeBillboardSettings(
+  raw?: Partial<BillboardSettings> | null,
+  legacyText?: string | null
+): BillboardSettings {
+  const legacyClean = typeof legacyText === 'string' && legacyText.trim() ? legacyText.trim().slice(0, 140) : '';
+  const b1Fallback: BillboardPanelConfig = legacyClean
+    ? { ...DEFAULT_BILLBOARD_PANEL_1, text: legacyClean }
+    : DEFAULT_BILLBOARD_PANEL_1;
+  return {
+    board1: normalizeBillboardPanel(raw?.board1, b1Fallback),
+    board2: normalizeBillboardPanel(raw?.board2, DEFAULT_BILLBOARD_PANEL_2)
+  };
+}
+
 
 
 

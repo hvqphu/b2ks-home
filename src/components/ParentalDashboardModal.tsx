@@ -40,6 +40,8 @@ import {
   BgmThemeId,
   BibleQuestion,
   BibleQuestionCategory,
+  BillboardPanelConfig,
+  BillboardSettings,
   BuildingLayoutOverride,
   BuildingShape,
   CrossWorldRequest,
@@ -51,11 +53,14 @@ import {
   BGM_THEME_OPTIONS,
   BUILDING_SHAPE_OPTIONS,
   DEFAULT_ACTIVITY_CONFIGS,
-  DEFAULT_BILLBOARD_TEXT,
+  DEFAULT_BILLBOARD_PANEL_1,
+  DEFAULT_BILLBOARD_PANEL_2,
+  DEFAULT_BILLBOARD_SETTINGS,
   DEFAULT_MEMBER_AGES,
   NEIGHBORHOOD_LOCATIONS,
   STREET_WORLD,
   formatFamilyBrand,
+  normalizeBillboardSettings,
 } from '../game/constants';
 import {
   getPetAccessoryDef,
@@ -84,14 +89,17 @@ interface Props {
 }
 
 export const ParentalDashboardModal: React.FC<Props> = ({ bridge, onClose }) => {
-  const [tab, setTab] = useState<'charts' | 'achievements' | 'rewards' | 'quests' | 'english' | 'speaking' | 'bible' | 'activities' | 'family_map' | 'logs'>('charts');
+  const [tab, setTab] = useState<'charts' | 'achievements' | 'rewards' | 'quests' | 'english' | 'speaking' | 'bible' | 'activities' | 'family_map' | 'billboard' | 'logs'>('charts');
   const [, setTick] = useState(0);
   const [pointInputs, setPointInputs] = useState<Record<string, string>>({});
   const [pointReasons, setPointReasons] = useState<Record<string, string>>({});
 
   // Family & Map Editor state
   const [familyNameDraft, setFamilyNameDraft] = useState(() => bridge.getFamilyName?.() || bridge.getState().familyName || 'B2KS');
-  const [billboardDraft, setBillboardDraft] = useState(() => bridge.getBillboardText?.() || bridge.getState().billboardText || DEFAULT_BILLBOARD_TEXT);
+  const [billboardsDraft, setBillboardsDraft] = useState<BillboardSettings>(() =>
+    bridge.getBillboardSettings?.() ||
+    normalizeBillboardSettings(bridge.getState().billboards, bridge.getState().billboardText)
+  );
   const [gamePwDraft, setGamePwDraft] = useState(() => bridge.getState().gamePassword || '1111');
   const [parentPinDraft, setParentPinDraft] = useState(() => bridge.getState().parentPin || '1234');
   const [pwFeedback, setPwFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
@@ -180,6 +188,13 @@ export const ParentalDashboardModal: React.FC<Props> = ({ bridge, onClose }) => 
       setDraftLayouts({ ...(bridge.getState().buildingLayouts || {}) });
     }
   }, [state.buildingLayoutsUpdatedAt]);
+
+  useEffect(() => {
+    setBillboardsDraft(
+      bridge.getBillboardSettings?.() ||
+        normalizeBillboardSettings(bridge.getState().billboards, bridge.getState().billboardText)
+    );
+  }, [state.billboardsUpdatedAt]);
 
   useEffect(() => {
     if (!isB2KSFamily && tab === 'activities') {
@@ -869,6 +884,16 @@ export const ParentalDashboardModal: React.FC<Props> = ({ bridge, onClose }) => 
           >
             <MapPin className="w-3.5 h-3.5" />
             Gia Đình &amp; Bản Đồ
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('billboard')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 ${
+              tab === 'billboard' ? 'bg-[#4F46E5] text-white' : 'bg-white text-[#2C3E50]'
+            }`}
+          >
+            <Megaphone className="w-3.5 h-3.5" />
+            Bảng Quảng Cáo (2 LED)
           </button>
           <button
             type="button"
@@ -2429,88 +2454,28 @@ export const ParentalDashboardModal: React.FC<Props> = ({ bridge, onClose }) => 
                 </div>
               </div>
 
-              {/* 1b. Synchronized Neighborhood LED Billboard Message Editor */}
-              <div className="rounded-xl border-2 border-[#2C3E50] bg-indigo-50 p-3.5 space-y-2.5">
-                <div className="flex flex-wrap items-center justify-between gap-2">
+              {/* 1b. Quick Shortcut to Dedicated 2-Board LED Billboard Tab */}
+              <div className="rounded-xl border-2 border-[#2C3E50] bg-indigo-50 p-3.5 flex flex-wrap items-center justify-between gap-3">
+                <div className="space-y-0.5">
                   <h3 className="font-bold text-sm text-indigo-950 flex items-center gap-1.5">
                     <Megaphone className="w-4 h-4 text-indigo-700" />
-                    <span>Cài Đặt Thông Tin Bảng Quảng Cáo Khu Phố (Đồng bộ 2 bảng LED 3D)</span>
+                    <span>Bảng Quảng Cáo LED Khu Phố (2 Bảng Trái &amp; Phải)</span>
                   </h3>
-                  <span className="text-[11px] font-bold text-indigo-700">
-                    {billboardDraft.trim().length}/140 ký tự
-                  </span>
+                  <p className="text-xs text-indigo-900">
+                    Cài đặt nội dung chạy chữ riêng cho 2 bảng, cỡ chữ, màu chữ, màu nền và viền Neon tại mục <b>Bảng Quảng Cáo (2 LED)</b>.
+                  </p>
                 </div>
-                <p className="text-xs text-indigo-900 leading-snug">
-                  Nội dung bạn nhập sẽ chạy chữ trên <b>2 Bảng Quảng Cáo LED cỡ lớn</b> sát hàng rào phía trên khu phố và tự động đồng bộ tới mọi thành viên.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <input
-                    type="text"
-                    maxLength={140}
-                    value={billboardDraft}
-                    onChange={(e) => setBillboardDraft(e.target.value)}
-                    placeholder="Nhập thông báo chạy chữ trên bảng quảng cáo..."
-                    className="flex-1 min-w-[220px] px-3 py-1.5 rounded-lg border-2 border-[#2C3E50] bg-white text-sm font-bold text-[#0F172A]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const res = bridge.setBillboardText?.(billboardDraft);
-                      if (res) {
-                        bridge.showToast(res.msg);
-                        if (res.ok) {
-                          bridge.playSuccess();
-                          forceRefresh();
-                        } else {
-                          bridge.playError();
-                        }
-                      }
-                    }}
-                    className="btn btn-sm btn-purple"
-                  >
-                    <Save className="w-3.5 h-3.5" />
-                    <span>Lưu &amp; Đồng bộ Bảng QC</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setBillboardDraft(DEFAULT_BILLBOARD_TEXT);
-                      const res = bridge.setBillboardText?.(DEFAULT_BILLBOARD_TEXT);
-                      if (res?.ok) {
-                        bridge.playClick();
-                        bridge.showToast(res.msg);
-                        forceRefresh();
-                      }
-                    }}
-                    className="btn btn-sm bg-white text-slate-700 border-2 border-slate-300"
-                    title="Khôi phục thông báo mặc định"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Mặc định</span>
-                  </button>
-                </div>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-[11px] font-bold text-indigo-800">Gợi ý nhanh:</span>
-                  {[
-                    DEFAULT_BILLBOARD_TEXT,
-                    '🏆 Hoàn thành việc nhà & bài tập hôm nay để nhận Sao thưởng cùng cả nhà!',
-                    '⛪ Ghé Nhà Thờ Tin Lành chơi Đố Kinh Thánh & nhận thưởng chuỗi 3 câu đúng!',
-                    '🐾 Cho thú cưng ăn no đầy đủ để nhận tối đa +Tốc độ và +Sao thưởng!',
-                  ].map((preset, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => {
-                        bridge.playClick();
-                        setBillboardDraft(preset);
-                      }}
-                      className="px-2 py-0.5 rounded-md bg-white border border-indigo-300 hover:bg-indigo-100 text-[10.5px] font-semibold text-indigo-900 cursor-pointer truncate max-w-[260px]"
-                      title={preset}
-                    >
-                      {preset}
-                    </button>
-                  ))}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    bridge.playClick();
+                    setTab('billboard');
+                  }}
+                  className="btn btn-sm btn-purple shrink-0"
+                >
+                  <Megaphone className="w-3.5 h-3.5" />
+                  <span>Mở Cài Đặt 2 Bảng LED</span>
+                </button>
               </div>
 
               {/* 2. Member Add / Remove / Profile Editor (Parent-only) */}
@@ -3061,6 +3026,398 @@ export const ParentalDashboardModal: React.FC<Props> = ({ bridge, onClose }) => 
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {tab === 'billboard' && (
+            <div className="space-y-4">
+              {/* Top Action Bar */}
+              <div className="rounded-xl border-2 border-[#2C3E50] bg-gradient-to-r from-indigo-50 via-sky-50 to-violet-50 p-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <h3 className="font-extrabold text-sm sm:text-base text-indigo-950 flex items-center gap-2">
+                    <Megaphone className="w-4 h-4 text-indigo-700" />
+                    <span>Cài Đặt 2 Bảng Quảng Cáo LED Khu Phố (Đồng bộ mọi thành viên)</span>
+                  </h3>
+                  <p className="text-xs text-slate-700 leading-snug">
+                    Bố mẹ có thể chạy <b>2 nội dung khác nhau</b> cùng lúc trên <b>Bảng Số 1 (bên trái)</b> và <b>Bảng Số 2 (bên phải)</b>, tùy chỉnh cỡ chữ, màu chữ, màu nền, viền Neon và tốc độ chạy.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const res = bridge.setBillboardSettings?.(billboardsDraft);
+                      if (res) {
+                        bridge.showToast(res.msg);
+                        if (res.ok) {
+                          bridge.playSuccess();
+                          forceRefresh();
+                        } else {
+                          bridge.playError();
+                        }
+                      }
+                    }}
+                    className="btn btn-sm btn-purple"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Lưu &amp; Đồng bộ cả 2 Bảng LED</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      bridge.playClick();
+                      setBillboardsDraft((prev) => ({
+                        ...prev,
+                        board2: { ...prev.board1 },
+                      }));
+                      bridge.showToast('📋 Đã chép kiểu & nội dung từ Bảng 1 sang Bảng 2 (bấm Lưu để áp dụng)');
+                    }}
+                    className="btn btn-sm bg-white text-indigo-800 border-2 border-indigo-300 hover:bg-indigo-50"
+                  >
+                    <span>📋 Chép Bảng 1 ➔ Bảng 2</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const resetVal = normalizeBillboardSettings(DEFAULT_BILLBOARD_SETTINGS);
+                      setBillboardsDraft(resetVal);
+                      const res = bridge.setBillboardSettings?.(resetVal);
+                      if (res?.ok) {
+                        bridge.playClick();
+                        bridge.showToast('↺ Đã khôi phục mặc định cho cả 2 bảng quảng cáo');
+                        forceRefresh();
+                      }
+                    }}
+                    className="btn btn-sm bg-white text-slate-700 border-2 border-slate-300 hover:bg-slate-50"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Khôi phục mặc định</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Two Independent Board Editors */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {(
+                  [
+                    {
+                      key: 'board1' as const,
+                      title: 'Bảng LED Số 1 — Phía Trái Khu Phố',
+                      subtitle: 'Nằm sát hàng rào phía Bắc bên trái (tách biệt hẳn khỏi Nhà Phố)',
+                      fallback: DEFAULT_BILLBOARD_PANEL_1,
+                      presets: [
+                        DEFAULT_BILLBOARD_PANEL_1.text,
+                        '🏆 Hoàn thành việc nhà & bài tập hôm nay để nhận Sao thưởng cùng cả nhà!',
+                        '📚 Ôn bài Tiếng Anh mỗi ngày để nâng hạng & mở khóa vật phẩm mới!',
+                      ],
+                    },
+                    {
+                      key: 'board2' as const,
+                      title: 'Bảng LED Số 2 — Phía Phải Khu Phố',
+                      subtitle: 'Nằm sát hàng rào phía Bắc bên phải (phía khu Nhà Thờ & Siêu Thị)',
+                      fallback: DEFAULT_BILLBOARD_PANEL_2,
+                      presets: [
+                        DEFAULT_BILLBOARD_PANEL_2.text,
+                        '⛪ Ghé Nhà Thờ Tin Lành chơi Đố Kinh Thánh & nhận thưởng chuỗi 3 câu đúng!',
+                        '🐾 Cho thú cưng ăn no đầy đủ để nhận tối đa +Tốc độ và +Sao thưởng!',
+                      ],
+                    },
+                  ] as const
+                ).map((meta) => {
+                  const cfg: BillboardPanelConfig = billboardsDraft[meta.key];
+                  const updateBoard = (patch: Partial<BillboardPanelConfig>) => {
+                    setBillboardsDraft((prev) => ({
+                      ...prev,
+                      [meta.key]: {
+                        ...prev[meta.key],
+                        ...patch,
+                      },
+                    }));
+                  };
+                  const fontSizeVal = cfg.fontSize ?? meta.fallback.fontSize ?? 108;
+                  const textColorVal = cfg.textColor || meta.fallback.textColor || '#FEF08A';
+                  const bgColorVal = cfg.bgColor || meta.fallback.bgColor || '#0F172A';
+                  const borderColorVal = cfg.borderColor || meta.fallback.borderColor || '#38BDF8';
+                  const speedVal = cfg.scrollSpeed ?? meta.fallback.scrollSpeed ?? 1;
+                  const headerDisplay = (cfg.headerText || '').trim() || `★ ${formatFamilyBrand('B2KS', state.familyName).toUpperCase()} ★`;
+                  const previewPx = Math.max(13, Math.min(26, Math.round(fontSizeVal * 0.18)));
+
+                  return (
+                    <div
+                      key={meta.key}
+                      className="rounded-xl border-2 border-[#2C3E50] bg-white p-4 space-y-3.5 shadow-sm"
+                    >
+                      <div className="flex items-start justify-between gap-2 border-b border-slate-200 pb-2.5">
+                        <div>
+                          <h4 className="font-extrabold text-sm text-[#0F172A]">{meta.title}</h4>
+                          <p className="text-[11px] text-slate-500">{meta.subtitle}</p>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-300 text-[10.5px] font-bold text-slate-700 shrink-0 tabular-nums">
+                          {(cfg.text || '').trim().length}/140 ký tự
+                        </span>
+                      </div>
+
+                      {/* Live Visual LED Preview */}
+                      <div className="space-y-1">
+                        <div className="text-[11px] font-bold text-slate-600 flex items-center justify-between">
+                          <span>Xem trước bảng LED 3D:</span>
+                          <span className="tabular-nums text-[10px] text-slate-500">
+                            Cỡ chữ {fontSizeVal}px · Tốc độ {speedVal}×
+                          </span>
+                        </div>
+                        <div
+                          className="rounded-xl p-2.5 border-[3px] shadow-inner overflow-hidden"
+                          style={{
+                            backgroundColor: bgColorVal,
+                            borderColor: borderColorVal,
+                            boxShadow: `0 0 14px ${borderColorVal}55 inset, 0 2px 8px rgba(15,23,42,0.25)`,
+                          }}
+                        >
+                          <div
+                            className="text-center text-[10px] font-extrabold tracking-wider uppercase pb-1 mb-1.5 border-b"
+                            style={{
+                              color: borderColorVal,
+                              borderColor: `${borderColorVal}55`,
+                            }}
+                          >
+                            {headerDisplay}
+                          </div>
+                          <div
+                            className="font-extrabold whitespace-nowrap overflow-hidden text-ellipsis py-1 px-1 text-center"
+                            style={{
+                              color: textColorVal,
+                              fontSize: `${previewPx}px`,
+                              lineHeight: 1.25,
+                              textShadow: `0 0 8px ${textColorVal}88`,
+                            }}
+                            title={cfg.text}
+                          >
+                            {cfg.text || meta.fallback.text}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Scrolling Text Input */}
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-800">
+                          Nội dung chạy chữ trên {meta.key === 'board1' ? 'Bảng 1' : 'Bảng 2'}:
+                        </label>
+                        <textarea
+                          rows={2}
+                          maxLength={140}
+                          value={cfg.text}
+                          onChange={(e) => updateBoard({ text: e.target.value })}
+                          placeholder="Nhập thông báo chạy chữ trên bảng quảng cáo..."
+                          className="w-full px-3 py-2 rounded-lg border-2 border-slate-300 focus:border-indigo-600 bg-white text-sm font-bold text-[#0F172A] resize-none"
+                        />
+                        <div className="flex flex-wrap items-center gap-1">
+                          <span className="text-[10.5px] font-bold text-slate-500 mr-1">Gợi ý:</span>
+                          {meta.presets.map((preset, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => {
+                                bridge.playClick();
+                                updateBoard({ text: preset });
+                              }}
+                              className="px-2 py-0.5 rounded bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-[10.5px] font-semibold text-indigo-900 truncate max-w-[230px]"
+                              title={preset}
+                            >
+                              {preset}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Optional Top Header Title */}
+                      <div className="space-y-1">
+                        <label className="block text-xs font-bold text-slate-800">
+                          Tiêu đề đầu bảng (tuỳ chọn — để trống sẽ dùng tên gia đình):
+                        </label>
+                        <input
+                          type="text"
+                          maxLength={44}
+                          value={cfg.headerText || ''}
+                          onChange={(e) => updateBoard({ headerText: e.target.value })}
+                          placeholder={`Mặc định: ★ ${formatFamilyBrand('B2KS', state.familyName).toUpperCase()} ★`}
+                          className="w-full px-3 py-1.5 rounded-lg border border-slate-300 focus:border-indigo-600 bg-white text-xs font-bold text-[#0F172A]"
+                        />
+                      </div>
+
+                      {/* Font Size & Scroll Speed */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 space-y-1.5">
+                          <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                            <span>Cỡ chữ LED</span>
+                            <span className="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-900 tabular-nums text-[11px]">
+                              {fontSizeVal}px
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min={64}
+                            max={144}
+                            step={4}
+                            value={fontSizeVal}
+                            onChange={(e) => updateBoard({ fontSize: Number(e.target.value) })}
+                            className="w-full accent-indigo-600 cursor-pointer"
+                          />
+                          <div className="flex justify-between text-[10px] text-slate-500 font-semibold">
+                            <span>Nhỏ (64)</span>
+                            <span>Chuẩn (108)</span>
+                            <span>Lớn (144)</span>
+                          </div>
+                        </div>
+
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 space-y-1.5">
+                          <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                            <span>Tốc độ chạy chữ</span>
+                            <span className="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-900 tabular-nums text-[11px]">
+                              {speedVal}×
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-4 gap-1">
+                            {[
+                              { val: 0.5, label: '0.5×' },
+                              { val: 1, label: '1×' },
+                              { val: 1.5, label: '1.5×' },
+                              { val: 2, label: '2×' },
+                            ].map((sp) => (
+                              <button
+                                key={sp.val}
+                                type="button"
+                                onClick={() => {
+                                  bridge.playClick();
+                                  updateBoard({ scrollSpeed: sp.val });
+                                }}
+                                className={`py-1 rounded border text-[11px] font-bold cursor-pointer ${
+                                  Math.abs(speedVal - sp.val) < 0.08
+                                    ? 'bg-indigo-600 border-indigo-800 text-white'
+                                    : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100'
+                                }`}
+                              >
+                                {sp.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Colors: Text, Background, Neon Border */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                        {/* Text Color */}
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-2 space-y-1.5">
+                          <div className="flex items-center justify-between text-[11px] font-bold text-slate-800">
+                            <span>Màu chữ</span>
+                            <input
+                              type="color"
+                              value={textColorVal}
+                              onChange={(e) => updateBoard({ textColor: e.target.value.toUpperCase() })}
+                              className="w-6 h-5 rounded border border-slate-300 cursor-pointer bg-transparent p-0"
+                              title="Chọn màu chữ tùy ý"
+                            />
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {['#FEF08A', '#FFFFFF', '#7DD3FC', '#86EFAC', '#F9A8D4', '#FDBA74'].map((c) => (
+                              <button
+                                key={c}
+                                type="button"
+                                onClick={() => updateBoard({ textColor: c })}
+                                style={{ backgroundColor: c }}
+                                className={`w-5 h-5 rounded border-2 cursor-pointer ${
+                                  textColorVal.toUpperCase() === c ? 'border-slate-950 scale-110' : 'border-slate-300'
+                                }`}
+                                title={c}
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Background Color */}
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-2 space-y-1.5">
+                          <div className="flex items-center justify-between text-[11px] font-bold text-slate-800">
+                            <span>Màu nền bảng</span>
+                            <input
+                              type="color"
+                              value={bgColorVal}
+                              onChange={(e) => updateBoard({ bgColor: e.target.value.toUpperCase() })}
+                              className="w-6 h-5 rounded border border-slate-300 cursor-pointer bg-transparent p-0"
+                              title="Chọn màu nền tùy ý"
+                            />
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {['#0F172A', '#1E1B4B', '#064E3B', '#4C0519', '#1E293B', '#3B0764'].map((c) => (
+                              <button
+                                key={c}
+                                type="button"
+                                onClick={() => updateBoard({ bgColor: c })}
+                                style={{ backgroundColor: c }}
+                                className={`w-5 h-5 rounded border-2 cursor-pointer ${
+                                  bgColorVal.toUpperCase() === c ? 'border-amber-400 scale-110' : 'border-slate-400'
+                                }`}
+                                title={c}
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Neon Border Color */}
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-2 space-y-1.5">
+                          <div className="flex items-center justify-between text-[11px] font-bold text-slate-800">
+                            <span>Màu viền Neon</span>
+                            <input
+                              type="color"
+                              value={borderColorVal}
+                              onChange={(e) => updateBoard({ borderColor: e.target.value.toUpperCase() })}
+                              className="w-6 h-5 rounded border border-slate-300 cursor-pointer bg-transparent p-0"
+                              title="Chọn màu viền Neon tùy ý"
+                            />
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {['#38BDF8', '#F43F5E', '#FBBF24', '#34D399', '#A855F7', '#FB923C'].map((c) => (
+                              <button
+                                key={c}
+                                type="button"
+                                onClick={() => updateBoard({ borderColor: c })}
+                                style={{ backgroundColor: c }}
+                                className={`w-5 h-5 rounded border-2 cursor-pointer ${
+                                  borderColorVal.toUpperCase() === c ? 'border-slate-950 scale-110' : 'border-slate-300'
+                                }`}
+                                title={c}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="rounded-xl border border-indigo-200 bg-indigo-50/70 px-3.5 py-2.5 text-xs text-indigo-950 flex flex-wrap items-center justify-between gap-2">
+                <span>
+                  💡 Mẹo: Sau khi bấm <b>Lưu &amp; Đồng bộ cả 2 Bảng LED</b>, bảng quảng cáo 3D trên khu phố sẽ cập nhật ngay lập tức và đồng bộ tới mọi thành viên trong gia đình.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const res = bridge.setBillboardSettings?.(billboardsDraft);
+                    if (res) {
+                      bridge.showToast(res.msg);
+                      if (res.ok) {
+                        bridge.playSuccess();
+                        forceRefresh();
+                      } else {
+                        bridge.playError();
+                      }
+                    }
+                  }}
+                  className="btn btn-sm btn-purple shrink-0"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Áp dụng ngay</span>
+                </button>
               </div>
             </div>
           )}

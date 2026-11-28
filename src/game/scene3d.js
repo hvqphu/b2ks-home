@@ -5913,41 +5913,81 @@ export async function createScene3D(canvasEl) {
     leaderTex.needsUpdate = true;
   }
 
-  // Cached Scrolling LED Billboard CanvasTexture + Crown Header Plate (redrawn ONLY when text/brand/night changes)
+  // Cached Dual Scrolling LED Billboard CanvasTextures + Crown Header Plates (redrawn ONLY when text/style/brand/night changes)
   const DEFAULT_LED_AD_TEXT = 'Hãy đến Trung Tâm Tiếng Anh để làm bài và đổi điểm ngay nào!';
-  const ledCanvas = document.createElement('canvas');
-  ledCanvas.width = 2048;
-  ledCanvas.height = 384;
-  const ledCtx = ledCanvas.getContext('2d');
-  const ledAdTex = new THREE.CanvasTexture(ledCanvas);
-  ledAdTex.wrapS = THREE.RepeatWrapping;
-  ledAdTex.wrapT = THREE.ClampToEdgeWrapping;
-  ledAdTex.repeat.set(0.72, 1);
-  ledAdTex.colorSpace = THREE.SRGBColorSpace;
-  ledAdTex.anisotropy = maxAniso;
-  let lastLedAdSig = '';
+  const DEFAULT_LED_AD_2_TEXT = 'Hoàn thành việc nhà & bài tập hôm nay để nhận nhiều Sao thưởng nhé!';
 
-  const bbHeaderCanvas = document.createElement('canvas');
-  bbHeaderCanvas.width = 768;
-  bbHeaderCanvas.height = 128;
-  const bbHeaderCtx = bbHeaderCanvas.getContext('2d');
-  const billboardHeaderTex = new THREE.CanvasTexture(bbHeaderCanvas);
-  billboardHeaderTex.colorSpace = THREE.SRGBColorSpace;
-  billboardHeaderTex.anisotropy = maxAniso;
-  let lastBbHeaderSig = '';
+  function shadeHexColor(hex, factor) {
+    const clean = typeof hex === 'string' && /^#[0-9a-fA-F]{6}$/.test(hex.trim()) ? hex.trim() : '#0F172A';
+    const r = Math.max(0, Math.min(255, Math.round(parseInt(clean.slice(1, 3), 16) * factor)));
+    const g = Math.max(0, Math.min(255, Math.round(parseInt(clean.slice(3, 5), 16) * factor)));
+    const b = Math.max(0, Math.min(255, Math.round(parseInt(clean.slice(5, 7), 16) * factor)));
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+  }
 
-  function updateLedAdTexture(rawText, brand, isNight) {
-    const cleanText = String(rawText || '').replace(/\s+/g, ' ').trim() || DEFAULT_LED_AD_TEXT;
+  function createLedBoardSlot() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 2048;
+    canvas.height = 384;
+    const ctx = canvas.getContext('2d');
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.repeat.set(0.72, 1);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = maxAniso;
+
+    const headerCanvas = document.createElement('canvas');
+    headerCanvas.width = 768;
+    headerCanvas.height = 128;
+    const headerCtx = headerCanvas.getContext('2d');
+    const headerTex = new THREE.CanvasTexture(headerCanvas);
+    headerTex.colorSpace = THREE.SRGBColorSpace;
+    headerTex.anisotropy = maxAniso;
+
+    return {
+      canvas,
+      ctx,
+      tex,
+      headerCanvas,
+      headerCtx,
+      headerTex,
+      lastSig: '',
+      lastHdrSig: '',
+      scrollSpeed: 1,
+    };
+  }
+
+  const ledBoards = [createLedBoardSlot(), createLedBoardSlot()];
+
+  function updateLedBoardSlot(slot, rawCfg, fallbackCfg, brand, isNight) {
+    const cleanText = String(rawCfg?.text ?? '').replace(/\s+/g, ' ').trim() || fallbackCfg.text;
+    const cleanHeader = String(rawCfg?.headerText ?? '').replace(/\s+/g, ' ').trim();
+    const rawFont = Number(rawCfg?.fontSize);
+    let fontSize = Number.isFinite(rawFont) ? Math.max(64, Math.min(144, Math.round(rawFont))) : fallbackCfg.fontSize;
+    const textColor = /^#[0-9a-fA-F]{6}$/.test(String(rawCfg?.textColor || '').trim())
+      ? String(rawCfg.textColor).trim()
+      : fallbackCfg.textColor;
+    const bgColor = /^#[0-9a-fA-F]{6}$/.test(String(rawCfg?.bgColor || '').trim())
+      ? String(rawCfg.bgColor).trim()
+      : fallbackCfg.bgColor;
+    const borderColor = /^#[0-9a-fA-F]{6}$/.test(String(rawCfg?.borderColor || '').trim())
+      ? String(rawCfg.borderColor).trim()
+      : fallbackCfg.borderColor;
+    const rawSpeed = Number(rawCfg?.scrollSpeed);
+    slot.scrollSpeed = Number.isFinite(rawSpeed) ? Math.max(0.4, Math.min(2.5, rawSpeed)) : 1;
+
     const cleanBrand = String(brand || 'B2KS').trim() || 'B2KS';
-    const adSig = `${cleanText}|${cleanBrand}|${isNight ? 'N' : 'D'}`;
-    if (adSig !== lastLedAdSig) {
-      lastLedAdSig = adSig;
+    const adSig = `${cleanText}|${fontSize}|${textColor}|${bgColor}|${borderColor}|${isNight ? 'N' : 'D'}`;
+    if (adSig !== slot.lastSig) {
+      slot.lastSig = adSig;
+      const ledCtx = slot.ctx;
+      const ledCanvas = slot.canvas;
       const unit = `★ ${cleanText}   ✦   `;
-      let fontSize = 108;
       ledCtx.font = `900 ${fontSize}px sans-serif`;
       let unitW = Math.ceil(ledCtx.measureText(unit).width);
-      if (unitW > 2600) {
-        fontSize = Math.max(64, Math.floor((fontSize * 2400) / Math.max(1, unitW)));
+      if (unitW > 3000) {
+        fontSize = Math.max(56, Math.floor((fontSize * 2800) / Math.max(1, unitW)));
         ledCtx.font = `900 ${fontSize}px sans-serif`;
         unitW = Math.ceil(ledCtx.measureText(unit).width);
       }
@@ -5960,14 +6000,14 @@ export async function createScene3D(canvasEl) {
       const Wc = ledCanvas.width;
       const Hc = ledCanvas.height;
       const bgGrad = ledCtx.createLinearGradient(0, 0, 0, Hc);
-      bgGrad.addColorStop(0, '#060B1A');
-      bgGrad.addColorStop(0.5, '#0F172A');
-      bgGrad.addColorStop(1, '#060B1A');
+      bgGrad.addColorStop(0, shadeHexColor(bgColor, 0.58));
+      bgGrad.addColorStop(0.5, bgColor);
+      bgGrad.addColorStop(1, shadeHexColor(bgColor, 0.58));
       ledCtx.fillStyle = bgGrad;
       ledCtx.fillRect(0, 0, Wc, Hc);
 
       // Subtle LED pixel matrix dots
-      ledCtx.fillStyle = isNight ? 'rgba(56, 189, 248, 0.14)' : 'rgba(148, 163, 184, 0.18)';
+      ledCtx.fillStyle = isNight ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.1)';
       for (let gx = 6; gx < Wc; gx += 18) {
         for (let gy = 48; gy < Hc - 48; gy += 18) {
           ledCtx.fillRect(gx, gy, 5, 5);
@@ -5976,58 +6016,79 @@ export async function createScene3D(canvasEl) {
 
       // Top & bottom neon chase bands (seamless 36px repeating pattern)
       for (let bx = 0; bx < Wc; bx += 36) {
-        const isCyan = (bx / 36) % 2 === 0;
-        ledCtx.fillStyle = isCyan ? '#38BDF8' : '#FACC15';
+        const isFirst = (bx / 36) % 2 === 0;
+        ledCtx.fillStyle = isFirst ? borderColor : '#FACC15';
         ledCtx.fillRect(bx + 2, 10, 26, 16);
-        ledCtx.fillStyle = isCyan ? '#FACC15' : '#F472B6';
+        ledCtx.fillStyle = isFirst ? '#FACC15' : borderColor;
         ledCtx.fillRect(bx + 2, Hc - 26, 26, 16);
       }
-      ledCtx.fillStyle = 'rgba(14, 165, 233, 0.25)';
+      ledCtx.fillStyle = borderColor;
+      ledCtx.globalAlpha = 0.28;
       ledCtx.fillRect(0, 34, Wc, 4);
       ledCtx.fillRect(0, Hc - 38, Wc, 4);
+      ledCtx.globalAlpha = 1;
 
-      // Glowing golden-white headline text seamlessly tiled edge-to-edge
+      // Glowing custom-colored headline text seamlessly tiled edge-to-edge
       ledCtx.font = `900 ${fontSize}px sans-serif`;
       ledCtx.textAlign = 'left';
       ledCtx.textBaseline = 'middle';
-      ledCtx.shadowColor = isNight ? '#F59E0B' : '#EA580C';
-      ledCtx.shadowBlur = isNight ? 20 : 10;
+      ledCtx.shadowColor = textColor;
+      ledCtx.shadowBlur = isNight ? 18 : 8;
       const txtGrad = ledCtx.createLinearGradient(0, 70, 0, Hc - 70);
       txtGrad.addColorStop(0, '#FFFFFF');
-      txtGrad.addColorStop(0.5, '#FEF08A');
-      txtGrad.addColorStop(1, '#FBBF24');
+      txtGrad.addColorStop(0.22, textColor);
+      txtGrad.addColorStop(1, textColor);
       ledCtx.fillStyle = txtGrad;
       for (let i = 0; i < reps; i++) {
         ledCtx.fillText(unit, i * unitW, Hc * 0.5 + 4);
       }
       ledCtx.shadowBlur = 0;
 
-      ledAdTex.repeat.set(Math.min(0.96, 1466 / Wc), 1);
-      ledAdTex.needsUpdate = true;
+      slot.tex.repeat.set(Math.min(0.96, 1466 / Wc), 1);
+      slot.tex.needsUpdate = true;
     }
 
-    const hdrSig = `${cleanBrand}|${isNight ? 'N' : 'D'}`;
-    if (hdrSig !== lastBbHeaderSig) {
-      lastBbHeaderSig = hdrSig;
-      const ctx = bbHeaderCtx;
+    const headerTitle = cleanHeader || `📢 BẢNG TIN GIA ĐÌNH ${cleanBrand.toUpperCase()}`;
+    const hdrSig = `${headerTitle}|${bgColor}|${borderColor}|${isNight ? 'N' : 'D'}`;
+    if (hdrSig !== slot.lastHdrSig) {
+      slot.lastHdrSig = hdrSig;
+      const ctx = slot.headerCtx;
       const g = ctx.createLinearGradient(0, 0, 768, 128);
-      g.addColorStop(0, '#1D4ED8');
-      g.addColorStop(0.5, '#4338CA');
-      g.addColorStop(1, '#0284C7');
+      g.addColorStop(0, shadeHexColor(bgColor, 0.9));
+      g.addColorStop(0.5, '#312E81');
+      g.addColorStop(1, shadeHexColor(bgColor, 0.9));
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, 768, 128);
-      ctx.strokeStyle = '#FACC15';
+      ctx.strokeStyle = borderColor;
       ctx.lineWidth = 10;
       ctx.strokeRect(5, 5, 758, 118);
       ctx.fillStyle = '#FEF08A';
-      ctx.font = '900 40px sans-serif';
+      ctx.font = '900 36px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(`📢 BẢNG TIN GIA ĐÌNH ${cleanBrand.toUpperCase()}`, 384, 66);
-      billboardHeaderTex.needsUpdate = true;
+      ctx.fillText(headerTitle.slice(0, 44), 384, 66);
+      slot.headerTex.needsUpdate = true;
     }
   }
-  updateLedAdTexture(DEFAULT_LED_AD_TEXT, 'B2KS', false);
+
+  const FALLBACK_BOARD_1 = {
+    text: DEFAULT_LED_AD_TEXT,
+    fontSize: 108,
+    textColor: '#FEF08A',
+    bgColor: '#0F172A',
+    borderColor: '#38BDF8',
+    scrollSpeed: 1,
+  };
+  const FALLBACK_BOARD_2 = {
+    text: DEFAULT_LED_AD_2_TEXT,
+    fontSize: 108,
+    textColor: '#FFFFFF',
+    bgColor: '#1E1B4B',
+    borderColor: '#FACC15',
+    scrollSpeed: 1,
+  };
+  updateLedBoardSlot(ledBoards[0], FALLBACK_BOARD_1, FALLBACK_BOARD_1, 'B2KS', false);
+  updateLedBoardSlot(ledBoards[1], FALLBACK_BOARD_2, FALLBACK_BOARD_2, 'B2KS', false);
 
   function getOrCreateRobotBannerTex(childId, text) {
     let entry = robotBannerCache.get(childId);
@@ -6237,7 +6298,7 @@ export async function createScene3D(canvasEl) {
     ];
     const occupiedBoxes = [
       { x: 670, y: 695, hw: 135, hd: 95 }, // Leader Board
-      { x: 650, y: 236, hw: 170, hd: 55 }, // Left Northern Fence Grand Billboard
+      { x: 470, y: 236, hw: 170, hd: 55 }, // Left Northern Fence Grand Billboard (shifted clear of house)
       { x: 2165, y: 236, hw: 170, hd: 55 }, // Right Northern Fence Grand Billboard
     ];
     const houseOv = state.buildingLayouts?.house;
@@ -6450,7 +6511,7 @@ export async function createScene3D(canvasEl) {
 
     // 26 Trees + perimeter grove spanning expanded 3200x2200 city
     const treeCoords = [
-      [60, 290, 'sakura'], [285, 290, 'pine'], [490, 315, 'orange'], [555, 315, 'oak'], [1065, 310, 'sakura'],
+      [60, 290, 'sakura'], [255, 290, 'pine'], [295, 310, 'orange'], [665, 315, 'oak'], [1065, 310, 'sakura'],
       [1365, 300, 'pine'], [1760, 315, 'orange'], [2265, 335, 'palm'], [2930, 310, 'sakura'], [3140, 340, 'palm'],
       [80, 730, 'oak'], [420, 685, 'sakura'], [770, 745, 'pine'], [1360, 740, 'orange'], [2185, 760, 'palm'],
       [2930, 740, 'pine'], [90, 1290, 'sakura'], [560, 1340, 'oak'], [1080, 1360, 'pine'], [1350, 1290, 'orange'],
@@ -6534,13 +6595,14 @@ export async function createScene3D(canvasEl) {
     grp.add(lbGroup);
 
     // Twin Monumental Scrolling LED Ad Billboards flush against northern picket fence (left-mid & right-mid, aligned with buildings)
-    function buildGrandBillboard3D(bx2d, by2d) {
+    function buildGrandBillboard3D(bx2d, by2d, slot, accentHex) {
       const adGroup = new THREE.Group();
       const wx = bx2d * WORLD_SCALE;
       const wz = by2d * WORLD_SCALE;
       adGroup.position.set(wx, 0, wz);
       adGroup.rotation.y = 0; // Same orientation as northern row buildings (+Z facing avenue)
 
+      const neonCol = /^#[0-9a-fA-F]{6}$/.test(String(accentHex || '').trim()) ? String(accentHex).trim() : '#38BDF8';
       const steelDark = mats.get('#1E293B', { roughness: 0.42, metalness: 0.55 });
       const steelMid = mats.get('#475569', { roughness: 0.38, metalness: 0.6 });
       const plinthMat = mats.get('#94A3B8', { roughness: 0.72 });
@@ -6551,10 +6613,10 @@ export async function createScene3D(canvasEl) {
         emissive: '#F59E0B',
         emissiveIntensity: lighting.isNight ? 1.25 : 0.2,
       });
-      const neonRimMat = mats.get('#0EA5E9', {
+      const neonRimMat = mats.get(neonCol, {
         roughness: 0.22,
         metalness: 0.35,
-        emissive: '#38BDF8',
+        emissive: neonCol,
         emissiveIntensity: lighting.isNight ? 1.75 : 0.32,
       });
 
@@ -6621,7 +6683,7 @@ export async function createScene3D(canvasEl) {
       innerGold.position.set(0, 9.0, 0.2);
       const screenMesh = new THREE.Mesh(
         new THREE.PlaneGeometry(14.7, 3.85),
-        new THREE.MeshBasicMaterial({ map: ledAdTex })
+        new THREE.MeshBasicMaterial({ map: slot.tex })
       );
       screenMesh.position.set(0, 9.0, 0.505);
       adGroup.add(neonOuter, housing, innerGold, screenMesh);
@@ -6633,7 +6695,7 @@ export async function createScene3D(canvasEl) {
       crownBacking.position.set(0, 12.05, 0.2);
       const crownPlate = new THREE.Mesh(
         new THREE.PlaneGeometry(8.1, 1.06),
-        new THREE.MeshBasicMaterial({ map: billboardHeaderTex })
+        new THREE.MeshBasicMaterial({ map: slot.headerTex })
       );
       crownPlate.position.set(0, 12.05, 0.475);
       adGroup.add(crownFrame, crownBacking, crownPlate);
@@ -6641,8 +6703,8 @@ export async function createScene3D(canvasEl) {
       [-7.7, 7.7].forEach((bx, bi) => {
         const pole = makeCyl(THREE, 0.12, 0.14, 1.0, 8, steelMid);
         pole.position.set(bx, 11.75, 0.18);
-        const beaconMat = mats.get(bi === 0 ? '#FACC15' : '#38BDF8', {
-          emissive: bi === 0 ? '#F59E0B' : '#0EA5E9',
+        const beaconMat = mats.get(bi === 0 ? '#FACC15' : neonCol, {
+          emissive: bi === 0 ? '#F59E0B' : neonCol,
           emissiveIntensity: lighting.isNight ? 2.4 : 0.55,
         });
         const orb = makeSphere(THREE, 0.32, 10, 8, beaconMat, false, false);
@@ -6671,7 +6733,7 @@ export async function createScene3D(canvasEl) {
         const nightWash = new THREE.Mesh(
           new THREE.PlaneGeometry(17.5, 6.2),
           new THREE.MeshBasicMaterial({
-            color: '#38BDF8',
+            color: neonCol,
             transparent: true,
             opacity: 0.14,
             blending: THREE.AdditiveBlending,
@@ -6686,11 +6748,13 @@ export async function createScene3D(canvasEl) {
 
       grp.add(adGroup);
       animatedProps.push(adGroup);
-      nightBuildingAnchors.push({ x: wx, y: 8.2, z: wz + 3.2, color: '#38BDF8', intensity: 18 });
+      nightBuildingAnchors.push({ x: wx, y: 8.2, z: wz + 3.2, color: neonCol, intensity: 18 });
     }
 
-    buildGrandBillboard3D(650, 236);   // Left-side middle along northern fence
-    buildGrandBillboard3D(2165, 236);  // Right-side middle along northern fence
+    const bb1Accent = state.billboards?.board1?.borderColor || FALLBACK_BOARD_1.borderColor;
+    const bb2Accent = state.billboards?.board2?.borderColor || FALLBACK_BOARD_2.borderColor;
+    buildGrandBillboard3D(470, 236, ledBoards[0], bb1Accent);   // Left-side middle along northern fence (clear of house)
+    buildGrandBillboard3D(2165, 236, ledBoards[1], bb2Accent); // Right-side middle along northern fence
 
     return grp;
   }
@@ -6899,8 +6963,12 @@ export async function createScene3D(canvasEl) {
     const brandName = (state.familyName || 'B2KS').trim() || 'B2KS';
     updateAtmosphere(lighting, weather, me.scene, nowMs);
     updateLeaderBoardTexture(kidsLeaderboard, brandName);
-    updateLedAdTexture(state.billboardText, brandName, Boolean(lighting.isNight));
-    ledAdTex.offset.x = (nowMs * 0.00014) % 1;
+    const b1Cfg = state.billboards?.board1 || (state.billboardText ? { ...FALLBACK_BOARD_1, text: state.billboardText } : FALLBACK_BOARD_1);
+    const b2Cfg = state.billboards?.board2 || FALLBACK_BOARD_2;
+    updateLedBoardSlot(ledBoards[0], b1Cfg, FALLBACK_BOARD_1, brandName, Boolean(lighting.isNight));
+    updateLedBoardSlot(ledBoards[1], b2Cfg, FALLBACK_BOARD_2, brandName, Boolean(lighting.isNight));
+    ledBoards[0].tex.offset.x = (ledBoards[0].tex.offset.x + deltaSec * 0.14 * ledBoards[0].scrollSpeed) % 1;
+    ledBoards[1].tex.offset.x = (ledBoards[1].tex.offset.x + deltaSec * 0.14 * ledBoards[1].scrollSpeed) % 1;
 
     // 1. Rebuild static world only when scene / building layouts / night state / rooms change
     const locSig = locations.map((l) => `${l.id}:${l.x}:${l.y}:${l.shape}`).join('|');
@@ -6916,7 +6984,7 @@ export async function createScene3D(canvasEl) {
             JSON.stringify(state.members.find((m) => m.id === (houseRooms.find((r) => r.id === me.privateRoomId)?.ownerIds?.[0]))?.roomSlots || {}) +
             '|' +
             (state.members.find((m) => m.id === (houseRooms.find((r) => r.id === me.privateRoomId)?.ownerIds?.[0]))?.roomWall || '')
-          : `${locSig}|${state.house?.plotIndex}|${state.house?.style}|${state.familyName}|${weather?.condition}|${arcadeRoom?.status}|${soccerRoom?.status}`;
+          : `${locSig}|${state.house?.plotIndex}|${state.house?.style}|${state.familyName}|${weather?.condition}|${arcadeRoom?.status}|${soccerRoom?.status}|${b1Cfg?.borderColor || ''}|${b2Cfg?.borderColor || ''}`;
     const worldSig = `${me.scene}|${lighting.phase}|${roomSig}`;
 
     if (worldSig !== lastWorldSignature) {
@@ -7636,8 +7704,10 @@ export async function createScene3D(canvasEl) {
       skyDome.mesh.geometry.dispose();
       skyDome.mat.dispose();
       leaderTex.dispose();
-      ledAdTex.dispose();
-      billboardHeaderTex.dispose();
+      ledBoards.forEach((b) => {
+        b.tex.dispose();
+        b.headerTex.dispose();
+      });
       robotBannerCache.forEach((b) => b.tex.dispose());
       robotBannerCache.clear();
       _petGeoCache.forEach((g) => g.dispose());

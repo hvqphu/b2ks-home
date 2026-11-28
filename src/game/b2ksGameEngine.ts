@@ -11,6 +11,7 @@ import {
   BgmThemeId,
   BibleQuestion,
   BibleQuizProgress,
+  BillboardSettings,
   BuildingLayoutOverride,
   CrossWorldRequest,
   CustomLabItem,
@@ -42,6 +43,7 @@ import {
   BGM_THEME_OPTIONS,
   DAILY_PARENT_ALLOWANCE,
   DEFAULT_ACTIVITY_CONFIGS,
+  DEFAULT_BILLBOARD_SETTINGS,
   DEFAULT_BILLBOARD_TEXT,
   DEFAULT_CROSS_WORLD_ITEMS,
   DEFAULT_ENGLISH_BANK,
@@ -71,6 +73,7 @@ import {
   STREET_WORLD,
   formatFamilyBrand,
   getFamilyFirebaseRoot,
+  normalizeBillboardSettings,
   normalizeFamilySlug,
   resolveNeighborhoodLocations
 } from './constants';
@@ -1183,6 +1186,11 @@ export function initB2KSGameEngine() {
       buildingLayoutsUpdatedAt: 0,
       billboardText: DEFAULT_BILLBOARD_TEXT,
       billboardUpdatedAt: 0,
+      billboards: {
+        board1: { ...DEFAULT_BILLBOARD_SETTINGS.board1 },
+        board2: { ...DEFAULT_BILLBOARD_SETTINGS.board2 }
+      },
+      billboardsUpdatedAt: 0,
       dailyParentAllowance: DAILY_PARENT_ALLOWANCE,
       maxParentPoints: MAX_PARENT_POINTS,
       maxParentPointsUpdatedAt: 0,
@@ -1472,6 +1480,8 @@ export function initB2KSGameEngine() {
       state.billboardText = DEFAULT_BILLBOARD_TEXT;
     }
     if (typeof state.billboardUpdatedAt !== 'number') state.billboardUpdatedAt = 0;
+    state.billboards = normalizeBillboardSettings(state.billboards, state.billboardText);
+    if (typeof state.billboardsUpdatedAt !== 'number') state.billboardsUpdatedAt = state.billboardUpdatedAt || 0;
     if (typeof state.houseUpdatedAt !== 'number') state.houseUpdatedAt = 0;
     if (typeof state.dailyParentAllowance !== 'number' || Number.isNaN(state.dailyParentAllowance)) {
       state.dailyParentAllowance = DAILY_PARENT_ALLOWANCE;
@@ -7135,10 +7145,33 @@ export function initB2KSGameEngine() {
     setBillboardText: (nextText: string) => {
       const clean = String(nextText || '').replace(/\s+/g, ' ').trim().slice(0, 140);
       if (!clean) return { ok: false, msg: '⚠️ Nội dung bảng quảng cáo không được để trống!' };
+      const now = Date.now();
+      const cur = normalizeBillboardSettings(state.billboards, state.billboardText);
       state.billboardText = clean;
-      state.billboardUpdatedAt = Date.now();
+      state.billboardUpdatedAt = now;
+      state.billboards = {
+        ...cur,
+        board1: { ...cur.board1, text: clean }
+      };
+      state.billboardsUpdatedAt = now;
       saveGame(true);
       return { ok: true, msg: '✅ Đã cập nhật & đồng bộ nội dung Bảng quảng cáo cho cả khu phố!' };
+    },
+    getBillboardSettings: () => normalizeBillboardSettings(state.billboards, state.billboardText),
+    setBillboardSettings: (nextSettings: BillboardSettings) => {
+      const b1Raw = String(nextSettings?.board1?.text || '').replace(/\s+/g, ' ').trim();
+      const b2Raw = String(nextSettings?.board2?.text || '').replace(/\s+/g, ' ').trim();
+      if (!b1Raw || !b2Raw) {
+        return { ok: false, msg: '⚠️ Nội dung chạy chữ của cả 2 bảng LED không được để trống!' };
+      }
+      const normalized = normalizeBillboardSettings(nextSettings, b1Raw);
+      const now = Date.now();
+      state.billboards = normalized;
+      state.billboardsUpdatedAt = now;
+      state.billboardText = normalized.board1.text;
+      state.billboardUpdatedAt = now;
+      saveGame(true);
+      return { ok: true, msg: '✅ Đã lưu & đồng bộ cấu hình 2 Bảng Quảng Cáo LED cho cả khu phố!' };
     },
     setGamePassword: (nextPw: string) => {
       const clean = String(nextPw || '').trim();
@@ -9191,6 +9224,11 @@ export function initB2KSGameEngine() {
             state.billboardUpdatedAt = remote.billboardUpdatedAt || 0;
             sideChanged = true;
           }
+          if ((remote.billboardsUpdatedAt || 0) > (state.billboardsUpdatedAt || 0) && remote.billboards && typeof remote.billboards === 'object') {
+            state.billboards = normalizeBillboardSettings(remote.billboards, state.billboardText);
+            state.billboardsUpdatedAt = remote.billboardsUpdatedAt || 0;
+            sideChanged = true;
+          }
           if ((remote.houseUpdatedAt || 0) > (state.houseUpdatedAt || 0) && remote.house && typeof remote.house === 'object') {
             state.house = { ...remote.house };
             state.houseUpdatedAt = remote.houseUpdatedAt || 0;
@@ -9237,6 +9275,8 @@ export function initB2KSGameEngine() {
           const localLayoutsTs = state.buildingLayoutsUpdatedAt || 0;
           const localBillboardText = state.billboardText;
           const localBillboardTs = state.billboardUpdatedAt || 0;
+          const localBillboards = state.billboards;
+          const localBillboardsTs = state.billboardsUpdatedAt || 0;
           const localHouse = state.house;
           const localHouseTs = state.houseUpdatedAt || 0;
           const localMaxParentPts = state.maxParentPoints;
@@ -9277,6 +9317,13 @@ export function initB2KSGameEngine() {
           } else if (typeof remote.billboardText === 'string' && remote.billboardText.trim()) {
             state.billboardText = remote.billboardText.trim();
             state.billboardUpdatedAt = remote.billboardUpdatedAt || 0;
+          }
+          if (localBillboardsTs > (remote.billboardsUpdatedAt || 0) && localBillboards) {
+            state.billboards = normalizeBillboardSettings(localBillboards, state.billboardText);
+            state.billboardsUpdatedAt = localBillboardsTs;
+          } else if (remote.billboards && typeof remote.billboards === 'object') {
+            state.billboards = normalizeBillboardSettings(remote.billboards, state.billboardText);
+            state.billboardsUpdatedAt = remote.billboardsUpdatedAt || 0;
           }
           if (localHouseTs > (remote.houseUpdatedAt || 0) && localHouse) {
             state.house = localHouse;

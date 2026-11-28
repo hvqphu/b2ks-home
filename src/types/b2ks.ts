@@ -574,6 +574,21 @@ export interface ZooAnimal {
   description: string;
 }
 
+export interface BillboardPanelConfig {
+  text: string;
+  headerText?: string;
+  fontSize?: number;
+  textColor?: string;
+  bgColor?: string;
+  borderColor?: string;
+  scrollSpeed?: number;
+}
+
+export interface BillboardSettings {
+  board1: BillboardPanelConfig;
+  board2: BillboardPanelConfig;
+}
+
 export interface B2KSState {
   currentUserId: string;
   familyName?: string;
@@ -590,6 +605,8 @@ export interface B2KSState {
   buildingLayoutsUpdatedAt?: number;
   billboardText?: string;
   billboardUpdatedAt?: number;
+  billboards?: BillboardSettings;
+  billboardsUpdatedAt?: number;
   bgmTheme?: BgmThemeId;
   members: Member[];
   tasks: TaskItem[];
@@ -698,6 +715,8 @@ export interface B2KSBridge {
   resetBuildingLayouts?: () => void;
   getBillboardText?: () => string;
   setBillboardText?: (nextText: string) => { ok: boolean; msg: string };
+  getBillboardSettings?: () => BillboardSettings;
+  setBillboardSettings?: (nextSettings: BillboardSettings) => { ok: boolean; msg: string };
   setGamePassword?: (nextPw: string) => { ok: boolean; msg: string };
   setParentPin?: (nextPin: string) => { ok: boolean; msg: string };
   updateMemberProfile?: (memberId: string, updates: { name?: string; age?: number; role?: string }) => { ok: boolean; msg: string };
