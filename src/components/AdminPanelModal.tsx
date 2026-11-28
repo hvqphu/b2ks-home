@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import JSZip from 'jszip';
 import {
   Building2,
   Coins,
+  Download,
   KeyRound,
+  Package,
   Palette,
   PlusCircle,
   RefreshCw,
@@ -21,7 +24,8 @@ interface Props {
 }
 
 export const AdminPanelModal: React.FC<Props> = ({ bridge, onClose }) => {
-  const [tab, setTab] = useState<'neighborhoods' | 'parent_points' | 'assets'>('neighborhoods');
+  const [tab, setTab] = useState<'neighborhoods' | 'parent_points' | 'assets' | 'export_zip'>('neighborhoods');
+  const [downloadingZip, setDownloadingZip] = useState(false);
   const [records, setRecords] = useState<AdminNeighborhoodRecord[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -197,6 +201,85 @@ export const AdminPanelModal: React.FC<Props> = ({ bridge, onClose }) => {
     });
   };
 
+  const handleDownloadGithubZip = async () => {
+    if (downloadingZip) return;
+    setDownloadingZip(true);
+    bridge.playClick();
+    bridge.showToast('⏳ Đang chuẩn bị file b2ks-daily-routines-github.zip...');
+    try {
+      let zipBlob: Blob | null = null;
+
+      const cacheBust = `v=${Date.now()}`;
+      for (const candidate of [
+        `./b2ks-daily-routines-github.zip?${cacheBust}`,
+        `../public/b2ks-daily-routines-github.zip?${cacheBust}`,
+      ]) {
+        try {
+          const res = await fetch(candidate, { cache: 'no-store' });
+          if (res.ok) {
+            const buf = await res.arrayBuffer();
+            const bytes = new Uint8Array(buf);
+            if (bytes.length > 100 && bytes[0] === 0x50 && bytes[1] === 0x4b) {
+              zipBlob = new Blob([buf], { type: 'application/zip' });
+              break;
+            }
+          }
+        } catch {
+          // try next candidate
+        }
+      }
+
+      if (!zipBlob) {
+        let jsonRes: Response | null = null;
+        for (const candidate of ['./b2ks-source-bundle.json', '../public/b2ks-source-bundle.json']) {
+          try {
+            const r = await fetch(candidate, { cache: 'no-store' });
+            if (r.ok) {
+              jsonRes = r;
+              break;
+            }
+          } catch {
+            // try next candidate
+          }
+        }
+        if (!jsonRes) throw new Error('Không tải được dữ liệu đóng gói ZIP');
+        const bundle = (await jsonRes.json()) as {
+          files: Array<{ path: string; encoding: 'utf8' | 'base64'; content: string }>;
+        };
+        const zip = new JSZip();
+        bundle.files.forEach((f) => {
+          if (f.encoding === 'base64') {
+            zip.file(f.path, f.content, { base64: true });
+          } else {
+            zip.file(f.path, f.content);
+          }
+        });
+        zipBlob = await zip.generateAsync({
+          type: 'blob',
+          compression: 'DEFLATE',
+          compressionOptions: { level: 6 },
+          mimeType: 'application/zip',
+        });
+      }
+
+      const blobUrl = URL.createObjectURL(zipBlob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = 'b2ks-daily-routines-github.zip';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
+      bridge.playSuccess();
+      bridge.showToast('📦 Đã tải xuống file b2ks-daily-routines-github.zip!');
+    } catch {
+      bridge.playError();
+      bridge.showToast('❌ Lỗi tải file ZIP. Hãy mở trực tiếp tab mới (không qua iframe) và thử lại!');
+    } finally {
+      setDownloadingZip(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[260] flex items-center justify-center bg-black/75 p-3">
       <div className={`w-full ${tab === 'assets' ? 'max-w-5xl' : 'max-w-4xl'} max-h-[90dvh] flex flex-col rounded-2xl border-[3px] border-[#2C3E50] bg-[#F8FAFC] text-[#2C3E50] shadow-2xl overflow-hidden`}>
@@ -267,8 +350,21 @@ export const AdminPanelModal: React.FC<Props> = ({ bridge, onClose }) => {
               <Palette className="w-3.5 h-3.5" />
               <span>Thư viện Hình ảnh 2D &amp; 3D</span>
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                bridge.playClick();
+                setTab('export_zip');
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer ${
+                tab === 'export_zip' ? 'bg-[#0F766E] text-white shadow' : 'bg-white text-[#2C3E50]'
+              }`}
+            >
+              <Package className="w-3.5 h-3.5" />
+              <span>Xuất ZIP</span>
+            </button>
           </div>
-          {tab !== 'assets' && (
+          {tab !== 'assets' && tab !== 'export_zip' && (
             <button
               type="button"
               disabled={loading}
@@ -596,6 +692,31 @@ export const AdminPanelModal: React.FC<Props> = ({ bridge, onClose }) => {
           )}
 
           {tab === 'assets' && <AssetLibraryTab bridge={bridge} />}
+
+          {tab === 'export_zip' && (
+            <div className="space-y-3">
+              <div className="rounded-xl border-2 border-[#2C3E50] bg-emerald-50 p-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="space-y-1 max-w-xl">
+                  <h3 className="font-bold text-sm text-emerald-900">
+                    📦 Xuất Toàn Bộ Package Hoàn Chỉnh Để Up Lên GitHub
+                  </h3>
+                  <p className="text-xs text-emerald-800">
+                    Bao gồm toàn bộ mã nguồn, file cấu hình PWA, animals.json và bản build tĩnh sẵn sàng chạy trên GitHub Pages.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDownloadGithubZip}
+                  disabled={downloadingZip}
+                  className="btn btn-sm disabled:opacity-60"
+                  style={{ background: '#0F766E' }}
+                >
+                  <Download className="w-4 h-4" />
+                  <span>{downloadingZip ? 'Đang đóng gói...' : 'Tải File ZIP GitHub'}</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

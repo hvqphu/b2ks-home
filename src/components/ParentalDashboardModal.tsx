@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
-import JSZip from 'jszip';
 import {
   AlertTriangle,
   Award,
@@ -672,87 +671,6 @@ export const ParentalDashboardModal: React.FC<Props> = ({ bridge, onClose }) => 
     }
   };
 
-  const [downloadingZip, setDownloadingZip] = useState(false);
-
-  const handleDownloadGithubZip = async () => {
-    if (downloadingZip) return;
-    setDownloadingZip(true);
-    bridge.playClick();
-    bridge.showToast('⏳ Đang chuẩn bị file b2ks-daily-routines-github.zip...');
-    try {
-      let zipBlob: Blob | null = null;
-
-      const cacheBust = `v=${Date.now()}`;
-      for (const candidate of [
-        `./b2ks-daily-routines-github.zip?${cacheBust}`,
-        `../public/b2ks-daily-routines-github.zip?${cacheBust}`,
-      ]) {
-        try {
-          const res = await fetch(candidate, { cache: 'no-store' });
-          if (res.ok) {
-            const buf = await res.arrayBuffer();
-            const bytes = new Uint8Array(buf);
-            if (bytes.length > 100 && bytes[0] === 0x50 && bytes[1] === 0x4b) {
-              zipBlob = new Blob([buf], { type: 'application/zip' });
-              break;
-            }
-          }
-        } catch {
-          // try next candidate
-        }
-      }
-
-      if (!zipBlob) {
-        let jsonRes: Response | null = null;
-        for (const candidate of ['./b2ks-source-bundle.json', '../public/b2ks-source-bundle.json']) {
-          try {
-            const r = await fetch(candidate, { cache: 'no-store' });
-            if (r.ok) {
-              jsonRes = r;
-              break;
-            }
-          } catch {
-            // try next candidate
-          }
-        }
-        if (!jsonRes) throw new Error('Không tải được dữ liệu đóng gói ZIP');
-        const bundle = (await jsonRes.json()) as {
-          files: Array<{ path: string; encoding: 'utf8' | 'base64'; content: string }>;
-        };
-        const zip = new JSZip();
-        bundle.files.forEach((f) => {
-          if (f.encoding === 'base64') {
-            zip.file(f.path, f.content, { base64: true });
-          } else {
-            zip.file(f.path, f.content);
-          }
-        });
-        zipBlob = await zip.generateAsync({
-          type: 'blob',
-          compression: 'DEFLATE',
-          compressionOptions: { level: 6 },
-          mimeType: 'application/zip',
-        });
-      }
-
-      const blobUrl = URL.createObjectURL(zipBlob);
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = 'b2ks-daily-routines-github.zip';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
-      bridge.playSuccess();
-      bridge.showToast('📦 Đã tải xuống file b2ks-daily-routines-github.zip!');
-    } catch {
-      bridge.playError();
-      bridge.showToast('❌ Lỗi tải file ZIP. Hãy mở trực tiếp tab mới (không qua iframe) và thử lại!');
-    } finally {
-      setDownloadingZip(false);
-    }
-  };
-
   const familyBrand = bridge.getFamilyName?.() || state.familyName || 'B2KS';
   const weatherInfo = bridge.getWeatherInfo?.() || null;
   const activeBgmTheme = bridge.getBgmTheme?.() || state.bgmTheme || 'sunny_town';
@@ -973,7 +891,7 @@ export const ParentalDashboardModal: React.FC<Props> = ({ bridge, onClose }) => 
             }`}
           >
             <History className="w-3.5 h-3.5" />
-            Nhật Ký &amp; Xuất ZIP
+            Nhật Ký Gia Đình
           </button>
         </div>
 
@@ -3178,27 +3096,6 @@ export const ParentalDashboardModal: React.FC<Props> = ({ bridge, onClose }) => 
 
           {tab === 'logs' && (
             <div className="space-y-4">
-              <div className="rounded-xl border-2 border-[#2C3E50] bg-emerald-50 p-3.5 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h3 className="font-bold text-sm text-emerald-900">
-                    📦 Xuất Toàn Bộ Package Hoàn Chỉnh Để Up Lên GitHub
-                  </h3>
-                  <p className="text-xs text-emerald-800 mt-0.5">
-                    Bao gồm toàn bộ mã nguồn, file cấu hình PWA, animals.json và bản build tĩnh sẵn sàng chạy trên GitHub Pages.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleDownloadGithubZip}
-                  disabled={downloadingZip}
-                  className="btn btn-sm disabled:opacity-60"
-                  style={{ background: '#0F766E' }}
-                >
-                  <Download className="w-4 h-4" />
-                  <span>{downloadingZip ? 'Đang đóng gói...' : 'Tải File ZIP GitHub'}</span>
-                </button>
-              </div>
-
               <div className="space-y-2">
                 <h3 className="font-bold text-sm text-[#2C3E50]">
                   📜 Nhật Ký Lịch Sử Hoạt Động (Tự động phát hiện bấm hoàn thành dồn dập &lt; 60s)
