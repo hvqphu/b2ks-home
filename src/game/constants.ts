@@ -18,8 +18,8 @@ export const MAX_PARENT_POINTS = 500;
 export const DAILY_PARENT_ALLOWANCE = 150;
 export const DEFAULT_FIREBASE_URL = 'https://b2ks-home-default-rtdb.asia-southeast1.firebasedatabase.app';
 
-// Expanded neighborhood world so Fashion Boutique and Arcade have plenty of space + 3 new zones
-export const STREET_WORLD = { width: 2520, height: 1700 };
+// Expanded neighborhood world with outer city avenues, decorative buildings & extra exploration blocks
+export const STREET_WORLD = { width: 3200, height: 2200 };
 export const HOUSE_WORLD = { width: 1120, height: 800 };
 export const PRIVATE_ROOM_WORLD = { width: 760, height: 420 };
 

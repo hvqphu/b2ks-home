@@ -910,6 +910,12 @@
             color: #FFFFFF;
             border-color: #0F172A;
         }
+        .zoom-pill-btn.sky {
+            background: #0284C7;
+            color: #FFFFFF;
+            border-color: #0F172A;
+            font-size: 11px;
+        }
 
         @media (max-width: 720px) {
             #top-hud {
@@ -1324,7 +1330,8 @@
         <button class="zoom-pill-btn" onclick="changeZoom(0.15)" title="Phóng to (Zoom In)">＋</button>
         <button class="zoom-pill-btn dark" id="zoom-level-btn" onclick="resetZoom()" title="Đặt lại thu phóng">100%</button>
         <button class="zoom-pill-btn" onclick="changeZoom(-0.15)" title="Thu nhỏ (Zoom Out)">－</button>
-        <button class="zoom-pill-btn teal" onclick="resetCameraView && resetCameraView()" title="Khóa lại góc Isometric 45° theo nhân vật">🧭</button>
+        <button class="zoom-pill-btn teal" id="camera-reset-btn" onclick="resetCameraView && resetCameraView()" title="Khóa lại góc nhìn theo nhân vật">🧭</button>
+        <button class="zoom-pill-btn" id="camera-mode-btn" onclick="toggleCameraViewMode && toggleCameraViewMode()" title="Đổi góc nhìn: Isometric 45° ↔ Phối cảnh XCity">ISO</button>
     </div>
 
     <!-- FLOATING INTERACTION PROMPT -->

@@ -2800,20 +2800,32 @@ export const ParentalDashboardModal: React.FC<Props> = ({ bridge, onClose }) => 
                   onPointerLeave={() => {
                     draggingLocRef.current = null;
                   }}
-                  className="relative w-full aspect-[2520/1500] rounded-xl border-2 border-[#2C3E50] overflow-hidden select-none touch-none"
+                  className="relative w-full aspect-[3200/2200] rounded-xl border-2 border-[#2C3E50] overflow-hidden select-none touch-none"
                   style={{
                     background:
-                      'linear-gradient(180deg, #BAE6FD 0%, #BAE6FD 16%, #A7F3D0 16%, #86EFAC 100%)',
+                      'linear-gradient(180deg, #BAE6FD 0%, #BAE6FD 11%, #A7F3D0 11%, #86EFAC 100%)',
                   }}
                 >
-                  {/* Decorative Horizontal Streets matching World Coordinates */}
+                  {/* Decorative Streets matching expanded World Coordinates (3200x2200) */}
                   <div
                     className="absolute left-0 right-0 bg-slate-500/80 border-y-2 border-dashed border-amber-200"
-                    style={{ top: '28%', height: '8%' }}
+                    style={{ top: '21.1%', height: '5.9%' }}
                   />
                   <div
                     className="absolute left-0 right-0 bg-slate-500/80 border-y-2 border-dashed border-amber-200"
-                    style={{ top: '66%', height: '8%' }}
+                    style={{ top: '46.6%', height: '5.9%' }}
+                  />
+                  <div
+                    className="absolute left-0 right-0 bg-slate-500/80 border-y-2 border-dashed border-amber-200"
+                    style={{ top: '74.5%', height: '5.9%' }}
+                  />
+                  <div
+                    className="absolute bottom-0 bg-slate-500/80 border-x-2 border-dashed border-amber-200"
+                    style={{ top: '10.2%', left: '36.9%', width: '4.1%' }}
+                  />
+                  <div
+                    className="absolute bottom-0 bg-slate-500/80 border-x-2 border-dashed border-amber-200"
+                    style={{ top: '10.2%', left: '79.4%', width: '4.1%' }}
                   />
 
                   {previewLocations.map((loc) => {

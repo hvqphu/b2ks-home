@@ -5387,6 +5387,35 @@ export function initB2KSGameEngine() {
     const btn = document.getElementById('zoom-level-btn');
     if (btn) btn.innerText = '100%';
   };
+  const syncCameraModeUI = (mode?: string) => {
+    const curMode = mode || (controller3d ? controller3d.getCameraMode() : (typeof localStorage !== 'undefined' && localStorage.getItem('b2ks_camera_mode_v1') === 'perspective' ? 'perspective' : 'ortho'));
+    const btn = document.getElementById('camera-mode-btn');
+    if (btn) {
+      const isPersp = curMode === 'perspective';
+      btn.innerText = isPersp ? '3D' : 'ISO';
+      btn.classList.toggle('sky', isPersp);
+      btn.title = isPersp
+        ? 'Đang dùng Phối cảnh XCity — bấm để về Isometric 45°'
+        : 'Đang dùng Isometric 45° — bấm để sang Phối cảnh XCity';
+    }
+    const resetBtn = document.getElementById('camera-reset-btn');
+    if (resetBtn) {
+      resetBtn.title = curMode === 'perspective'
+        ? 'Khóa lại góc Phối cảnh XCity theo nhân vật'
+        : 'Khóa lại góc Isometric 45° theo nhân vật';
+    }
+  };
+  w.toggleCameraViewMode = () => {
+    AudioEngine.playClick();
+    if (!controller3d) return;
+    const next = controller3d.toggleCameraMode();
+    syncCameraModeUI(next);
+    showToast(
+      next === 'perspective'
+        ? '🏙️ Đã chuyển sang góc nhìn Phối cảnh 3D (XCity)'
+        : '📐 Đã chuyển về góc nhìn Isometric 45°'
+    );
+  };
   w.resetCameraView = () => {
     AudioEngine.playClick();
     zoomLevel = 1.0;
@@ -8484,8 +8513,12 @@ export function initB2KSGameEngine() {
       zoomLevel = nextZoom;
       const btn = document.getElementById('zoom-level-btn');
       if (btn) btn.innerText = `${Math.round(nextZoom * 100)}%`;
+    },
+    onCameraModeSync: (mode: string) => {
+      syncCameraModeUI(mode);
     }
   });
+  syncCameraModeUI();
   const resizeCanvas = () => {
     controller3d?.onResize();
   };
@@ -8624,14 +8657,18 @@ export function initB2KSGameEngine() {
     { axis: 'h', x: 150, y: 505, speed: 2.1, color: '#E74C3C', dir: 1, kind: 'car' },
     { axis: 'h', x: 960, y: 515, speed: 3.1, color: '#0EA5E9', dir: 1, kind: 'moto' },
     { axis: 'h', x: 1650, y: 560, speed: -2.2, color: '#3498DB', dir: -1, kind: 'bus' },
-    { axis: 'h', x: 2200, y: 545, speed: -1.6, color: '#10B981', dir: -1, kind: 'bike' },
+    { axis: 'h', x: 2450, y: 545, speed: -1.6, color: '#10B981', dir: -1, kind: 'bike' },
     { axis: 'h', x: 400, y: 1055, speed: 2.0, color: '#F39C12', dir: 1, kind: 'truck' },
     { axis: 'h', x: 1320, y: 1068, speed: 3.2, color: '#EC4899', dir: 1, kind: 'moto' },
-    { axis: 'h', x: 1900, y: 1115, speed: -2.5, color: '#9B59B6', dir: -1, kind: 'car' },
+    { axis: 'h', x: 2150, y: 1115, speed: -2.5, color: '#9B59B6', dir: -1, kind: 'car' },
     { axis: 'h', x: 640, y: 1105, speed: -1.7, color: '#F97316', dir: -1, kind: 'bike' },
+    { axis: 'h', x: 520, y: 1680, speed: 2.3, color: '#2563EB', dir: 1, kind: 'car' },
+    { axis: 'h', x: 2180, y: 1730, speed: -2.0, color: '#F59E0B', dir: -1, kind: 'bus' },
     { axis: 'v', x: 1215, y: 310, speed: 1.9, color: '#16A085', dir: 1, kind: 'car' },
     { axis: 'v', x: 1232, y: 820, speed: 2.8, color: '#DC2626', dir: 1, kind: 'moto' },
-    { axis: 'v', x: 1275, y: 1350, speed: -2.1, color: '#E67E22', dir: -1, kind: 'bus' }
+    { axis: 'v', x: 1275, y: 1550, speed: -2.1, color: '#E67E22', dir: -1, kind: 'bus' },
+    { axis: 'v', x: 2575, y: 650, speed: 2.2, color: '#38BDF8', dir: 1, kind: 'car' },
+    { axis: 'v', x: 2635, y: 1480, speed: -1.9, color: '#10B981', dir: -1, kind: 'truck' }
   ];
 
   /* ==================== CONTEXTUAL BOTTOM CHAT BAR & WORLD INTERACTABLES ==================== */

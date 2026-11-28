@@ -9,15 +9,16 @@
  */
 
 import { createScene3D } from './scene3d.js';
+import { STREET_WORLD } from './constants.ts';
 
 function clamp(val, min, max) {
   return Math.max(min, Math.min(max, val));
 }
 
-export function createB2KS3DController({ canvasEl, labelLayerEl, isUnlocked, onZoomSync }) {
+export function createB2KS3DController({ canvasEl, labelLayerEl, isUnlocked, onZoomSync, onCameraModeSync }) {
   let scene3d = null;
   let tapTarget = null;
-  let sceneBounds = { minX: 40, maxX: 2480, minY: 265, maxY: 1660 };
+  let sceneBounds = { minX: 40, maxX: STREET_WORLD.width - 40, minY: 265, maxY: STREET_WORLD.height - 40 };
 
   const activePointers = new Map();
   let tapCandidate = null;
@@ -31,6 +32,7 @@ export function createB2KS3DController({ canvasEl, labelLayerEl, isUnlocked, onZ
       scene3d = inst;
       scene3d.resize();
       if (onZoomSync) onZoomSync(scene3d.camState.targetZoom);
+      if (onCameraModeSync) onCameraModeSync(scene3d.getCameraMode());
     })
     .catch((err) => {
       console.error('[B2KS 3D] Không thể khởi tạo WebGL 3D:', err);
@@ -122,9 +124,10 @@ export function createB2KS3DController({ canvasEl, labelLayerEl, isUnlocked, onZ
           // Chuột phải hoặc giữ Shift: lia (pan) camera trên mặt đất
           panCameraByScreenDelta(dx, dy);
         } else {
-          // Kéo 1 ngón hoặc chuột trái: xoay góc nhìn Isometric quanh nhân vật
+          // Kéo 1 ngón hoặc chuột trái: xoay góc nhìn quanh nhân vật
           scene3d.camState.targetYaw -= dx * 0.007;
-          scene3d.camState.targetPitch = clamp(scene3d.camState.targetPitch + dy * 0.005, 0.42, 1.15);
+          const minPitch = scene3d.camState.mode === 'perspective' ? 0.24 : 0.42;
+          scene3d.camState.targetPitch = clamp(scene3d.camState.targetPitch + dy * 0.005, minPitch, 1.15);
         }
       }
       lastPointer = { x: e.clientX, y: e.clientY };
@@ -171,7 +174,7 @@ export function createB2KS3DController({ canvasEl, labelLayerEl, isUnlocked, onZ
 
   function updateSceneBounds(sceneName, houseHeight) {
     if (sceneName === 'neighborhood') {
-      sceneBounds = { minX: 40, maxX: 2480, minY: 265, maxY: 1660 };
+      sceneBounds = { minX: 40, maxX: STREET_WORLD.width - 40, minY: 265, maxY: STREET_WORLD.height - 40 };
     } else if (sceneName === 'private_room') {
       sceneBounds = { minX: 12, maxX: 748, minY: 16, maxY: 406 };
     } else {
@@ -238,6 +241,21 @@ export function createB2KS3DController({ canvasEl, labelLayerEl, isUnlocked, onZ
     },
     getCamYaw() {
       return scene3d ? scene3d.camState.yaw : Math.PI / 4;
+    },
+    getCameraMode() {
+      return scene3d ? scene3d.getCameraMode() : 'ortho';
+    },
+    setCameraMode(mode) {
+      if (!scene3d) return 'ortho';
+      const next = scene3d.setCameraMode(mode);
+      if (onCameraModeSync) onCameraModeSync(next);
+      return next;
+    },
+    toggleCameraMode() {
+      if (!scene3d) return 'ortho';
+      const next = scene3d.toggleCameraMode();
+      if (onCameraModeSync) onCameraModeSync(next);
+      return next;
     },
     resetCamera() {
       if (scene3d) scene3d.resetCamera();

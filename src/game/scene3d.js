@@ -12,6 +12,7 @@
  */
 
 import { buildCatalogItem3D, buildProceduralLabItem3D } from './itemModels3d';
+import { STREET_WORLD } from './constants.ts';
 
 export {
   buildCatalogItem3D,
@@ -24,6 +25,7 @@ export {
   buildHelperRobot3D,
 };
 export const WORLD_SCALE = 0.05; // 100px (2D) = 5 đơn vị 3D
+const CAMERA_MODE_STORAGE_KEY = 'b2ks_camera_mode_v1';
 
 export const PASTEL_PALETTE = {
   grassMain: '#63C13B',
@@ -47,9 +49,9 @@ export const PASTEL_PALETTE = {
   glassDay: '#7DD3FC',
   glassNight: '#FEF08A',
   skyDay: '#BAE6FD',
-  skyDawn: '#FDE2C8',
-  skySunset: '#FAC39D',
-  skyNight: '#17203A',
+  skyDawn: '#FDBA74',
+  skySunset: '#FB7185',
+  skyNight: '#050A18',
   skyRain: '#94A3B8',
 };
 
@@ -194,7 +196,9 @@ export function createMaterialCache(THREE) {
   const cache = new Map();
   return {
     get(color, opts = {}) {
-      const key = `${color}|${opts.roughness ?? 0.72}|${opts.metalness ?? 0.04}|${opts.emissive ?? 0}|${opts.opacity ?? 1}|${opts.flatShading ? 1 : 0}`;
+      const emInt = opts.emissiveIntensity ?? (opts.emissive ? 0.65 : 0);
+      const sideVal = opts.side ?? THREE.FrontSide;
+      const key = `${color}|${opts.roughness ?? 0.72}|${opts.metalness ?? 0.04}|${opts.emissive ?? 0}|${emInt}|${opts.opacity ?? 1}|${opts.flatShading ? 1 : 0}|${sideVal}`;
       if (cache.has(key)) return cache.get(key);
       const mat = new THREE.MeshStandardMaterial({
         color: new THREE.Color(color),
@@ -204,8 +208,8 @@ export function createMaterialCache(THREE) {
         transparent: opts.transparent ?? (opts.opacity !== undefined && opts.opacity < 1),
         opacity: opts.opacity ?? 1,
         emissive: opts.emissive ? new THREE.Color(opts.emissive) : new THREE.Color(0x000000),
-        emissiveIntensity: opts.emissiveIntensity ?? (opts.emissive ? 0.65 : 0),
-        side: opts.side ?? THREE.FrontSide,
+        emissiveIntensity: emInt,
+        side: sideVal,
       });
       cache.set(key, mat);
       return mat;
@@ -466,13 +470,13 @@ function buildStreetLamp3D(THREE, mats, x, z, isNight) {
 
   const bulb = makeSphere(
     THREE,
-    0.19,
+    0.2,
     10,
     8,
     mats.get(isNight ? '#FEF08A' : '#F8FAFC', {
-      roughness: 0.22,
+      roughness: 0.16,
       emissive: isNight ? '#FDE047' : null,
-      emissiveIntensity: isNight ? 1.5 : 0,
+      emissiveIntensity: isNight ? 2.8 : 0,
     }),
     false,
     false
@@ -481,13 +485,43 @@ function buildStreetLamp3D(THREE, mats, x, z, isNight) {
   g.add(bulb);
 
   if (isNight) {
-    const glow = new THREE.Mesh(
-      new THREE.CircleGeometry(1.8, 16),
-      new THREE.MeshBasicMaterial({ color: 0xfef08a, transparent: true, opacity: 0.2, depthWrite: false })
+    const lightCone = new THREE.Mesh(
+      new THREE.ConeGeometry(1.85, 2.75, 12, 1, true),
+      new THREE.MeshBasicMaterial({
+        color: 0xfef08a,
+        transparent: true,
+        opacity: 0.11,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      })
     );
-    glow.rotation.x = -Math.PI / 2;
-    glow.position.set(0.54, 0.17, 0);
-    g.add(glow);
+    lightCone.position.set(0.54, 1.52, 0);
+    const outerGlow = new THREE.Mesh(
+      new THREE.CircleGeometry(3.4, 20),
+      new THREE.MeshBasicMaterial({
+        color: 0xfde047,
+        transparent: true,
+        opacity: 0.22,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
+    );
+    outerGlow.rotation.x = -Math.PI / 2;
+    outerGlow.position.set(0.54, 0.168, 0);
+    const innerGlow = new THREE.Mesh(
+      new THREE.CircleGeometry(1.45, 16),
+      new THREE.MeshBasicMaterial({
+        color: 0xfef9c3,
+        transparent: true,
+        opacity: 0.36,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
+    );
+    innerGlow.rotation.x = -Math.PI / 2;
+    innerGlow.position.set(0.54, 0.174, 0);
+    g.add(lightCone, outerGlow, innerGlow);
   }
   return g;
 }
@@ -676,10 +710,10 @@ function buildTownhouse3D(THREE, mats, x, z, style, shape, isNight) {
   const trimMat = mats.get(trimCol, { roughness: 0.52 });
   const frameMat = mats.get('#FFFFFF', { roughness: 0.45 });
   const winMat = mats.get(isNight ? PASTEL_PALETTE.glassNight : PASTEL_PALETTE.glassDay, {
-    roughness: 0.16,
+    roughness: 0.14,
     metalness: 0.18,
-    emissive: isNight ? '#FDE047' : null,
-    emissiveIntensity: isNight ? 0.9 : 0,
+    emissive: isNight ? '#FBBF24' : null,
+    emissiveIntensity: isNight ? 1.95 : 0,
   });
 
   // Floor ledges, glass balconies, and framed windows with flower boxes
@@ -756,6 +790,31 @@ function buildTownhouse3D(THREE, mats, x, z, style, shape, isNight) {
     g.add(eaves, roof, dormer);
   }
   addBuildingShapeDecor3D(THREE, mats, g, shape, W, H + 0.14, D);
+  if (isNight) {
+    const porchLamp = makeSphere(
+      THREE,
+      0.18,
+      8,
+      6,
+      mats.get('#FEF08A', { emissive: '#FDE047', emissiveIntensity: 2.4 }),
+      false,
+      false
+    );
+    porchLamp.position.set(0, 2.38, D / 2 + 0.48);
+    const yardGlow = new THREE.Mesh(
+      new THREE.CircleGeometry(3.8, 18),
+      new THREE.MeshBasicMaterial({
+        color: 0xfbbf24,
+        transparent: true,
+        opacity: 0.2,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
+    );
+    yardGlow.rotation.x = -Math.PI / 2;
+    yardGlow.position.set(0, 0.17, 3.6);
+    g.add(porchLamp, yardGlow);
+  }
   return g;
 }
 
@@ -776,10 +835,10 @@ function buildShopBuilding3D(THREE, mats, x, z, type, shape, isNight) {
   const frameMat = mats.get('#FFFFFF', { roughness: 0.45 });
   const darkFrameMat = mats.get('#1E293B', { roughness: 0.45 });
   const winMat = mats.get(isNight ? '#FEF08A' : '#7DD3FC', {
-    roughness: 0.15,
+    roughness: 0.14,
     metalness: 0.15,
-    emissive: isNight ? '#FDE047' : null,
-    emissiveIntensity: isNight ? 0.85 : 0,
+    emissive: isNight ? '#FBBF24' : null,
+    emissiveIntensity: isNight ? 1.9 : 0,
   });
 
   if (type === 'supermarket') {
@@ -787,7 +846,13 @@ function buildShopBuilding3D(THREE, mats, x, z, type, shape, isNight) {
     plinth.position.set(0, 0.55, -0.3);
     const body = makeBox(THREE, 9.2, 4.1, 5.2, mats.get('#FFFDF5', { roughness: 0.76 }));
     body.position.set(0, 2.25, -0.3);
-    const fascia = makeBox(THREE, 9.8, 1.15, 5.7, mats.get('#EA580C', { roughness: 0.5 }));
+    const fascia = makeBox(
+      THREE,
+      9.8,
+      1.15,
+      5.7,
+      mats.get('#EA580C', { roughness: 0.5, emissive: isNight ? '#EA580C' : null, emissiveIntensity: isNight ? 0.52 : 0 })
+    );
     fascia.position.set(0, 4.82, -0.3);
     const roofRim = makeBox(THREE, 10.1, 0.25, 6.0, mats.get('#9A3412', { roughness: 0.5 }));
     roofRim.position.set(0, 5.48, -0.3);
@@ -926,11 +991,11 @@ function buildShopBuilding3D(THREE, mats, x, z, type, shape, isNight) {
   } else if (type === 'arcade') {
     const body = makeBox(THREE, 9.0, 4.8, 5.4, mats.get('#0F172A', { roughness: 0.42, metalness: 0.2 }));
     body.position.set(0, 2.54, -0.3);
-    const sideAccent = makeBox(THREE, 9.3, 0.7, 5.7, mats.get('#7C3AED', { roughness: 0.35, emissive: '#6D28D9', emissiveIntensity: 0.4 }));
+    const sideAccent = makeBox(THREE, 9.3, 0.7, 5.7, mats.get('#7C3AED', { roughness: 0.35, emissive: '#6D28D9', emissiveIntensity: isNight ? 1.05 : 0.4 }));
     sideAccent.position.set(0, 5.1, -0.3);
-    const marquee = makeBox(THREE, 8.2, 1.05, 0.72, mats.get('#F43F5E', { roughness: 0.3, emissive: '#E11D48', emissiveIntensity: 0.6 }));
+    const marquee = makeBox(THREE, 8.2, 1.05, 0.72, mats.get('#F43F5E', { roughness: 0.3, emissive: '#E11D48', emissiveIntensity: isNight ? 1.35 : 0.6 }));
     marquee.position.set(0, 4.45, 2.48);
-    const screen = makeBox(THREE, 5.4, 1.85, 0.25, mats.get('#14B8A6', { roughness: 0.15, emissive: '#2DD4BF', emissiveIntensity: 0.55 }));
+    const screen = makeBox(THREE, 5.4, 1.85, 0.25, mats.get('#14B8A6', { roughness: 0.15, emissive: '#2DD4BF', emissiveIntensity: isNight ? 1.25 : 0.55 }));
     screen.position.set(0, 2.7, 2.44);
     const deck = makeBox(THREE, 7.2, 0.42, 1.15, mats.get('#FACC15', { roughness: 0.4 }));
     deck.position.set(0, 1.48, 2.8);
@@ -1017,6 +1082,13 @@ function buildShopBuilding3D(THREE, mats, x, z, type, shape, isNight) {
     const sign = makeBox(THREE, 8.8, 0.82, 0.45, mats.get('#B45309', { roughness: 0.55 }));
     sign.position.set(0, 4.35, 1.65);
     g.add(sign);
+    if (isNight) {
+      for (let bi = -3.6; bi <= 3.6; bi += 1.2) {
+        const festoon = makeSphere(THREE, 0.14, 7, 6, mats.get('#FEF08A', { emissive: '#FACC15', emissiveIntensity: 2.3 }), false, false);
+        festoon.position.set(bi, 3.85, 1.65);
+        g.add(festoon);
+      }
+    }
   } else if (type === 'english') {
     const plinth = makeBox(THREE, 9.5, 0.72, 5.6, mats.get('#0F766E', { roughness: 0.7 }));
     plinth.position.set(0, 0.46, -0.3);
@@ -1355,13 +1427,28 @@ function buildShopBuilding3D(THREE, mats, x, z, type, shape, isNight) {
         8,
         mats.get(isNight ? '#FEF08A' : '#F8FAFC', {
           emissive: isNight ? '#FDE047' : null,
-          emissiveIntensity: isNight ? 1.4 : 0,
+          emissiveIntensity: isNight ? 2.4 : 0,
         }),
         false,
         false
       );
       lampBulb.position.set(hx * 0.56, 2.45, 3.25);
       g.add(pot, cyp, lampPost, lampBulb);
+      if (isNight) {
+        const stepGlow = new THREE.Mesh(
+          new THREE.CircleGeometry(2.1, 14),
+          new THREE.MeshBasicMaterial({
+            color: 0xfde047,
+            transparent: true,
+            opacity: 0.24,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+          })
+        );
+        stepGlow.rotation.x = -Math.PI / 2;
+        stepGlow.position.set(hx * 0.56, 0.24, 3.25);
+        g.add(stepGlow);
+      }
     });
 
     let signY = 7.95;
@@ -1481,7 +1568,13 @@ function buildShopBuilding3D(THREE, mats, x, z, type, shape, isNight) {
     }
     const signTex = new THREE.CanvasTexture(signCanvas);
     signTex.colorSpace = THREE.SRGBColorSpace;
-    const signPlateMat = new THREE.MeshStandardMaterial({ map: signTex, roughness: 0.35 });
+    const signPlateMat = new THREE.MeshStandardMaterial({
+      map: signTex,
+      roughness: 0.35,
+      emissive: isNight ? new THREE.Color('#FACC15') : new THREE.Color(0x000000),
+      emissiveMap: isNight ? signTex : null,
+      emissiveIntensity: isNight ? 0.65 : 0,
+    });
     const signBack = makeBox(THREE, 3.7, 0.98, 0.24, darkSignMat);
     signBack.position.set(0, signY, signZ);
     const signFront = new THREE.Mesh(new THREE.PlaneGeometry(3.52, 0.86), signPlateMat);
@@ -1492,11 +1585,41 @@ function buildShopBuilding3D(THREE, mats, x, z, type, shape, isNight) {
     g.add(signBack, signFront, signRear);
 
     // Plain Golden Cross (Thập tự giá) directly above "TIN LÀNH" — zero images/icons/statues
-    const crossVert = makeBox(THREE, 0.26, 2.0, 0.24, brassMat);
+    const crossMat = isNight
+      ? mats.get('#FEF08A', { roughness: 0.22, metalness: 0.4, emissive: '#FACC15', emissiveIntensity: 0.85 })
+      : brassMat;
+    const crossVert = makeBox(THREE, 0.26, 2.0, 0.24, crossMat);
     crossVert.position.set(0, crossY, signZ);
-    const crossHoriz = makeBox(THREE, 1.32, 0.26, 0.24, brassMat);
+    const crossHoriz = makeBox(THREE, 1.32, 0.26, 0.24, crossMat);
     crossHoriz.position.set(0, crossY + 0.35, signZ);
     g.add(crossVert, crossHoriz);
+  }
+  if (isNight) {
+    const spillColor =
+      type === 'arcade'
+        ? 0xe879f9
+        : type === 'cross_world'
+          ? 0x38bdf8
+          : type === 'lab'
+            ? 0x22d3ee
+            : type === 'fashion'
+              ? 0xf472b6
+              : type === 'salon'
+                ? 0xa78bfa
+                : 0xfbbf24;
+    const frontSpill = new THREE.Mesh(
+      new THREE.CircleGeometry(4.4, 20),
+      new THREE.MeshBasicMaterial({
+        color: spillColor,
+        transparent: true,
+        opacity: 0.2,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
+    );
+    frontSpill.rotation.x = -Math.PI / 2;
+    frontSpill.position.set(0, 0.175, type === 'zoo' ? 4.3 : 3.2);
+    g.add(frontSpill);
   }
   return g;
 }
@@ -1504,7 +1627,7 @@ function buildShopBuilding3D(THREE, mats, x, z, type, shape, isNight) {
 /**
  * Dựng 4 khu vực ngoài trời: Công viên Tiếng Anh, Đài Phun Nước, Góc Đọc Sách, Sân Bóng Đá
  */
-function buildOutdoorLandmark3D(THREE, mats, type, x, z) {
+function buildOutdoorLandmark3D(THREE, mats, type, x, z, isNight = false) {
   const g = new THREE.Group();
   g.position.set(x, 0, z);
 
@@ -1585,8 +1708,33 @@ function buildOutdoorLandmark3D(THREE, mats, type, x, z) {
     ].forEach(([fx, fz, col, kind]) => g.add(buildFlowerCluster3D(THREE, mats, fx, fz, col, kind)));
     g.add(buildParkBench3D(THREE, mats, -0.4, 2.25, 0));
     g.add(buildParkBench3D(THREE, mats, 2.6, 1.15, -Math.PI / 3));
-    g.add(buildStreetLamp3D(THREE, mats, -3.5, 3.0, false));
-    g.add(buildStreetLamp3D(THREE, mats, 3.6, 0.2, false));
+    g.add(buildStreetLamp3D(THREE, mats, -3.5, 3.0, isNight));
+    g.add(buildStreetLamp3D(THREE, mats, 3.6, 0.2, isNight));
+    if (isNight) {
+      const gazLantern = makeSphere(
+        THREE,
+        0.22,
+        8,
+        6,
+        mats.get('#FEF08A', { emissive: '#FDE047', emissiveIntensity: 2.5 }),
+        false,
+        false
+      );
+      gazLantern.position.set(gazX, 2.48, gazZ);
+      const gazGlow = new THREE.Mesh(
+        new THREE.CircleGeometry(2.6, 16),
+        new THREE.MeshBasicMaterial({
+          color: 0xfde047,
+          transparent: true,
+          opacity: 0.22,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        })
+      );
+      gazGlow.rotation.x = -Math.PI / 2;
+      gazGlow.position.set(gazX, 0.39, gazZ);
+      g.add(gazLantern, gazGlow);
+    }
 
     // Animated fluttering butterflies
     const butterflies = [];
@@ -1611,8 +1759,21 @@ function buildOutdoorLandmark3D(THREE, mats, type, x, z) {
     innerRing.position.y = 0.1;
     const marbleMat = mats.get('#F8FAFC', { roughness: 0.45 });
     const stoneTrimMat = mats.get('#CBD5E1', { roughness: 0.58 });
-    const waterMat = mats.get('#0EA5E9', { roughness: 0.1, metalness: 0.15, transparent: true, opacity: 0.84 });
-    const streamMat = mats.get('#BAE6FD', { roughness: 0.08, emissive: '#38BDF8', emissiveIntensity: 0.42, transparent: true, opacity: 0.86 });
+    const waterMat = mats.get('#0EA5E9', {
+      roughness: 0.1,
+      metalness: 0.15,
+      emissive: isNight ? '#0284C7' : null,
+      emissiveIntensity: isNight ? 0.65 : 0,
+      transparent: true,
+      opacity: 0.86,
+    });
+    const streamMat = mats.get('#BAE6FD', {
+      roughness: 0.08,
+      emissive: '#38BDF8',
+      emissiveIntensity: isNight ? 1.15 : 0.42,
+      transparent: true,
+      opacity: 0.88,
+    });
 
     const basinOuter = makeCyl(THREE, 3.65, 3.9, 0.78, 22, stoneTrimMat);
     basinOuter.position.y = 0.46;
@@ -1691,7 +1852,7 @@ function buildOutdoorLandmark3D(THREE, mats, type, x, z) {
     });
     [Math.PI / 4, (3 * Math.PI) / 4, (5 * Math.PI) / 4, (7 * Math.PI) / 4].forEach((ang) => {
       g.add(buildFlowerCluster3D(THREE, mats, Math.sin(ang) * 5.65, Math.cos(ang) * 5.65, '#F43F5E', 'tulip'));
-      g.add(buildStreetLamp3D(THREE, mats, Math.sin(ang) * 6.5, Math.cos(ang) * 6.5, false));
+      g.add(buildStreetLamp3D(THREE, mats, Math.sin(ang) * 6.5, Math.cos(ang) * 6.5, isNight));
     });
   } else if (type === 'reading_corner') {
     // Rich Outdoor Reading Corner: Timber Pergola with climbing vines & fairy lights, stocked colorful Bookcase, Study Table with open book & mug, cushioned benches
@@ -1721,7 +1882,15 @@ function buildOutdoorLandmark3D(THREE, mats, type, x, z) {
       rafter.position.set(rx, 3.9, 0);
       g.add(rafter);
       if (Math.abs(rx) % 2 === 0) {
-        const bulb = makeSphere(THREE, 0.11, 7, 6, mats.get('#FEF08A', { emissive: '#FACC15', emissiveIntensity: 0.9 }), false, false);
+        const bulb = makeSphere(
+          THREE,
+          0.11,
+          7,
+          6,
+          mats.get('#FEF08A', { emissive: '#FACC15', emissiveIntensity: isNight ? 2.2 : 0.9 }),
+          false,
+          false
+        );
         bulb.position.set(rx, 3.68, 2.45);
         g.add(bulb);
       }
@@ -1778,11 +1947,32 @@ function buildOutdoorLandmark3D(THREE, mats, type, x, z) {
     lampBase.position.set(2.75, 1.07, -0.2);
     const lampNeck = makeCyl(THREE, 0.03, 0.03, 0.48, 6, mats.get('#FACC15', { roughness: 0.35 }));
     lampNeck.position.set(2.75, 1.32, -0.2);
-    const lampShade = makeCone(THREE, 0.24, 0.24, 10, mats.get('#FDE047', { emissive: '#FACC15', emissiveIntensity: 0.55 }));
+    const lampShade = makeCone(
+      THREE,
+      0.24,
+      0.24,
+      10,
+      mats.get('#FDE047', { emissive: '#FACC15', emissiveIntensity: isNight ? 1.85 : 0.55 })
+    );
     lampShade.position.set(2.68, 1.56, -0.15);
     const mug = makeCyl(THREE, 0.1, 0.09, 0.18, 10, mats.get('#F43F5E', { roughness: 0.4 }));
     mug.position.set(0.85, 1.12, 0.45);
     g.add(tableTop, bookCover, lampBase, lampNeck, lampShade, mug);
+    if (isNight) {
+      const deckGlow = new THREE.Mesh(
+        new THREE.CircleGeometry(4.2, 18),
+        new THREE.MeshBasicMaterial({
+          color: 0xfde047,
+          transparent: true,
+          opacity: 0.2,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        })
+      );
+      deckGlow.rotation.x = -Math.PI / 2;
+      deckGlow.position.set(0.8, 0.25, 0.4);
+      g.add(deckGlow);
+    }
 
     // 2 Cushioned Benches + Potted Ferns
     g.add(buildParkBench3D(THREE, mats, 1.85, 1.95, 0));
@@ -1820,7 +2010,7 @@ function buildOutdoorLandmark3D(THREE, mats, type, x, z) {
 
     // 4 Stadium Floodlight Towers at corners
     const towerMat = mats.get('#475569', { roughness: 0.4, metalness: 0.45 });
-    const floodMat = mats.get('#FEF9C3', { emissive: '#FEF08A', emissiveIntensity: 0.9 });
+    const floodMat = mats.get('#FEF9C3', { emissive: '#FEF08A', emissiveIntensity: isNight ? 2.5 : 0.9 });
     [
       [-W / 2 - 0.6, -D / 2 - 0.6],
       [W / 2 + 0.6, -D / 2 - 0.6],
@@ -1832,6 +2022,21 @@ function buildOutdoorLandmark3D(THREE, mats, type, x, z) {
       const panel = makeBox(THREE, 0.9, 0.45, 0.25, floodMat);
       panel.position.set(tx, 4.25, tz);
       g.add(mast, panel);
+      if (isNight) {
+        const pitchGlow = new THREE.Mesh(
+          new THREE.CircleGeometry(5.6, 18),
+          new THREE.MeshBasicMaterial({
+            color: 0xfef9c3,
+            transparent: true,
+            opacity: 0.16,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+          })
+        );
+        pitchGlow.rotation.x = -Math.PI / 2;
+        pitchGlow.position.set(tx * 0.48, 0.125, tz * 0.48);
+        g.add(pitchGlow);
+      }
     });
 
     // 3D Goal Frames (Left & Right)
@@ -1861,16 +2066,24 @@ function buildOutdoorLandmark3D(THREE, mats, type, x, z) {
 /**
  * Dựng phương tiện giao thông 3D Low-poly chi tiết (mâm xe bạc, kính chắn gió, gương hậu, đèn pha/hậu, người lái)
  */
-function buildVehicle3D(THREE, mats, carData) {
+function buildVehicle3D(THREE, mats, carData, isNight = false) {
   const g = new THREE.Group();
   const kind = carData.kind || 'car';
   const bodyMat = mats.get(carData.color || '#FF6B6B', { roughness: 0.36, metalness: 0.16 });
   const tireMat = mats.get('#0F172A', { roughness: 0.85 });
   const rimMat = mats.get('#E2E8F0', { roughness: 0.28, metalness: 0.65 });
-  const glassMat = mats.get('#BAE6FD', { roughness: 0.12, metalness: 0.22 });
+  const glassMat = isNight
+    ? mats.get('#FDE68A', { roughness: 0.14, emissive: '#F59E0B', emissiveIntensity: 0.45 })
+    : mats.get('#BAE6FD', { roughness: 0.12, metalness: 0.22 });
   const bumperMat = mats.get('#CBD5E1', { roughness: 0.4, metalness: 0.35 });
-  const headLightMat = mats.get('#FEF08A', { emissive: '#FDE047', emissiveIntensity: 0.85 });
-  const tailLightMat = mats.get('#EF4444', { emissive: '#DC2626', emissiveIntensity: 0.65 });
+  const headLightMat = mats.get(isNight ? '#FEF9C3' : '#FEF08A', {
+    emissive: '#FDE047',
+    emissiveIntensity: isNight ? 2.8 : 0.75,
+  });
+  const tailLightMat = mats.get('#EF4444', {
+    emissive: '#DC2626',
+    emissiveIntensity: isNight ? 2.2 : 0.6,
+  });
 
   const addWheel = (wx, wz, r = 0.33, width = 0.22) => {
     const wg = new THREE.Group();
@@ -1883,14 +2096,21 @@ function buildVehicle3D(THREE, mats, carData) {
     g.add(wg);
   };
 
+  let frontX = 1.55;
+  let rearX = -1.55;
+  let beamSpread = 1.1;
+
   if (kind === 'bus') {
+    frontX = 2.02;
+    rearX = -2.02;
+    beamSpread = 1.35;
     const skirt = makeBox(THREE, 4.05, 0.25, 1.68, bumperMat);
     skirt.position.y = 0.38;
     const hull = makeBox(THREE, 3.9, 1.48, 1.58, bodyMat);
     hull.position.y = 1.15;
     const roofTrim = makeBox(THREE, 3.6, 0.14, 1.38, mats.get('#FFFFFF', { roughness: 0.5 }));
     roofTrim.position.y = 1.94;
-    const sideWin = makeBox(THREE, 3.25, 0.62, 1.62, glassMat);
+    const sideWin = makeBox(THREE, 3.25, 0.62, 1.62, isNight ? mats.get('#FEF08A', { emissive: '#FBBF24', emissiveIntensity: 1.25 }) : glassMat);
     sideWin.position.y = 1.4;
     const windshield = makeBox(THREE, 0.16, 0.72, 1.38, glassMat);
     windshield.position.set(1.92, 1.36, 0);
@@ -1901,6 +2121,9 @@ function buildVehicle3D(THREE, mats, carData) {
     g.add(skirt, hull, roofTrim, sideWin, windshield, hl, tl);
     [-1.25, 1.25].forEach((wx) => [-0.8, 0.8].forEach((wz) => addWheel(wx, wz, 0.37, 0.24)));
   } else if (kind === 'truck') {
+    frontX = 1.86;
+    rearX = -1.86;
+    beamSpread = 1.3;
     const chassis = makeBox(THREE, 3.6, 0.22, 1.4, mats.get('#334155', { roughness: 0.6 }));
     chassis.position.set(0.05, 0.44, 0);
     const cargo = makeBox(THREE, 2.35, 1.55, 1.62, mats.get('#F8FAFC', { roughness: 0.58 }));
@@ -1915,9 +2138,14 @@ function buildVehicle3D(THREE, mats, carData) {
     bumper.position.set(1.82, 0.48, 0);
     const hl = makeBox(THREE, 0.12, 0.2, 1.18, headLightMat, false, false);
     hl.position.set(1.82, 0.72, 0);
-    g.add(chassis, cargo, cargoStripe, cab, cabGlass, bumper, hl);
+    const tl = makeBox(THREE, 0.12, 0.18, 1.2, tailLightMat, false, false);
+    tl.position.set(-1.86, 0.68, 0);
+    g.add(chassis, cargo, cargoStripe, cab, cabGlass, bumper, hl, tl);
     [-1.18, 1.18].forEach((wx) => [-0.78, 0.78].forEach((wz) => addWheel(wx, wz, 0.36, 0.24)));
   } else if (kind === 'moto' || kind === 'bike') {
+    frontX = 0.62;
+    rearX = -0.62;
+    beamSpread = 0.55;
     const frame = makeBox(THREE, 1.28, 0.36, 0.34, bodyMat);
     frame.position.set(0, 0.62, 0);
     const seat = makeBox(THREE, 0.54, 0.14, 0.34, tireMat);
@@ -1929,6 +2157,8 @@ function buildVehicle3D(THREE, mats, carData) {
     handleBar.position.set(0.32, 0.98, 0);
     const lamp = makeSphere(THREE, 0.11, 8, 6, headLightMat, false, false);
     lamp.position.set(0.55, 0.82, 0);
+    const tLamp = makeSphere(THREE, 0.075, 6, 6, tailLightMat, false, false);
+    tLamp.position.set(-0.62, 0.72, 0);
 
     const riderBody = makeBox(THREE, 0.42, 0.58, 0.42, mats.get('#2563EB', { roughness: 0.7 }));
     riderBody.position.set(-0.14, 1.16, 0);
@@ -1940,7 +2170,7 @@ function buildVehicle3D(THREE, mats, carData) {
     helm.position.set(-0.04, 1.62, 0);
     const visor = makeBox(THREE, 0.12, 0.14, 0.36, mats.get('#0F172A', { roughness: 0.2 }));
     visor.position.set(0.18, 1.62, 0);
-    g.add(frame, seat, fork, handleBar, lamp, riderBody, riderArm, helm, visor);
+    g.add(frame, seat, fork, handleBar, lamp, tLamp, riderBody, riderArm, helm, visor);
     [-0.56, 0.56].forEach((wx) => addWheel(wx, 0, 0.29, 0.14));
   } else {
     // Detailed Sedan / Coupe
@@ -1970,7 +2200,314 @@ function buildVehicle3D(THREE, mats, carData) {
     [-0.95, 0.95].forEach((wx) => [-0.74, 0.74].forEach((wz) => addWheel(wx, wz, 0.32, 0.2)));
   }
 
+  if (isNight) {
+    const beamMat = new THREE.MeshBasicMaterial({
+      color: 0xfef08a,
+      transparent: true,
+      opacity: 0.25,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    const beamOffsets = kind === 'moto' || kind === 'bike' ? [0] : [-beamSpread * 0.38, beamSpread * 0.38];
+    beamOffsets.forEach((bz) => {
+      const beamCone = new THREE.Mesh(new THREE.ConeGeometry(beamSpread * 0.72, 4.4, 8, 1, true), beamMat);
+      beamCone.rotation.z = Math.PI / 2;
+      beamCone.scale.set(0.28, 1, 1);
+      beamCone.position.set(frontX + 2.0, 0.22, bz);
+      g.add(beamCone);
+    });
+    const tailGlow = new THREE.Mesh(
+      new THREE.CircleGeometry(beamSpread * 0.65, 12),
+      new THREE.MeshBasicMaterial({
+        color: 0xef4444,
+        transparent: true,
+        opacity: 0.3,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
+    );
+    tailGlow.rotation.x = -Math.PI / 2;
+    tailGlow.position.set(rearX - 0.65, 0.09, 0);
+    g.add(tailGlow);
+  }
+
   return g;
+}
+
+/**
+ * Dựng các tòa nhà trang trí (không chức năng) làm đẹp khu phố theo phong cách XCity & tự đổi chỗ khi bố mẹ dời công trình
+ */
+function buildDecorativeBuilding3D(THREE, mats, def, isNight) {
+  const g = new THREE.Group();
+  g.position.set(def.x * WORLD_SCALE, 0, def.y * WORLD_SCALE);
+  g.rotation.y = def.rotY || 0;
+
+  const rng = createSeededRandom(def.seed || 101);
+  const variant = def.variant || 'apt_tall';
+  const pal = def.palette || { wall: '#F8FAFC', accent: '#3B82F6', roof: '#475569' };
+
+  const curb = makeBox(THREE, 9.8, 0.1, 7.0, mats.get('#94A3B8', { roughness: 0.85 }), false, true);
+  curb.position.set(0, 0.05, 0.3);
+  const pad = makeBox(THREE, 9.4, 0.14, 6.6, mats.get('#E2E8F0', { roughness: 0.86 }), false, true);
+  pad.position.set(0, 0.08, 0.3);
+  g.add(curb, pad);
+
+  const wallMat = mats.get(pal.wall, { roughness: 0.74 });
+  const accentMat = mats.get(pal.accent, { roughness: 0.52 });
+  const roofMat = mats.get(pal.roof, { roughness: 0.62 });
+  const darkTrimMat = mats.get('#1E293B', { roughness: 0.45 });
+  const frameMat = mats.get('#FFFFFF', { roughness: 0.48 });
+
+  const winLitMat = mats.get(isNight ? '#FEF08A' : '#7DD3FC', {
+    roughness: 0.14,
+    metalness: 0.14,
+    emissive: isNight ? '#FBBF24' : null,
+    emissiveIntensity: isNight ? 2.05 : 0,
+  });
+  const winWarmMat = mats.get(isNight ? '#FDBA74' : '#BAE6FD', {
+    roughness: 0.14,
+    metalness: 0.14,
+    emissive: isNight ? '#F97316' : null,
+    emissiveIntensity: isNight ? 1.4 : 0,
+  });
+  const winDarkMat = mats.get('#0F172A', { roughness: 0.24, metalness: 0.22 });
+
+  const pickWinMat = () => {
+    if (!isNight) return winLitMat;
+    const r = rng();
+    if (r < 0.58) return winLitMat;
+    if (r < 0.84) return winWarmMat;
+    return winDarkMat;
+  };
+
+  if (variant === 'apt_tall') {
+    const W = 7.4;
+    const D = 4.8;
+    const floors = def.floors || 4;
+    const H = floors * 2.15 + 0.6;
+    const plinth = makeBox(THREE, W + 0.35, 0.75, D + 0.35, darkTrimMat);
+    plinth.position.set(0, 0.48, -0.35);
+    const body = makeBox(THREE, W, H, D, wallMat);
+    body.position.set(0, H / 2 + 0.14, -0.35);
+    const topRim = makeBox(THREE, W + 0.45, 0.38, D + 0.45, roofMat);
+    topRim.position.set(0, H + 0.22, -0.35);
+    const acBox = makeBox(THREE, 1.4, 0.75, 1.1, mats.get('#CBD5E1', { roughness: 0.55 }));
+    acBox.position.set(-1.6, H + 0.75, -0.5);
+    const tank = makeCyl(THREE, 0.58, 0.62, 1.05, 10, mats.get('#94A3B8', { roughness: 0.4, metalness: 0.45 }));
+    tank.position.set(1.8, H + 0.9, -0.6);
+    g.add(plinth, body, topRim, acBox, tank);
+
+    for (let fl = 0; fl < floors; fl++) {
+      const fy = 1.65 + fl * 2.15;
+      const band = makeBox(THREE, W + 0.24, 0.18, D + 0.24, accentMat);
+      band.position.set(0, fy - 0.78, -0.35);
+      g.add(band);
+      [-2.15, 0, 2.15].forEach((wx) => {
+        if (fl === 0 && wx === 0) return;
+        addFramedWindow3D(THREE, mats, g, wx, fy, D / 2 - 0.32, 1.15, 1.15, frameMat, pickWinMat());
+      });
+      [-1.3, 1.3].forEach((wz) => {
+        addFramedWindow3D(THREE, mats, g, W / 2 + 0.02, fy, wz - 0.35, 1.05, 1.1, frameMat, pickWinMat(), Math.PI / 2);
+        addFramedWindow3D(THREE, mats, g, -W / 2 - 0.02, fy, wz - 0.35, 1.05, 1.1, frameMat, pickWinMat(), -Math.PI / 2);
+      });
+    }
+    addRecessedDoor3D(THREE, mats, g, 0, 1.25, D / 2 - 0.32, 1.4, 2.05, darkTrimMat, winLitMat);
+    const canopy = makeBox(THREE, 2.6, 0.2, 1.1, accentMat);
+    canopy.position.set(0, 2.45, D / 2 + 0.25);
+    g.add(canopy);
+  } else if (variant === 'cafe') {
+    const W = 7.8;
+    const D = 4.9;
+    const H = 4.6;
+    const body = makeBox(THREE, W, H, D, wallMat);
+    body.position.set(0, H / 2 + 0.14, -0.45);
+    const fascia = makeBox(THREE, W + 0.45, 0.85, D + 0.45, accentMat);
+    fascia.position.set(0, H + 0.2, -0.45);
+    g.add(body, fascia);
+    for (let i = 0; i < 6; i++) {
+      const stripe = makeBox(THREE, 1.22, 0.24, 1.25, mats.get(i % 2 === 0 ? pal.accent : '#FFFFFF', { roughness: 0.55 }));
+      stripe.position.set(-3.05 + i * 1.22, 2.85, D / 2 + 0.1);
+      stripe.rotation.x = 0.25;
+      g.add(stripe);
+    }
+    addRecessedDoor3D(THREE, mats, g, 0, 1.35, D / 2 - 0.42, 1.5, 2.1, darkTrimMat, winLitMat);
+    [-2.4, 2.4].forEach((wx) => addFramedWindow3D(THREE, mats, g, wx, 1.65, D / 2 - 0.42, 1.6, 1.4, frameMat, winLitMat));
+    // Outdoor cafe bistro tables & glowing menu sign
+    [-2.5, 2.5].forEach((tx) => {
+      const tblTop = makeCyl(THREE, 0.55, 0.55, 0.08, 10, mats.get('#FFFFFF', { roughness: 0.45 }));
+      tblTop.position.set(tx, 0.85, D / 2 + 0.85);
+      const tblLeg = makeCyl(THREE, 0.08, 0.12, 0.72, 8, darkTrimMat);
+      tblLeg.position.set(tx, 0.48, D / 2 + 0.85);
+      g.add(tblTop, tblLeg);
+    });
+    const cup = makeCyl(THREE, 0.55, 0.42, 0.95, 10, mats.get('#D97706', { roughness: 0.45 }));
+    cup.position.set(0, H + 1.1, 0.2);
+    g.add(cup);
+  } else if (variant === 'studio_glass') {
+    const W = 7.6;
+    const D = 5.0;
+    const H = 9.2;
+    const frameBody = makeBox(THREE, W, H, D, roofMat);
+    frameBody.position.set(0, H / 2 + 0.14, -0.35);
+    const glassCurtain = makeBox(THREE, W - 0.7, H - 1.1, D + 0.12, winLitMat);
+    glassCurtain.position.set(0, H / 2 + 0.35, -0.35);
+    g.add(frameBody, glassCurtain);
+    [2.6, 4.9, 7.2].forEach((by) => {
+      const mull = makeBox(THREE, W + 0.22, 0.22, D + 0.26, accentMat);
+      mull.position.set(0, by, -0.35);
+      g.add(mull);
+    });
+    const crown = makeBox(THREE, W - 1.6, 0.55, D - 1.4, accentMat);
+    crown.position.set(0, H + 0.42, -0.35);
+    g.add(crown);
+  } else if (variant === 'bakery_shop' || variant === 'market_corner') {
+    const W = 7.6;
+    const D = 4.8;
+    const H = 5.2;
+    const body = makeBox(THREE, W, H, D, wallMat);
+    body.position.set(0, H / 2 + 0.14, -0.35);
+    const roof = new THREE.Mesh(
+      new THREE.ConeGeometry(5.6, 2.2, 4),
+      roofMat
+    );
+    roof.rotation.y = Math.PI / 4;
+    roof.position.set(0, H + 1.2, -0.35);
+    roof.castShadow = true;
+    const chimney = makeBox(THREE, 0.65, 2.0, 0.65, darkTrimMat);
+    chimney.position.set(2.1, H + 1.1, -1.2);
+    g.add(body, roof, chimney);
+    [-2.1, 0, 2.1].forEach((wx) => addFramedWindow3D(THREE, mats, g, wx, 3.85, D / 2 - 0.32, 1.1, 1.05, frameMat, pickWinMat()));
+    addRecessedDoor3D(THREE, mats, g, 0, 1.32, D / 2 - 0.32, 1.5, 2.05, frameMat, accentMat);
+    [-2.25, 2.25].forEach((wx) => addFramedWindow3D(THREE, mats, g, wx, 1.55, D / 2 - 0.32, 1.5, 1.3, frameMat, winLitMat));
+  } else {
+    // Cozy Residential Cottage
+    const W = 7.2;
+    const D = 4.8;
+    const H = 3.8;
+    const body = makeBox(THREE, W, H, D, wallMat);
+    body.position.set(0, H / 2 + 0.14, -0.35);
+    const roof = new THREE.Mesh(
+      new THREE.ConeGeometry(5.4, 2.35, 4),
+      mats.get(pal.roof, { roughness: 0.65, flatShading: true })
+    );
+    roof.rotation.y = Math.PI / 4;
+    roof.position.set(0, H + 1.25, -0.35);
+    roof.castShadow = true;
+    const porch = makeBox(THREE, 2.6, 0.22, 1.2, accentMat);
+    porch.position.set(0, 2.45, D / 2 + 0.18);
+    g.add(body, roof, porch);
+    addRecessedDoor3D(THREE, mats, g, 0, 1.28, D / 2 - 0.32, 1.35, 2.0, frameMat, accentMat);
+    [-2.1, 2.1].forEach((wx) => addFramedWindow3D(THREE, mats, g, wx, 1.65, D / 2 - 0.32, 1.25, 1.2, frameMat, pickWinMat()));
+  }
+
+  if (isNight) {
+    const frontSpill = new THREE.Mesh(
+      new THREE.CircleGeometry(3.4, 16),
+      new THREE.MeshBasicMaterial({
+        color: variant === 'studio_glass' ? 0xfef08a : 0xfbbf24,
+        transparent: true,
+        opacity: 0.18,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
+    );
+    frontSpill.rotation.x = -Math.PI / 2;
+    frontSpill.position.set(0, 0.165, 3.1);
+    g.add(frontSpill);
+  }
+
+  return g;
+}
+
+/**
+ * Tạo vòm bầu trời (Sky Dome) gradient bình minh / ngày / hoàng hôn / đêm sao nhấp nháy
+ */
+function buildSkyDome(THREE) {
+  const geo = new THREE.SphereGeometry(285, 32, 20);
+  const uniforms = {
+    uTopColor: { value: new THREE.Color('#0284C7') },
+    uHorizonColor: { value: new THREE.Color('#BAE6FD') },
+    uBottomColor: { value: new THREE.Color('#63C13B') },
+    uSunColor: { value: new THREE.Color('#FEF08A') },
+    uSunDir: { value: new THREE.Vector3(0.55, 0.42, -0.72).normalize() },
+    uSunsetGlow: { value: 0.0 },
+    uNightFactor: { value: 0.0 },
+    uTime: { value: 0.0 },
+  };
+  const mat = new THREE.ShaderMaterial({
+    uniforms,
+    side: THREE.BackSide,
+    depthWrite: false,
+    fog: false,
+    vertexShader: `
+      varying vec3 vWorldDir;
+      void main() {
+        vWorldDir = normalize(position);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 uTopColor;
+      uniform vec3 uHorizonColor;
+      uniform vec3 uBottomColor;
+      uniform vec3 uSunColor;
+      uniform vec3 uSunDir;
+      uniform float uSunsetGlow;
+      uniform float uNightFactor;
+      uniform float uTime;
+      varying vec3 vWorldDir;
+
+      float hash21(vec2 p) {
+        p = fract(p * vec2(123.34, 456.21));
+        p += dot(p, p + 45.32);
+        return fract(p.x * p.y);
+      }
+
+      void main() {
+        vec3 dir = normalize(vWorldDir);
+        float h = clamp(dir.y, -1.0, 1.0);
+        vec3 col;
+        if (h >= 0.0) {
+          float t = pow(clamp(h, 0.0, 1.0), 0.58);
+          col = mix(uHorizonColor, uTopColor, t);
+        } else {
+          float b = pow(clamp(-h, 0.0, 1.0), 0.48);
+          col = mix(uHorizonColor, uBottomColor, b);
+        }
+
+        // Warm horizon band for dawn / sunset
+        float horizonBand = exp(-abs(h) * 8.0) * uSunsetGlow;
+        col = mix(col, uSunColor, clamp(horizonBand * 0.52, 0.0, 0.65));
+
+        // Sun / Moon atmospheric disc glow
+        float sunDot = max(dot(dir, normalize(uSunDir)), 0.0);
+        float sunHalo = pow(sunDot, 22.0) * (0.45 + uSunsetGlow * 0.45);
+        float sunDisc = smoothstep(0.9972, 0.9992, sunDot);
+        col += uSunColor * (sunHalo * 0.5 + sunDisc * (1.0 - uNightFactor * 0.35));
+
+        // Crisp procedural stars at night above horizon
+        if (uNightFactor > 0.08 && h > 0.03) {
+          vec2 uv = vec2(atan(dir.z, dir.x) * 32.0, asin(clamp(dir.y, -1.0, 1.0)) * 58.0);
+          vec2 id = floor(uv);
+          vec2 f = fract(uv) - 0.5;
+          float rnd = hash21(id);
+          if (rnd > 0.915) {
+            float d = length(f - vec2(fract(rnd * 17.3) - 0.5, fract(rnd * 31.7) - 0.5) * 0.45);
+            float twinkle = 0.65 + 0.35 * sin(uTime * 2.6 + rnd * 40.0);
+            float star = smoothstep(0.14, 0.02, d) * twinkle * smoothstep(0.03, 0.16, h) * uNightFactor;
+            col += vec3(0.92, 0.96, 1.0) * star * 1.15;
+          }
+        }
+
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.renderOrder = -10;
+  mesh.frustumCulled = false;
+  return { mesh, uniforms, mat };
 }
 
 /**
@@ -4810,12 +5347,6 @@ function buildHouseInterior3D(THREE, mats, textures, rooms, state, wardrobeOpene
     });
   });
 
-  if (isNight) {
-    const warmLight = new THREE.PointLight(0xffe8a3, 1.35, 50);
-    warmLight.position.set(hallX, 6.5, H * 0.52);
-    group.add(warmLight);
-  }
-
   return group;
 }
 
@@ -4964,7 +5495,7 @@ function buildPrivateRoom3D(THREE, mats, textures, room, houseRooms, ownerMember
   blanket.position.set(2.94, 0.96, 3.12);
   const nightstand = makeBox(THREE, 1.45, 1.05, 1.25, woodMid);
   nightstand.position.set(6.82, 0.52, 0.66);
-  const lampShade = makeCyl(THREE, 0.3, 0.48, 0.5, 10, mats.get('#FDE047', { emissive: '#FACC15', emissiveIntensity: 0.45 }));
+  const lampShade = makeCyl(THREE, 0.3, 0.48, 0.5, 10, mats.get('#FDE047', { emissive: '#FACC15', emissiveIntensity: isNight ? 1.85 : 0.45 }));
   lampShade.position.set(6.82, 1.45, 0.66);
   g.add(bedBase, headboard, blanket, pillow, nightstand, lampShade);
 
@@ -5085,13 +5616,23 @@ export async function createScene3D(canvasEl) {
   if (window.THREE_ROOM_ENV) {
     const pmrem = new THREE.PMREMGenerator(renderer);
     scene.environment = pmrem.fromScene(new window.THREE_ROOM_ENV(), 0.04).texture;
+    scene.environmentIntensity = 0.85;
     pmrem.dispose();
   }
 
-  // OrthographicCamera locked at 45° Isometric angle
+  // Dual Cameras: OrthographicCamera (45° Isometric default) + PerspectiveCamera (XCity oblique view)
+  let savedCameraMode = 'ortho';
+  try {
+    if (typeof localStorage !== 'undefined' && localStorage.getItem(CAMERA_MODE_STORAGE_KEY) === 'perspective') {
+      savedCameraMode = 'perspective';
+    }
+  } catch {
+    // ignore storage errors
+  }
+
   const baseHalfH = 14.5;
   const aspect = window.innerWidth / Math.max(1, window.innerHeight);
-  const camera = new THREE.OrthographicCamera(
+  const orthoCamera = new THREE.OrthographicCamera(
     -baseHalfH * aspect,
     baseHalfH * aspect,
     baseHalfH,
@@ -5099,8 +5640,13 @@ export async function createScene3D(canvasEl) {
     -220,
     450
   );
+  const perspCamera = new THREE.PerspectiveCamera(44, aspect, 0.5, 580);
 
-  // Studio / Outdoor 3-point balanced lighting (high contrast, zero highlight wash-out)
+  // Procedural Gradient + Starry Night Sky Dome
+  const skyDome = buildSkyDome(THREE);
+  scene.add(skyDome.mesh);
+
+  // Studio / Outdoor balanced lighting (crisp daytime, high-contrast glowing night)
   const hemiLight = new THREE.HemisphereLight('#CFEFFF', '#5A9E3C', 0.58);
   hemiLight.position.set(0, 60, 0);
   scene.add(hemiLight);
@@ -5127,6 +5673,32 @@ export async function createScene3D(canvasEl) {
   rimLight.position.set(-28, 22, -24);
   scene.add(rimLight);
 
+  // Persistent real PointLight pool (zero shader recompiles, illuminates ground, buildings & characters at night)
+  const lampPointLights = Array.from({ length: 3 }, () => {
+    const pl = new THREE.PointLight('#FDE047', 0, 24, 1.45);
+    scene.add(pl);
+    return pl;
+  });
+  const buildingPointLights = Array.from({ length: 3 }, () => {
+    const pl = new THREE.PointLight('#FBBF24', 0, 26, 1.45);
+    scene.add(pl);
+    return pl;
+  });
+  const carPointLights = Array.from({ length: 2 }, () => {
+    const pl = new THREE.PointLight('#FEF9C3', 0, 22, 1.5);
+    scene.add(pl);
+    return pl;
+  });
+  const playerNightLight = new THREE.PointLight('#FDE68A', 0, 9.5, 1.7);
+  scene.add(playerNightLight);
+  const interiorPointLights = Array.from({ length: 2 }, () => {
+    const pl = new THREE.PointLight('#FFE4A0', 0, 44, 1.2);
+    scene.add(pl);
+    return pl;
+  });
+  const nightLampAnchors = [];
+  const nightBuildingAnchors = [];
+
   const maxAniso = Math.min(8, renderer.capabilities.getMaxAnisotropy?.() || 1);
   const textures = createProceduralTextures(THREE, maxAniso);
   const mats = createMaterialCache(THREE);
@@ -5135,8 +5707,64 @@ export async function createScene3D(canvasEl) {
   const worldGroup = new THREE.Group();
   const actorsGroup = new THREE.Group();
   const vehiclesGroup = new THREE.Group();
+  const pedestriansGroup = new THREE.Group();
   const weatherGroup = new THREE.Group();
-  scene.add(worldGroup, actorsGroup, vehiclesGroup, weatherGroup);
+  scene.add(worldGroup, actorsGroup, vehiclesGroup, pedestriansGroup, weatherGroup);
+
+  // Ambient sidewalk pedestrians (strolling along avenues to liven up the city)
+  const PEDESTRIAN_PALETTES = [
+    { shirt: '#EF4444', pants: '#1E293B', hair: '#1E293B', hairStyle: 'short', pantsStyle: 'pants', outfit: '' },
+    { shirt: '#38BDF8', pants: '#334155', hair: '#78350F', hairStyle: 'bob', pantsStyle: 'skirt', outfit: '🎀' },
+    { shirt: '#10B981', pants: '#475569', hair: '#1E293B', hairStyle: 'spiky', pantsStyle: 'shorts', outfit: '🧢' },
+    { shirt: '#F59E0B', pants: '#1E3A8A', hair: '#92400E', hairStyle: 'ponytail', pantsStyle: 'pants', outfit: '🎒' },
+    { shirt: '#EC4899', pants: '#F8FAFC', hair: '#451A03', hairStyle: 'wavy', pantsStyle: 'skirt', outfit: '' },
+    { shirt: '#8B5CF6', pants: '#334155', hair: '#0F172A', hairStyle: 'sidepart', pantsStyle: 'pants', outfit: '🕶️' },
+    { shirt: '#F97316', pants: '#1E293B', hair: '#B45309', hairStyle: 'braids', pantsStyle: 'shorts', outfit: '' },
+    { shirt: '#14B8A6', pants: '#475569', hair: '#1E293B', hairStyle: 'curly', pantsStyle: 'pants', outfit: '🧣' },
+  ];
+  const pedestrianRoutes = [
+    { axis: 'h', x: 180, y: 438, min: 80, max: 3100, speed: 36, dir: 1 },
+    { axis: 'h', x: 1480, y: 620, min: 80, max: 3100, speed: 32, dir: -1 },
+    { axis: 'h', x: 2420, y: 442, min: 1380, max: 3100, speed: 38, dir: -1 },
+    { axis: 'h', x: 420, y: 998, min: 80, max: 3100, speed: 34, dir: 1 },
+    { axis: 'h', x: 1850, y: 1180, min: 80, max: 3100, speed: 35, dir: -1 },
+    { axis: 'h', x: 2880, y: 1002, min: 1380, max: 3100, speed: 30, dir: 1 },
+    { axis: 'h', x: 640, y: 1612, min: 80, max: 3100, speed: 37, dir: 1 },
+    { axis: 'h', x: 2150, y: 1794, min: 80, max: 3100, speed: 33, dir: -1 },
+    { axis: 'h', x: 1200, y: 1796, min: 80, max: 2480, speed: 31, dir: 1 },
+    { axis: 'v', x: 1154, y: 340, min: 260, max: 2120, speed: 32, dir: 1 },
+    { axis: 'v', x: 1334, y: 1520, min: 260, max: 2120, speed: 35, dir: -1 },
+    { axis: 'v', x: 2514, y: 580, min: 260, max: 2120, speed: 33, dir: 1 },
+    { axis: 'v', x: 2694, y: 1840, min: 260, max: 2120, speed: 36, dir: -1 },
+    { axis: 'h', x: 960, y: 616, min: 120, max: 1120, speed: 29, dir: 1 },
+    { axis: 'h', x: 2840, y: 1616, min: 2700, max: 3120, speed: 28, dir: -1 },
+    { axis: 'v', x: 2696, y: 820, min: 650, max: 1580, speed: 31, dir: 1 },
+  ];
+  const pedestrianEntries = pedestrianRoutes.map((route, idx) => {
+    const pal = PEDESTRIAN_PALETTES[idx % PEDESTRIAN_PALETTES.length];
+    const mesh = buildChibiCharacter3D(
+      THREE,
+      mats,
+      textures.shadowTex,
+      {
+        id: `ped_${idx}`,
+        name: '',
+        role: idx % 3 === 0 ? 'Con' : idx % 2 === 0 ? 'Mẹ' : 'Bố',
+        hairStyle: pal.hairStyle,
+        hairColor: pal.hair,
+        shirtColor: pal.shirt,
+        shirtPattern: idx % 2 === 0 ? 'collar' : 'stripe',
+        pantsColor: pal.pants,
+        pantsStyle: pal.pantsStyle,
+        outfit: pal.outfit,
+      },
+      false
+    );
+    mesh.scale.setScalar(0.84);
+    mesh.position.set(route.x * WORLD_SCALE, 0.08, route.y * WORLD_SCALE);
+    pedestriansGroup.add(mesh);
+    return { mesh, route, phaseOffset: idx * 0.9 };
+  });
 
   // Tap-to-move ground marker
   const tapMarker = new THREE.Group();
@@ -5188,6 +5816,7 @@ export async function createScene3D(canvasEl) {
 
   // Cached scene signatures & dynamic 3D maps
   let lastWorldSignature = '';
+  let lastVehicleNightState = null;
   const memberMeshes = new Map();
   const petMeshes = new Map();
   const vehicleMeshes = new Map();
@@ -5351,18 +5980,32 @@ export async function createScene3D(canvasEl) {
     const grp = new THREE.Group();
     animatedProps.length = 0;
     labelTargets.length = 0;
+    nightLampAnchors.length = 0;
+    nightBuildingAnchors.length = 0;
 
-    const W = 2520 * WORLD_SCALE; // 126
-    const H = 1700 * WORLD_SCALE; // 85
+    const W = STREET_WORLD.width * WORLD_SCALE; // 160
+    const H = STREET_WORLD.height * WORLD_SCALE; // 110
     const wCond = weather?.condition || 'clear';
+    const phase = lighting?.phase || 'day';
     const brand = (state.familyName || 'B2KS').trim() || 'B2KS';
 
-    // Extended pasture perimeter (so map never floats in empty void!)
+    const grassTint =
+      wCond === 'snow'
+        ? phase === 'night'
+          ? '#64748B'
+          : '#D1FAE5'
+        : phase === 'night'
+          ? '#5E7591'
+          : phase === 'sunset'
+            ? '#CBD5E1'
+            : '#FFFFFF';
+
+    // Extended pasture perimeter (so map never floats in empty void even in Perspective horizon view!)
     const outerGrass = new THREE.Mesh(
-      new THREE.PlaneGeometry(340, 280),
+      new THREE.PlaneGeometry(480, 400),
       new THREE.MeshStandardMaterial({
         map: textures.grassTex,
-        color: wCond === 'snow' ? new THREE.Color('#D1FAE5') : new THREE.Color('#FFFFFF'),
+        color: new THREE.Color(grassTint),
         roughness: 0.92,
       })
     );
@@ -5371,15 +6014,22 @@ export async function createScene3D(canvasEl) {
     outerGrass.receiveShadow = true;
     grp.add(outerGrass);
 
-    // Distant rolling pastel hills along the northern & side horizon
-    const hillMat = mats.get(PASTEL_PALETTE.hillFar, { roughness: 0.9, flatShading: true });
+    // Distant rolling pastel hills along the northern, eastern, western & southern horizon
+    const hillMat = mats.get(phase === 'night' ? '#1E293B' : phase === 'sunset' ? '#475569' : PASTEL_PALETTE.hillFar, {
+      roughness: 0.9,
+      flatShading: true,
+    });
     [
-      [15, -14, 18, 8],
-      [48, -16, 22, 10],
-      [85, -15, 20, 9],
-      [118, -14, 17, 7],
-      [-16, 30, 14, 7],
-      [W + 16, 45, 15, 7],
+      [15, -16, 20, 8],
+      [52, -18, 24, 10],
+      [96, -16, 22, 9],
+      [142, -16, 20, 8],
+      [-18, 35, 16, 7],
+      [-18, 82, 16, 7],
+      [W + 18, 42, 17, 8],
+      [W + 18, 90, 18, 8],
+      [42, H + 18, 20, 8],
+      [115, H + 18, 22, 9],
     ].forEach(([hx, hz, hr, hh]) => {
       const hill = new THREE.Mesh(new THREE.ConeGeometry(hr, hh, 8), hillMat);
       hill.position.set(hx, hh / 2 - 0.5, hz);
@@ -5405,14 +6055,17 @@ export async function createScene3D(canvasEl) {
     postInst.computeBoundingSphere();
     grp.add(postInst);
 
-    // Sidewalks (warm light-brown brick paving) & Asphalt Roads
+    // Sidewalks (warm light-brown brick paving, cool-toned under moonlight) & Asphalt Roads
+    const swTint = phase === 'night' ? '#8E9BB0' : phase === 'sunset' ? '#D6D3D1' : '#FFFFFF';
     const swHorizMat = new THREE.MeshStandardMaterial({
       map: textures.sidewalkTex,
+      color: new THREE.Color(swTint),
       roughness: 0.84,
       metalness: 0.02,
     });
     const swVertMat = new THREE.MeshStandardMaterial({
       map: textures.sidewalkVTex,
+      color: new THREE.Color(swTint),
       roughness: 0.84,
       metalness: 0.02,
     });
@@ -5423,8 +6076,12 @@ export async function createScene3D(canvasEl) {
     const hRoads = [
       { y: 465, h: 130, swTop: 415, swBot: 595 },
       { y: 1025, h: 130, swTop: 975, swBot: 1155 },
+      { y: 1640, h: 130, swTop: 1590, swBot: 1770 },
     ];
-    const vRoad = { x: 1180, w: 130, swLeft: 1130, swRight: 1310 };
+    const vRoads = [
+      { x: 1180, w: 130, swLeft: 1130, swRight: 1310 },
+      { x: 2540, w: 130, swLeft: 2490, swRight: 2670 },
+    ];
 
     hRoads.forEach((r) => {
       const swW = W;
@@ -5445,31 +6102,35 @@ export async function createScene3D(canvasEl) {
       }
     });
 
-    // Vertical Road
-    const vSwD = (1700 - 225) * WORLD_SCALE;
-    const vSw = makeBox(THREE, (vRoad.w + 100) * WORLD_SCALE, 0.16, vSwD, swVertMat, false, true);
-    vSw.position.set((vRoad.swLeft + (vRoad.w + 100) / 2) * WORLD_SCALE, 0.06, (225 + (1700 - 225) / 2) * WORLD_SCALE);
-    grp.add(vSw);
+    // Vertical Avenues
+    const vSwD = (STREET_WORLD.height - 225) * WORLD_SCALE;
+    vRoads.forEach((vr) => {
+      const vSw = makeBox(THREE, (vr.w + 100) * WORLD_SCALE, 0.16, vSwD, swVertMat, false, true);
+      vSw.position.set((vr.swLeft + (vr.w + 100) / 2) * WORLD_SCALE, 0.06, (225 + (STREET_WORLD.height - 225) / 2) * WORLD_SCALE);
+      grp.add(vSw);
 
-    const vRd = makeBox(THREE, vRoad.w * WORLD_SCALE, 0.06, vSwD, roadMat, false, true);
-    vRd.position.set((vRoad.x + vRoad.w / 2) * WORLD_SCALE, 0.148, (225 + (1700 - 225) / 2) * WORLD_SCALE);
-    grp.add(vRd);
+      const vRd = makeBox(THREE, vr.w * WORLD_SCALE, 0.06, vSwD, roadMat, false, true);
+      vRd.position.set((vr.x + vr.w / 2) * WORLD_SCALE, 0.148, (225 + (STREET_WORLD.height - 225) / 2) * WORLD_SCALE);
+      grp.add(vRd);
 
-    for (let dz = 13.0; dz < H - 2; dz += 3.6) {
-      const dash = makeBox(THREE, 0.24, 0.02, 1.8, yellowLineMat, false, false);
-      dash.position.set((vRoad.x + vRoad.w / 2) * WORLD_SCALE, 0.182, dz);
-      grp.add(dash);
-    }
-
-    // Crosswalks at intersections
-    hRoads.forEach((r) => {
-      for (let zy = r.y + 14; zy < r.y + r.h - 10; zy += 22) {
-        const c1 = makeBox(THREE, 1.2, 0.02, 0.48, whiteStripeMat, false, false);
-        c1.position.set((vRoad.x - 18) * WORLD_SCALE, 0.185, zy * WORLD_SCALE);
-        const c2 = makeBox(THREE, 1.2, 0.02, 0.48, whiteStripeMat, false, false);
-        c2.position.set((vRoad.x + vRoad.w + 18) * WORLD_SCALE, 0.185, zy * WORLD_SCALE);
-        grp.add(c1, c2);
+      for (let dz = 13.0; dz < H - 2; dz += 3.6) {
+        const dash = makeBox(THREE, 0.24, 0.02, 1.8, yellowLineMat, false, false);
+        dash.position.set((vr.x + vr.w / 2) * WORLD_SCALE, 0.182, dz);
+        grp.add(dash);
       }
+    });
+
+    // Crosswalks at all intersections
+    hRoads.forEach((r) => {
+      vRoads.forEach((vr) => {
+        for (let zy = r.y + 14; zy < r.y + r.h - 10; zy += 22) {
+          const c1 = makeBox(THREE, 1.2, 0.02, 0.48, whiteStripeMat, false, false);
+          c1.position.set((vr.x - 18) * WORLD_SCALE, 0.185, zy * WORLD_SCALE);
+          const c2 = makeBox(THREE, 1.2, 0.02, 0.48, whiteStripeMat, false, false);
+          c2.position.set((vr.x + vr.w + 18) * WORLD_SCALE, 0.185, zy * WORLD_SCALE);
+          grp.add(c1, c2);
+        }
+      });
     });
 
     // Plots & Family House
@@ -5483,11 +6144,17 @@ export async function createScene3D(canvasEl) {
       { x: 860, y: 340, label: 'Lô số 2' },
       { x: 440, y: 880, label: 'Lô số 3' },
     ];
+    const occupiedBoxes = [
+      { x: 670, y: 695, hw: 135, hd: 95 }, // Leader Board
+      { x: 1382, y: 620, hw: 125, hd: 95 }, // Ad Billboard
+    ];
     const houseOv = state.buildingLayouts?.house;
     plots.forEach((p, idx) => {
+      occupiedBoxes.push({ x: p.x, y: p.y, hw: 155, hd: 120 });
       if (idx === state.house.plotIndex && !houseOv) {
         const house3d = buildTownhouse3D(THREE, mats, p.x * WORLD_SCALE, p.y * WORLD_SCALE, state.house.style, 'classic', lighting.isNight);
         grp.add(house3d);
+        nightBuildingAnchors.push({ x: p.x * WORLD_SCALE, y: 4.0, z: p.y * WORLD_SCALE + 3.2, color: '#FDE68A', intensity: 18 });
         labelTargets.push({ x: p.x * WORLD_SCALE, y: 12.2, z: p.y * WORLD_SCALE, text: `🏡 Nhà Phố ${brand}`, kind: 'building' });
       } else if (!(houseOv && idx === state.house.plotIndex)) {
         const lot = makeBox(THREE, 8.0, 0.08, 4.8, mats.get('#ECFDF5', { roughness: 0.9 }), false, true);
@@ -5498,31 +6165,43 @@ export async function createScene3D(canvasEl) {
     });
     if (houseOv) {
       const hLoc = getLoc('house', 860, 425);
-      const house3d = buildTownhouse3D(THREE, mats, hLoc.x * WORLD_SCALE, (hLoc.y - 85) * WORLD_SCALE, state.house.style, hLoc.shape, lighting.isNight);
+      const hy = hLoc.y - 85;
+      occupiedBoxes.push({ x: hLoc.x, y: hy, hw: 155, hd: 120 });
+      const house3d = buildTownhouse3D(THREE, mats, hLoc.x * WORLD_SCALE, hy * WORLD_SCALE, state.house.style, hLoc.shape, lighting.isNight);
       grp.add(house3d);
-      labelTargets.push({ x: hLoc.x * WORLD_SCALE, y: 12.2, z: (hLoc.y - 85) * WORLD_SCALE, text: `🏡 Nhà Phố ${brand}`, kind: 'building' });
+      nightBuildingAnchors.push({ x: hLoc.x * WORLD_SCALE, y: 4.0, z: hy * WORLD_SCALE + 3.2, color: '#FDE68A', intensity: 18 });
+      labelTargets.push({ x: hLoc.x * WORLD_SCALE, y: 12.2, z: hy * WORLD_SCALE, text: `🏡 Nhà Phố ${brand}`, kind: 'building' });
     }
 
-    // 10 Shop / Facility Buildings
+    // 11 Shop / Facility Buildings
     const shopDefs = [
-      { id: 'supermarket', fx: 1560, fy: 410, type: 'supermarket', title: `🏪 Siêu Thị ${brand}` },
-      { id: 'cross_world', fx: 1980, fy: 410, type: 'cross_world', title: '🌌 Trung Tâm Xuyên Thế Giới' },
-      { id: 'pet_shop', fx: 2345, fy: 410, type: 'pet_shop', title: `🐾 Cửa Hàng Thú Cưng ${brand}` },
-      { id: 'arcade', fx: 950, fy: 790, type: 'arcade', title: '🕹️ Khu Vui Chơi Online (1⭐)' },
-      { id: 'lab', fx: 1540, fy: 790, type: 'lab', title: `🧪 Phòng Thí Nghiệm ${brand}` },
-      { id: 'flea_market', fx: 1980, fy: 790, type: 'flea_market', title: `🎪 Chợ Trời ${brand}` },
-      { id: 'english_center', fx: 250, fy: 925, type: 'english', title: `🎓 Trung Tâm Tiếng Anh ${brand}` },
-      { id: 'fashion', fx: 600, fy: 945, type: 'fashion', title: '👗 Cửa Hàng Thời Trang' },
-      { id: 'salon', fx: 1760, fy: 975, type: 'salon', title: '💇 Salon Tóc Nghệ Thuật' },
-      { id: 'church', fx: 2345, fy: 955, type: 'church', title: 'TIN LÀNH' },
-      { id: 'zoo', fx: 820, fy: 1485, type: 'zoo', title: `🦁 Sở Thú Ảo ${brand} Zoo` },
+      { id: 'supermarket', fx: 1560, fy: 410, type: 'supermarket', title: `🏪 Siêu Thị ${brand}`, lightCol: '#FEF08A' },
+      { id: 'cross_world', fx: 1980, fy: 410, type: 'cross_world', title: '🌌 Trung Tâm Xuyên Thế Giới', lightCol: '#38BDF8' },
+      { id: 'pet_shop', fx: 2345, fy: 410, type: 'pet_shop', title: `🐾 Cửa Hàng Thú Cưng ${brand}`, lightCol: '#FBBF24' },
+      { id: 'arcade', fx: 950, fy: 790, type: 'arcade', title: '🕹️ Khu Vui Chơi Online (1⭐)', lightCol: '#E879F9' },
+      { id: 'lab', fx: 1540, fy: 790, type: 'lab', title: `🧪 Phòng Thí Nghiệm ${brand}`, lightCol: '#22D3EE' },
+      { id: 'flea_market', fx: 1980, fy: 790, type: 'flea_market', title: `🎪 Chợ Trời ${brand}`, lightCol: '#FDE047' },
+      { id: 'english_center', fx: 250, fy: 925, type: 'english', title: `🎓 Trung Tâm Tiếng Anh ${brand}`, lightCol: '#93C5FD' },
+      { id: 'fashion', fx: 600, fy: 945, type: 'fashion', title: '👗 Cửa Hàng Thời Trang', lightCol: '#F472B6' },
+      { id: 'salon', fx: 1760, fy: 975, type: 'salon', title: '💇 Salon Tóc Nghệ Thuật', lightCol: '#C084FC' },
+      { id: 'church', fx: 2345, fy: 955, type: 'church', title: 'TIN LÀNH', lightCol: '#FDE68A' },
+      { id: 'zoo', fx: 820, fy: 1485, type: 'zoo', title: `🦁 Sở Thú Ảo ${brand} Zoo`, lightCol: '#FCD34D' },
     ];
     shopDefs.forEach((sd) => {
       const loc = getLoc(sd.id, sd.fx, sd.fy);
-      const b = buildShopBuilding3D(THREE, mats, loc.x * WORLD_SCALE, (loc.y - 65) * WORLD_SCALE, sd.type, loc.shape, lighting.isNight);
+      const bx = loc.x;
+      const by = loc.y - 65;
+      occupiedBoxes.push({
+        x: bx,
+        y: by,
+        hw: sd.id === 'zoo' ? 195 : sd.id === 'church' ? 170 : 150,
+        hd: sd.id === 'zoo' ? 145 : 120,
+      });
+      const b = buildShopBuilding3D(THREE, mats, bx * WORLD_SCALE, by * WORLD_SCALE, sd.type, loc.shape, lighting.isNight);
       grp.add(b);
       animatedProps.push(b);
-      labelTargets.push({ x: loc.x * WORLD_SCALE, y: 6.8, z: (loc.y - 65) * WORLD_SCALE, text: sd.title, kind: 'building' });
+      nightBuildingAnchors.push({ x: bx * WORLD_SCALE, y: 3.6, z: by * WORLD_SCALE + 2.8, color: sd.lightCol, intensity: 17 });
+      labelTargets.push({ x: bx * WORLD_SCALE, y: 6.8, z: by * WORLD_SCALE, text: sd.title, kind: 'building' });
     });
 
     // Live Arcade Banner
@@ -5544,25 +6223,33 @@ export async function createScene3D(canvasEl) {
 
     // 4 Outdoor Landmarks
     const engPark = getLoc('eng_park', 175, 425);
-    const engParkMesh = buildOutdoorLandmark3D(THREE, mats, 'eng_park', engPark.x * WORLD_SCALE, (engPark.y - 70) * WORLD_SCALE);
+    occupiedBoxes.push({ x: engPark.x, y: engPark.y - 70, hw: 145, hd: 120 });
+    const engParkMesh = buildOutdoorLandmark3D(THREE, mats, 'eng_park', engPark.x * WORLD_SCALE, (engPark.y - 70) * WORLD_SCALE, lighting.isNight);
     grp.add(engParkMesh);
     animatedProps.push(engParkMesh);
+    nightBuildingAnchors.push({ x: engPark.x * WORLD_SCALE, y: 3.4, z: (engPark.y - 70) * WORLD_SCALE, color: '#FDE047', intensity: 15 });
     labelTargets.push({ x: engPark.x * WORLD_SCALE, y: 4.1, z: (engPark.y - 70) * WORLD_SCALE, text: '💬 Công Viên Tiếng Anh', kind: 'building' });
 
     const plaza = getLoc('fountain_plaza', 280, 1420);
-    const plazaMesh = buildOutdoorLandmark3D(THREE, mats, 'fountain_plaza', plaza.x * WORLD_SCALE, plaza.y * WORLD_SCALE);
+    occupiedBoxes.push({ x: plaza.x, y: plaza.y, hw: 145, hd: 145 });
+    const plazaMesh = buildOutdoorLandmark3D(THREE, mats, 'fountain_plaza', plaza.x * WORLD_SCALE, plaza.y * WORLD_SCALE, lighting.isNight);
     grp.add(plazaMesh);
     animatedProps.push(plazaMesh);
+    nightBuildingAnchors.push({ x: plaza.x * WORLD_SCALE, y: 3.6, z: plaza.y * WORLD_SCALE, color: '#7DD3FC', intensity: 16 });
     labelTargets.push({ x: plaza.x * WORLD_SCALE, y: 4.2, z: plaza.y * WORLD_SCALE, text: `⛲ Quảng Trường ${brand}`, kind: 'building' });
 
     const reading = getLoc('reading_corner', 1540, 1400);
-    grp.add(buildOutdoorLandmark3D(THREE, mats, 'reading_corner', reading.x * WORLD_SCALE, reading.y * WORLD_SCALE));
+    occupiedBoxes.push({ x: reading.x, y: reading.y, hw: 140, hd: 115 });
+    grp.add(buildOutdoorLandmark3D(THREE, mats, 'reading_corner', reading.x * WORLD_SCALE, reading.y * WORLD_SCALE, lighting.isNight));
+    nightBuildingAnchors.push({ x: reading.x * WORLD_SCALE, y: 3.4, z: reading.y * WORLD_SCALE, color: '#FDE68A', intensity: 15 });
     labelTargets.push({ x: reading.x * WORLD_SCALE, y: 3.8, z: reading.y * WORLD_SCALE, text: '📚 Góc Đọc Sách', kind: 'building' });
 
     const soccer = getLoc('soccer', 2060, 1400);
-    const soccerMesh = buildOutdoorLandmark3D(THREE, mats, 'soccer', soccer.x * WORLD_SCALE, soccer.y * WORLD_SCALE);
+    occupiedBoxes.push({ x: soccer.x, y: soccer.y, hw: 230, hd: 160 });
+    const soccerMesh = buildOutdoorLandmark3D(THREE, mats, 'soccer', soccer.x * WORLD_SCALE, soccer.y * WORLD_SCALE, lighting.isNight);
     grp.add(soccerMesh);
     animatedProps.push(soccerMesh);
+    nightBuildingAnchors.push({ x: soccer.x * WORLD_SCALE, y: 5.5, z: soccer.y * WORLD_SCALE, color: '#E0F2FE', intensity: 18 });
     labelTargets.push({ x: soccer.x * WORLD_SCALE, y: 3.5, z: (soccer.y - 110) * WORLD_SCALE, text: `⚽ Sân Bóng Đá ${brand} (Miễn phí)`, kind: 'building' });
 
     if (soccerRoom && (soccerRoom.status === 'playing' || soccerRoom.status === 'lobby')) {
@@ -5578,12 +6265,105 @@ export async function createScene3D(canvasEl) {
       });
     }
 
-    // 20 Trees + perimeter grove
+    // Dynamic Decorative City Buildings (auto-swap/relocate whenever parents move any functional building!)
+    const DECOR_PALETTES = [
+      { wall: '#F8FAFC', accent: '#0EA5E9', roof: '#334155' },
+      { wall: '#FFF7ED', accent: '#F97316', roof: '#9A3412' },
+      { wall: '#F1F5F9', accent: '#6366F1', roof: '#312E81' },
+      { wall: '#ECFDF5', accent: '#10B981', roof: '#065F46' },
+      { wall: '#FEFCE8', accent: '#EAB308', roof: '#854D0E' },
+      { wall: '#FDF2F8', accent: '#EC4899', roof: '#831843' },
+    ];
+    const DECOR_VARIANTS = ['apt_tall', 'cafe', 'studio_glass', 'bakery_shop', 'cottage', 'market_corner'];
+    const DECOR_CANDIDATE_SLOTS = [
+      // Expanded East District (x = 2820..3060)
+      { x: 2820, y: 345, rotY: 0, floors: 4 },
+      { x: 3045, y: 345, rotY: 0, floors: 3 },
+      { x: 2820, y: 730, rotY: Math.PI, floors: 5 },
+      { x: 3045, y: 730, rotY: Math.PI, floors: 3 },
+      { x: 2820, y: 905, rotY: 0, floors: 4 },
+      { x: 3045, y: 905, rotY: 0, floors: 4 },
+      { x: 2820, y: 1295, rotY: Math.PI, floors: 3 },
+      { x: 3045, y: 1295, rotY: Math.PI, floors: 5 },
+      { x: 2820, y: 1510, rotY: 0, floors: 4 },
+      { x: 3045, y: 1510, rotY: 0, floors: 3 },
+      // Expanded Far South Boulevard (y = 1915, facing Avenue 3)
+      { x: 215, y: 1915, rotY: Math.PI, floors: 3 },
+      { x: 475, y: 1915, rotY: Math.PI, floors: 4 },
+      { x: 735, y: 1915, rotY: Math.PI, floors: 5 },
+      { x: 995, y: 1915, rotY: Math.PI, floors: 3 },
+      { x: 1485, y: 1915, rotY: Math.PI, floors: 4 },
+      { x: 1745, y: 1915, rotY: Math.PI, floors: 5 },
+      { x: 2005, y: 1915, rotY: Math.PI, floors: 3 },
+      { x: 2290, y: 1915, rotY: Math.PI, floors: 4 },
+      { x: 2820, y: 1915, rotY: Math.PI, floors: 4 },
+      { x: 3045, y: 1915, rotY: Math.PI, floors: 3 },
+      // Mid-city open pockets
+      { x: 220, y: 730, rotY: Math.PI, floors: 3 },
+      { x: 2260, y: 725, rotY: Math.PI, floors: 4 },
+      { x: 560, y: 1295, rotY: Math.PI, floors: 3 },
+      { x: 1020, y: 1295, rotY: Math.PI, floors: 4 },
+      // Dynamic swap-in fallback slots (occupied normally by movable functional buildings, auto-filled when moved!)
+      { x: 1560, y: 345, rotY: 0, floors: 4 },
+      { x: 1980, y: 345, rotY: 0, floors: 3 },
+      { x: 2345, y: 345, rotY: 0, floors: 4 },
+      { x: 950, y: 725, rotY: Math.PI, floors: 4 },
+      { x: 1540, y: 725, rotY: Math.PI, floors: 3 },
+      { x: 1980, y: 725, rotY: Math.PI, floors: 4 },
+      { x: 250, y: 860, rotY: 0, floors: 3 },
+      { x: 600, y: 880, rotY: 0, floors: 4 },
+      { x: 1760, y: 910, rotY: 0, floors: 3 },
+      { x: 2345, y: 890, rotY: 0, floors: 4 },
+    ];
+    const placedDecorBoxes = [];
+    const maxDecorCount = 22;
+    let decorPlaced = 0;
+    for (let i = 0; i < DECOR_CANDIDATE_SLOTS.length && decorPlaced < maxDecorCount; i++) {
+      const slot = DECOR_CANDIDATE_SLOTS[i];
+      // Reject if overlapping any road + sidewalk strip
+      const hitsRoad =
+        hRoads.some((r) => slot.y > r.swTop - 85 && slot.y < r.swBot + 135) ||
+        vRoads.some((vr) => slot.x > vr.swLeft - 85 && slot.x < vr.swRight + 135);
+      if (hitsRoad) continue;
+      // Reject if overlapping any functional building / plot / landmark at its current layout
+      const hitsFunctional = occupiedBoxes.some(
+        (ob) => Math.abs(slot.x - ob.x) < ob.hw + 82 && Math.abs(slot.y - ob.y) < ob.hd + 68
+      );
+      if (hitsFunctional) continue;
+      // Reject if overlapping another placed decorative building
+      const hitsDecor = placedDecorBoxes.some(
+        (db) => Math.abs(slot.x - db.x) < 180 && Math.abs(slot.y - db.y) < 140
+      );
+      if (hitsDecor) continue;
+
+      placedDecorBoxes.push({ x: slot.x, y: slot.y });
+      const bDecor = buildDecorativeBuilding3D(
+        THREE,
+        mats,
+        {
+          x: slot.x,
+          y: slot.y,
+          rotY: slot.rotY,
+          floors: slot.floors,
+          variant: DECOR_VARIANTS[(i + decorPlaced) % DECOR_VARIANTS.length],
+          palette: DECOR_PALETTES[(i * 3 + 1) % DECOR_PALETTES.length],
+          seed: 700 + i * 37,
+        },
+        lighting.isNight
+      );
+      grp.add(bDecor);
+      nightBuildingAnchors.push({ x: slot.x * WORLD_SCALE, y: 3.4, z: slot.y * WORLD_SCALE + 2.4, color: '#FBBF24', intensity: 14 });
+      decorPlaced += 1;
+    }
+
+    // 26 Trees + perimeter grove spanning expanded 3200x2200 city
     const treeCoords = [
       [60, 290, 'sakura'], [285, 290, 'pine'], [490, 315, 'orange'], [640, 320, 'oak'], [1065, 310, 'sakura'],
-      [1365, 300, 'pine'], [1760, 315, 'orange'], [2180, 330, 'palm'], [80, 730, 'oak'], [420, 685, 'sakura'],
-      [770, 745, 'pine'], [1360, 740, 'orange'], [2185, 760, 'palm'], [90, 1290, 'sakura'], [560, 1340, 'oak'],
-      [1080, 1360, 'pine'], [1350, 1290, 'orange'], [2340, 1490, 'palm'], [1830, 1320, 'sakura'], [2468, 780, 'oak'],
+      [1365, 300, 'pine'], [1760, 315, 'orange'], [2180, 330, 'palm'], [2930, 310, 'sakura'], [3140, 340, 'palm'],
+      [80, 730, 'oak'], [420, 685, 'sakura'], [770, 745, 'pine'], [1360, 740, 'orange'], [2185, 760, 'palm'],
+      [2930, 740, 'pine'], [90, 1290, 'sakura'], [560, 1340, 'oak'], [1080, 1360, 'pine'], [1350, 1290, 'orange'],
+      [2340, 1490, 'palm'], [1830, 1320, 'sakura'], [2468, 780, 'oak'], [350, 1950, 'sakura'], [1380, 1960, 'pine'],
+      [2440, 1960, 'palm'],
     ];
     treeCoords.forEach(([tx, ty, tk]) => {
       const tree = buildTree3D(THREE, mats, tk, tx * WORLD_SCALE, ty * WORLD_SCALE, true);
@@ -5591,9 +6371,10 @@ export async function createScene3D(canvasEl) {
       animatedProps.push(tree);
     });
 
-    // Perimeter scenic trees outside fence
-    for (let px = 120; px < 2450; px += 220) {
+    // Perimeter scenic trees outside northern fence & eastern/southern edges
+    for (let px = 120; px < STREET_WORLD.width - 80; px += 220) {
       grp.add(buildTree3D(THREE, mats, px % 440 === 120 ? 'pine' : 'oak', px * WORLD_SCALE, 140 * WORLD_SCALE, false));
+      grp.add(buildTree3D(THREE, mats, px % 440 === 120 ? 'oak' : 'sakura', px * WORLD_SCALE, (STREET_WORLD.height + 90) * WORLD_SCALE, false));
     }
 
     // Flower clusters
@@ -5602,6 +6383,7 @@ export async function createScene3D(canvasEl) {
       [580, 385, '#A855F7', 'lavender'], [1030, 385, '#FFFFFF', 'daisy'], [1380, 360, '#A855F7', 'lavender'],
       [1780, 385, '#F59E0B', 'sunflower'], [2160, 385, '#F43F5E', 'tulip'], [140, 1340, '#EC4899', 'hibiscus'],
       [430, 1470, '#FACC15', 'sunflower'], [620, 1320, '#FFFFFF', 'daisy'], [1040, 1240, '#F43F5E', 'tulip'],
+      [2740, 1550, '#FACC15', 'sunflower'], [1410, 1855, '#F43F5E', 'tulip'],
     ];
     flowerSpots.forEach(([fx, fy, fcol, fkind]) => {
       grp.add(buildFlowerCluster3D(THREE, mats, fx * WORLD_SCALE, fy * WORLD_SCALE, fcol, fkind));
@@ -5615,15 +6397,20 @@ export async function createScene3D(canvasEl) {
       [1940, 990, Math.PI],
       [360, 1410, Math.PI * 0.25],
       [1610, 1380, -Math.PI * 0.25],
+      [2860, 1605, 0],
+      [880, 1805, Math.PI],
     ].forEach(([bx, by, rot]) => {
       grp.add(buildParkBench3D(THREE, mats, bx * WORLD_SCALE, by * WORLD_SCALE, rot));
     });
 
-    // Street Lamps
-    const lampX = [250, 680, 1080, 1420, 1820, 2205];
-    [425, 985].forEach((ly) => {
+    // Street Lamps along all 3 avenues
+    const lampX = [250, 680, 1080, 1420, 1820, 2205, 2760, 3080];
+    [425, 985, 1600].forEach((ly) => {
       lampX.forEach((lx) => {
-        grp.add(buildStreetLamp3D(THREE, mats, lx * WORLD_SCALE, ly * WORLD_SCALE, lighting.isNight));
+        const wx = lx * WORLD_SCALE;
+        const wz = ly * WORLD_SCALE;
+        grp.add(buildStreetLamp3D(THREE, mats, wx, wz, lighting.isNight));
+        nightLampAnchors.push({ x: wx, y: 4.1, z: wz + 0.65 });
       });
     });
 
@@ -5678,19 +6465,25 @@ export async function createScene3D(canvasEl) {
     return grp;
   }
 
-  // Camera state (Isometric 45° + smooth damping)
+  // Camera state (Orthographic 45° default or persisted Perspective XCity view)
+  const initialPitch = savedCameraMode === 'perspective' ? 0.5 : Math.PI / 4;
   const camState = {
+    mode: savedCameraMode,
     targetX: 43,
     targetZ: 21,
     panX: 0,
     panZ: 0,
     yaw: Math.PI / 4, // 45° azimuth
     targetYaw: Math.PI / 4,
-    pitch: Math.PI / 4, // 45° elevation tilt
-    targetPitch: Math.PI / 4,
+    pitch: initialPitch,
+    targetPitch: initialPitch,
     zoom: 1.0,
     targetZoom: 1.0,
   };
+
+  function getActiveCamera() {
+    return camState.mode === 'perspective' ? perspCamera : orthoCamera;
+  }
 
   const raycaster = new THREE.Raycaster();
   const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -5702,7 +6495,7 @@ export async function createScene3D(canvasEl) {
     const rect = canvasEl.getBoundingClientRect();
     ndcVec.x = ((clientX - rect.left) / rect.width) * 2 - 1;
     ndcVec.y = -((clientY - rect.top) / rect.height) * 2 + 1;
-    raycaster.setFromCamera(ndcVec, camera);
+    raycaster.setFromCamera(ndcVec, getActiveCamera());
     const hit = raycaster.ray.intersectPlane(groundPlane, hitVec);
     if (!hit) return null;
     return { x2d: hit.x / WORLD_SCALE, y2d: hit.z / WORLD_SCALE };
@@ -5712,54 +6505,129 @@ export async function createScene3D(canvasEl) {
     const w = window.innerWidth;
     const h = Math.max(1, window.innerHeight);
     const asp = w / h;
-    camera.left = -baseHalfH * asp;
-    camera.right = baseHalfH * asp;
-    camera.top = baseHalfH;
-    camera.bottom = -baseHalfH;
-    camera.updateProjectionMatrix();
+    orthoCamera.left = -baseHalfH * asp;
+    orthoCamera.right = baseHalfH * asp;
+    orthoCamera.top = baseHalfH;
+    orthoCamera.bottom = -baseHalfH;
+    orthoCamera.updateProjectionMatrix();
+    perspCamera.aspect = asp;
+    perspCamera.updateProjectionMatrix();
     renderer.setSize(w, h, false);
     renderer.setPixelRatio(isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 2));
   }
 
-  function updateAtmosphere(lighting, weather, sceneName) {
+  function updateAtmosphere(lighting, weather, sceneName, nowMs = 0) {
     const wCond = weather?.condition || 'clear';
-    let skyCol = PASTEL_PALETTE.skyDay;
+    let topCol = '#0284C7';
+    let horizonCol = PASTEL_PALETTE.skyDay;
+    let bottomCol = '#4FA92B';
     let sunCol = '#FFF3D6';
     let sunInt = 1.34;
+    let hemiSkyCol = '#CFEFFF';
+    let hemiGroundCol = '#5A9E3C';
     let hemiInt = 0.58;
+    let rimCol = '#93C5FD';
+    let rimInt = 0.26;
+    let envInt = 0.85;
+    let exposure = 0.94;
+    let nightFactor = 0.0;
+    let sunsetGlow = 0.0;
 
     if (sceneName !== 'neighborhood') {
-      skyCol = '#172338';
-      sunInt = lighting.isNight ? 0.92 : 1.28;
-      hemiInt = 0.56;
+      topCol = '#0F172A';
+      horizonCol = lighting.isNight ? '#0B1324' : '#172338';
+      bottomCol = '#080F1E';
+      if (lighting.isNight) {
+        sunCol = '#93C5FD';
+        sunInt = 0.58;
+        hemiSkyCol = '#334155';
+        hemiGroundCol = '#0F172A';
+        hemiInt = 0.34;
+        rimCol = '#60A5FA';
+        rimInt = 0.16;
+        envInt = 0.24;
+        exposure = 0.86;
+      } else {
+        sunInt = 1.28;
+        hemiInt = 0.56;
+        envInt = 0.78;
+        exposure = 0.92;
+      }
     } else if (lighting.phase === 'night') {
-      skyCol = PASTEL_PALETTE.skyNight;
-      sunCol = '#93C5FD';
-      sunInt = 0.58;
-      hemiInt = 0.42;
+      topCol = '#020510';
+      horizonCol = PASTEL_PALETTE.skyNight;
+      bottomCol = '#040814';
+      sunCol = '#5B8DEF';
+      sunInt = 0.2;
+      hemiSkyCol = '#0F1D40';
+      hemiGroundCol = '#040814';
+      hemiInt = 0.14;
+      rimCol = '#60A5FA';
+      rimInt = 0.16;
+      envInt = 0.035;
+      exposure = 0.78;
+      nightFactor = 1.0;
     } else if (lighting.phase === 'dawn') {
-      skyCol = PASTEL_PALETTE.skyDawn;
+      topCol = '#1D4ED8';
+      horizonCol = PASTEL_PALETTE.skyDawn;
+      bottomCol = '#4D7C0F';
       sunCol = '#FDBA74';
-      sunInt = 1.12;
-      hemiInt = 0.52;
+      sunInt = 1.05;
+      hemiSkyCol = '#FDE68A';
+      hemiGroundCol = '#4D7C0F';
+      hemiInt = 0.48;
+      envInt = 0.44;
+      exposure = 0.9;
+      sunsetGlow = 0.78;
+      nightFactor = 0.12;
     } else if (lighting.phase === 'sunset') {
-      skyCol = PASTEL_PALETTE.skySunset;
+      topCol = '#1E1B4B';
+      horizonCol = PASTEL_PALETTE.skySunset;
+      bottomCol = '#1E293B';
       sunCol = '#FB923C';
-      sunInt = 1.08;
-      hemiInt = 0.5;
+      sunInt = 0.62;
+      hemiSkyCol = '#FDBA74';
+      hemiGroundCol = '#0F172A';
+      hemiInt = 0.28;
+      rimCol = '#F472B6';
+      rimInt = 0.22;
+      envInt = 0.22;
+      exposure = 0.84;
+      sunsetGlow = 0.95;
+      nightFactor = 0.48;
     } else if (wCond === 'rain' || wCond === 'thunder') {
-      skyCol = PASTEL_PALETTE.skyRain;
+      topCol = '#475569';
+      horizonCol = PASTEL_PALETTE.skyRain;
+      bottomCol = '#334155';
       sunInt = 0.85;
       hemiInt = 0.54;
+      envInt = 0.55;
+      exposure = 0.9;
     }
 
-    scene.background.set(skyCol);
-    scene.fog.color.set(skyCol);
-    scene.fog.near = wCond === 'fog' ? 35 : 95;
-    scene.fog.far = wCond === 'fog' ? 110 : 225;
+    const isPersp = camState.mode === 'perspective';
+    skyDome.mesh.visible = sceneName === 'neighborhood';
+    skyDome.uniforms.uTopColor.value.set(topCol);
+    skyDome.uniforms.uHorizonColor.value.set(horizonCol);
+    skyDome.uniforms.uBottomColor.value.set(bottomCol);
+    skyDome.uniforms.uSunColor.value.set(lighting.phase === 'night' ? '#E0F2FE' : sunCol);
+    skyDome.uniforms.uSunsetGlow.value = sunsetGlow;
+    skyDome.uniforms.uNightFactor.value = nightFactor;
+    skyDome.uniforms.uTime.value = nowMs * 0.001;
+
+    scene.background.set(horizonCol);
+    scene.fog.color.set(horizonCol);
+    scene.fog.near = wCond === 'fog' ? (isPersp ? 42 : 35) : (isPersp ? 135 : 95);
+    scene.fog.far = wCond === 'fog' ? (isPersp ? 135 : 110) : (isPersp ? 310 : 225);
+    if (scene.environment) scene.environmentIntensity = envInt;
+    renderer.toneMappingExposure = exposure;
     sunLight.color.set(sunCol);
     sunLight.intensity = sunInt;
+    hemiLight.color.set(hemiSkyCol);
+    hemiLight.groundColor.set(hemiGroundCol);
     hemiLight.intensity = hemiInt;
+    rimLight.color.set(rimCol);
+    rimLight.intensity = rimInt;
 
     if (sceneName === 'neighborhood') {
       if (wCond === 'rain' || wCond === 'thunder' || wCond === 'snow') rebuildWeatherParticles(wCond);
@@ -5798,7 +6666,7 @@ export async function createScene3D(canvasEl) {
       labelLayerEl,
     } = params;
 
-    updateAtmosphere(lighting, weather, me.scene);
+    updateAtmosphere(lighting, weather, me.scene, nowMs);
     updateLeaderBoardTexture(kidsLeaderboard, (state.familyName || 'B2KS').trim() || 'B2KS');
     ledAdTex.offset.x = (nowMs * 0.00018) % 1;
 
@@ -5817,7 +6685,7 @@ export async function createScene3D(canvasEl) {
             '|' +
             (state.members.find((m) => m.id === (houseRooms.find((r) => r.id === me.privateRoomId)?.ownerIds?.[0]))?.roomWall || '')
           : `${locSig}|${state.house?.plotIndex}|${state.house?.style}|${state.familyName}|${weather?.condition}|${arcadeRoom?.status}|${soccerRoom?.status}`;
-    const worldSig = `${me.scene}|${lighting.isNight ? 'N' : 'D'}|${roomSig}`;
+    const worldSig = `${me.scene}|${lighting.phase}|${roomSig}`;
 
     if (worldSig !== lastWorldSignature) {
       lastWorldSignature = worldSig;
@@ -5918,28 +6786,74 @@ export async function createScene3D(canvasEl) {
       }
     });
 
-    // 3. Update & render 3D Vehicles in neighborhood
-    vehiclesGroup.visible = me.scene === 'neighborhood';
-    if (me.scene === 'neighborhood') {
+    // 3. Update & render 3D Vehicles + Pedestrians in neighborhood
+    const inNeighborhood = me.scene === 'neighborhood';
+    vehiclesGroup.visible = inNeighborhood;
+    pedestriansGroup.visible = inNeighborhood;
+    if (inNeighborhood) {
+      if (lastVehicleNightState !== Boolean(lighting.isNight)) {
+        lastVehicleNightState = Boolean(lighting.isNight);
+        vehicleMeshes.forEach((vm) => vehiclesGroup.remove(vm));
+        vehicleMeshes.clear();
+      }
       streetCars.forEach((car, idx) => {
         if (car.axis === 'h') {
           car.x += car.speed;
-          if (car.x > 2520 + 110) car.x = -110;
-          if (car.x < -110) car.x = 2520 + 110;
+          if (car.x > STREET_WORLD.width + 110) car.x = -110;
+          if (car.x < -110) car.x = STREET_WORLD.width + 110;
         } else {
           car.y += car.speed;
-          if (car.y > 1700 + 110) car.y = 220;
-          if (car.y < 220) car.y = 1700 + 110;
+          if (car.y > STREET_WORLD.height + 110) car.y = 220;
+          if (car.y < 220) car.y = STREET_WORLD.height + 110;
         }
         const key = `car_${idx}`;
         let mesh = vehicleMeshes.get(key);
         if (!mesh) {
-          mesh = buildVehicle3D(THREE, mats, car);
+          mesh = buildVehicle3D(THREE, mats, car, Boolean(lighting.isNight));
           vehicleMeshes.set(key, mesh);
           vehiclesGroup.add(mesh);
         }
         mesh.position.set(car.x * WORLD_SCALE, 0.17, car.y * WORLD_SCALE);
         mesh.rotation.y = car.axis === 'h' ? (car.dir > 0 ? 0 : Math.PI) : car.dir > 0 ? -Math.PI / 2 : Math.PI / 2;
+      });
+
+      // Update Sidewalk Pedestrians
+      pedestrianEntries.forEach(({ mesh, route, phaseOffset }) => {
+        if (route.axis === 'h') {
+          route.x += route.dir * route.speed * deltaSec;
+          if (route.x > route.max) {
+            route.x = route.max;
+            route.dir = -1;
+          } else if (route.x < route.min) {
+            route.x = route.min;
+            route.dir = 1;
+          }
+          mesh.userData.targetYaw = route.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+        } else {
+          route.y += route.dir * route.speed * deltaSec;
+          if (route.y > route.max) {
+            route.y = route.max;
+            route.dir = -1;
+          } else if (route.y < route.min) {
+            route.y = route.min;
+            route.dir = 1;
+          }
+          mesh.userData.targetYaw = route.dir > 0 ? 0 : Math.PI;
+        }
+        mesh.position.set(route.x * WORLD_SCALE, 0.08, route.y * WORLD_SCALE);
+        const ud = mesh.userData;
+        let diff = ud.targetYaw - ud.currentYaw;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        ud.currentYaw += diff * Math.min(1, deltaSec * 10);
+        ud.bodyRoot.rotation.y = ud.currentYaw;
+        const walkPhase = nowMs * 0.011 + phaseOffset;
+        const swing = Math.sin(walkPhase) * 0.55;
+        ud.leftLegPivot.rotation.x = swing;
+        ud.rightLegPivot.rotation.x = -swing;
+        ud.leftArmPivot.rotation.x = -swing * 0.78;
+        ud.rightArmPivot.rotation.x = swing * 0.78;
+        ud.upperGroup.position.y = 0.48 + Math.abs(Math.sin(walkPhase)) * 0.07;
       });
     }
 
@@ -6239,7 +7153,7 @@ export async function createScene3D(canvasEl) {
       tapMarker.visible = false;
     }
 
-    // 6. Camera follow + smooth exponential damping (Isometric 45°)
+    // 6. Camera follow + smooth exponential damping (Isometric 45° or Perspective XCity)
     const followX = me.x * WORLD_SCALE + camState.panX;
     const followZ = me.y * WORLD_SCALE + camState.panZ;
     camState.targetX = THREE.MathUtils.damp(camState.targetX, followX, 10, deltaSec);
@@ -6248,24 +7162,137 @@ export async function createScene3D(canvasEl) {
     camState.pitch = THREE.MathUtils.damp(camState.pitch, camState.targetPitch, 10, deltaSec);
     camState.zoom = THREE.MathUtils.damp(camState.zoom, camState.targetZoom, 12, deltaSec);
 
-    if (Math.abs(camera.zoom - camState.zoom) > 0.001) {
-      camera.zoom = camState.zoom;
-      camera.updateProjectionMatrix();
+    const activeCamera = getActiveCamera();
+    if (camState.mode === 'ortho' && Math.abs(orthoCamera.zoom - camState.zoom) > 0.001) {
+      orthoCamera.zoom = camState.zoom;
+      orthoCamera.updateProjectionMatrix();
     }
 
-    const camDist = 90;
-    const cosP = Math.cos(camState.pitch);
-    camera.position.set(
+    const inInterior = me.scene !== 'neighborhood';
+    const effectivePitch =
+      camState.mode === 'perspective' && inInterior ? Math.max(0.58, camState.pitch) : camState.pitch;
+    const camDist =
+      camState.mode === 'perspective'
+        ? (inInterior ? 32 : 38) / Math.max(0.45, camState.zoom)
+        : 90;
+    const cosP = Math.cos(effectivePitch);
+    activeCamera.position.set(
       camState.targetX + camDist * cosP * Math.sin(camState.yaw),
-      camDist * Math.sin(camState.pitch),
+      camDist * Math.sin(effectivePitch),
       camState.targetZ + camDist * cosP * Math.cos(camState.yaw)
     );
-    camera.lookAt(camState.targetX, 0.8, camState.targetZ);
+    activeCamera.lookAt(camState.targetX, camState.mode === 'perspective' ? 1.45 : 0.8, camState.targetZ);
+
+    // Keep Sky Dome centered around camera look target so horizon & stars never clip
+    skyDome.mesh.position.set(camState.targetX, -2, camState.targetZ);
 
     // Anchor DirectionalLight shadow frustum around camera target so soft shadows stay razor-sharp everywhere!
     sunLight.position.set(camState.targetX + 36, 48, camState.targetZ + 30);
     sunLight.target.position.set(camState.targetX, 0, camState.targetZ);
     sunLight.target.updateMatrixWorld();
+
+    // Update dynamic real PointLights for streetlamps, buildings, cars, player, and cozy interiors
+    const nightBoost = lighting.phase === 'night' ? 1.0 : lighting.isNight ? 0.65 : 0.0;
+    if (inNeighborhood && nightBoost > 0) {
+      const refX = camState.targetX;
+      const refZ = camState.targetZ;
+
+      const nearestLamps = nightLampAnchors
+        .map((a) => ({ a, d2: (a.x - refX) * (a.x - refX) + (a.z - refZ) * (a.z - refZ) }))
+        .filter((x) => x.d2 < 2400)
+        .sort((x, y) => x.d2 - y.d2);
+      lampPointLights.forEach((pl, idx) => {
+        const pick = nearestLamps[idx];
+        if (pick) {
+          pl.position.set(pick.a.x, pick.a.y, pick.a.z);
+          pl.intensity = 22 * nightBoost;
+        } else {
+          pl.intensity = 0;
+        }
+      });
+
+      const nearestBuildings = nightBuildingAnchors
+        .map((a) => ({ a, d2: (a.x - refX) * (a.x - refX) + (a.z - refZ) * (a.z - refZ) }))
+        .filter((x) => x.d2 < 2600)
+        .sort((x, y) => x.d2 - y.d2);
+      buildingPointLights.forEach((pl, idx) => {
+        const pick = nearestBuildings[idx];
+        if (pick) {
+          pl.color.set(pick.a.color);
+          pl.position.set(pick.a.x, pick.a.y, pick.a.z);
+          pl.intensity = pick.a.intensity * nightBoost;
+        } else {
+          pl.intensity = 0;
+        }
+      });
+
+      const nearestCars = streetCars
+        .filter((c) => c.kind !== 'bike')
+        .map((c) => {
+          const cx = c.x * WORLD_SCALE;
+          const cz = c.y * WORLD_SCALE;
+          return { c, cx, cz, d2: (cx - refX) * (cx - refX) + (cz - refZ) * (cz - refZ) };
+        })
+        .filter((x) => x.d2 < 2400)
+        .sort((x, y) => x.d2 - y.d2);
+      carPointLights.forEach((pl, idx) => {
+        const pick = nearestCars[idx];
+        if (pick) {
+          const aheadX = pick.cx + (pick.c.axis === 'h' ? pick.c.dir * 2.8 : 0);
+          const aheadZ = pick.cz + (pick.c.axis === 'v' ? pick.c.dir * 2.8 : 0);
+          pl.position.set(aheadX, 1.05, aheadZ);
+          pl.intensity = 16 * nightBoost;
+        } else {
+          pl.intensity = 0;
+        }
+      });
+
+      playerNightLight.position.set(me.x * WORLD_SCALE, 2.4, me.y * WORLD_SCALE);
+      playerNightLight.intensity = 2.4 * nightBoost;
+      interiorPointLights.forEach((pl) => {
+        pl.intensity = 0;
+      });
+    } else if (!inNeighborhood && lighting.isNight) {
+      lampPointLights.forEach((pl) => {
+        pl.intensity = 0;
+      });
+      buildingPointLights.forEach((pl) => {
+        pl.intensity = 0;
+      });
+      carPointLights.forEach((pl) => {
+        pl.intensity = 0;
+      });
+      playerNightLight.intensity = 0;
+      if (me.scene === 'house') {
+        interiorPointLights[0].color.set('#FFE4A0');
+        interiorPointLights[0].position.set(28, 7.5, 16);
+        interiorPointLights[0].intensity = 22;
+        interiorPointLights[1].color.set('#FFD98A');
+        interiorPointLights[1].position.set(28, 7.5, 31);
+        interiorPointLights[1].intensity = 22;
+      } else {
+        interiorPointLights[0].color.set('#FFE082');
+        interiorPointLights[0].position.set(6.82, 3.2, 2.2);
+        interiorPointLights[0].intensity = 16;
+        interiorPointLights[1].color.set('#FFE8B3');
+        interiorPointLights[1].position.set(20, 6.2, 11);
+        interiorPointLights[1].intensity = 14;
+      }
+    } else {
+      lampPointLights.forEach((pl) => {
+        pl.intensity = 0;
+      });
+      buildingPointLights.forEach((pl) => {
+        pl.intensity = 0;
+      });
+      carPointLights.forEach((pl) => {
+        pl.intensity = 0;
+      });
+      playerNightLight.intensity = 0;
+      interiorPointLights.forEach((pl) => {
+        pl.intensity = 0;
+      });
+    }
 
     // Update weather particles around camera target
     if (weatherParticles.length > 0) {
@@ -6284,7 +7311,7 @@ export async function createScene3D(canvasEl) {
       });
     }
 
-    renderer.render(scene, camera);
+    renderer.render(scene, activeCamera);
 
     // 7. Project 3D floating labels cleanly onto HTML overlay
     if (labelLayerEl) {
@@ -6303,7 +7330,7 @@ export async function createScene3D(canvasEl) {
           continue;
         }
         const lbl = allLabels[i];
-        projVec.set(lbl.x, lbl.y, lbl.z).project(camera);
+        projVec.set(lbl.x, lbl.y, lbl.z).project(activeCamera);
         if (projVec.z > 1 || projVec.x < -1.15 || projVec.x > 1.15 || projVec.y < -1.15 || projVec.y > 1.15) {
           el.style.display = 'none';
           continue;
@@ -6333,18 +7360,40 @@ export async function createScene3D(canvasEl) {
     }
   }
 
+  function setCameraMode(nextMode) {
+    const resolved = nextMode === 'perspective' ? 'perspective' : 'ortho';
+    camState.mode = resolved;
+    camState.targetPitch = resolved === 'perspective' ? 0.5 : Math.PI / 4;
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(CAMERA_MODE_STORAGE_KEY, resolved);
+      }
+    } catch {
+      // ignore
+    }
+    resize();
+    return resolved;
+  }
+
   return {
     THREE,
     camState,
     resize,
     raycastGround,
     renderFrame,
+    getCameraMode() {
+      return camState.mode;
+    },
+    setCameraMode,
+    toggleCameraMode() {
+      return setCameraMode(camState.mode === 'perspective' ? 'ortho' : 'perspective');
+    },
     setZoom(nextZoom) {
       camState.targetZoom = Math.max(0.55, Math.min(2.2, nextZoom));
     },
     resetCamera() {
       camState.targetYaw = Math.PI / 4;
-      camState.targetPitch = Math.PI / 4;
+      camState.targetPitch = camState.mode === 'perspective' ? 0.5 : Math.PI / 4;
       camState.panX = 0;
       camState.panZ = 0;
       camState.targetZoom = 1.0;
@@ -6352,6 +7401,8 @@ export async function createScene3D(canvasEl) {
     dispose() {
       mats.disposeAll();
       Object.values(textures).forEach((t) => t.dispose());
+      skyDome.mesh.geometry.dispose();
+      skyDome.mat.dispose();
       leaderTex.dispose();
       ledAdTex.dispose();
       robotBannerCache.forEach((b) => b.tex.dispose());

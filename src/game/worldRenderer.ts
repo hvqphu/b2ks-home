@@ -2956,26 +2956,34 @@ export function drawNeighborhoodMinimap(
   ctx.fillStyle = '#E6C29F';
   ctx.fillRect(0, 415, STREET_WORLD.width, 230);
   ctx.fillRect(0, 975, STREET_WORLD.width, 230);
+  ctx.fillRect(0, 1590, STREET_WORLD.width, 230);
   ctx.fillRect(1130, 225, 230, STREET_WORLD.height - 225);
+  ctx.fillRect(2490, 225, 230, STREET_WORLD.height - 225);
 
   ctx.strokeStyle = '#C49363';
   ctx.lineWidth = 6;
   ctx.strokeRect(1, 416, STREET_WORLD.width - 2, 228);
   ctx.strokeRect(1, 976, STREET_WORLD.width - 2, 228);
+  ctx.strokeRect(1, 1591, STREET_WORLD.width - 2, 228);
   ctx.strokeRect(1131, 226, 228, STREET_WORLD.height - 226);
+  ctx.strokeRect(2491, 226, 228, STREET_WORLD.height - 226);
 
   // Asphalt roads
   ctx.fillStyle = '#334155';
   ctx.fillRect(0, 465, STREET_WORLD.width, 130);
   ctx.fillRect(0, 1025, STREET_WORLD.width, 130);
+  ctx.fillRect(0, 1640, STREET_WORLD.width, 130);
   ctx.fillRect(1180, 225, 130, STREET_WORLD.height - 225);
+  ctx.fillRect(2540, 225, 130, STREET_WORLD.height - 225);
 
   // Crisp crosswalk stripes near main intersections
   ctx.fillStyle = 'rgba(248, 250, 252, 0.72)';
-  [468, 1028].forEach((ry) => {
+  [468, 1028, 1643].forEach((ry) => {
     for (let s = 10; s < 120; s += 24) {
       ctx.fillRect(1148, ry + s, 26, 12);
       ctx.fillRect(1316, ry + s, 26, 12);
+      ctx.fillRect(2508, ry + s, 26, 12);
+      ctx.fillRect(2676, ry + s, 26, 12);
     }
   });
 
@@ -2986,7 +2994,9 @@ export function drawNeighborhoodMinimap(
   ctx.beginPath();
   ctx.moveTo(0, 530); ctx.lineTo(STREET_WORLD.width, 530);
   ctx.moveTo(0, 1090); ctx.lineTo(STREET_WORLD.width, 1090);
+  ctx.moveTo(0, 1705); ctx.lineTo(STREET_WORLD.width, 1705);
   ctx.moveTo(1245, 230); ctx.lineTo(1245, STREET_WORLD.height);
+  ctx.moveTo(2605, 230); ctx.lineTo(2605, STREET_WORLD.height);
   ctx.stroke();
   ctx.setLineDash([]);
 
