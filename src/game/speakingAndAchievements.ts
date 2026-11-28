@@ -391,7 +391,7 @@ export function evaluateMemberAchievements(member: Member, tasks: TaskItem[]): A
 }
 
 function normalizeSpeechToken(tok: string): string {
-  return tok
+  return String(tok || '')
     .toLowerCase()
     .replace(/['’]s\b/g, 's')
     .replace(/[^a-z0-9]/g, '');
@@ -567,7 +567,7 @@ export function parseSpeakingBankCsv(csvText: string): {
   if (rows.length < 2) {
     return { questions: [], errors: 1 };
   }
-  const header = rows[0].map((h) => h.trim().toLowerCase());
+  const header = rows[0].map((h) => String(h || '').trim().toLowerCase());
   const idxOf = (names: string[]) => header.findIndex((h) => names.includes(h));
   const idCol = idxOf(['id']);
   const lvCol = idxOf(['level', 'lv', 'cap_do']);

@@ -129,7 +129,7 @@ function renderCharacterFigure(
   cy: number,
   scale = 1
 ): React.ReactNode {
-  const s = speaker.toLowerCase();
+  const s = String(speaker || '').toLowerCase();
   const isCat = s.includes('carrot') || s.includes('pip');
   const isDrone = s.includes('drone') || s.includes('computer');
 

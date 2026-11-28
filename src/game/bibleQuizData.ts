@@ -131,7 +131,7 @@ export function parseBibleBankCsv(csvText: string): { questions: BibleQuestion[]
   if (rows.length === 0) return { questions: [], errors: 0 };
 
   let startIdx = 0;
-  const header = rows[0].map((c) => c.trim().toLowerCase());
+  const header = rows[0].map((c) => String(c || '').trim().toLowerCase());
   const idxOf = (names: string[]) => header.findIndex((h) => names.includes(h));
 
   const colIdx = {
@@ -186,7 +186,7 @@ export function parseBibleBankCsv(csvText: string): { questions: BibleQuestion[]
       continue;
     }
 
-    const rawCat = (colIdx.category >= 0 ? cells[colIdx.category] : 'fact').trim().toLowerCase();
+    const rawCat = String((colIdx.category >= 0 ? cells[colIdx.category] : '') || 'fact').trim().toLowerCase();
     const category: BibleQuestionCategory = VALID_CATEGORIES.has(rawCat as BibleQuestionCategory)
       ? (rawCat as BibleQuestionCategory)
       : 'fact';

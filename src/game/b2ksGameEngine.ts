@@ -458,14 +458,14 @@ export function initB2KSGameEngine() {
       const utter = new SpeechSynthesisUtterance(cleanText);
       utter.lang = 'en-US';
       utter.rate = rate;
-      const voices = window.speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().startsWith('en'));
+      const voices = window.speechSynthesis.getVoices().filter((v) => String(v?.lang || '').toLowerCase().startsWith('en'));
       const maleHints = ['david', 'mark', 'george', 'daniel', 'alex', 'james', 'guy', 'ryan', 'thomas', 'arthur', 'male', 'matthew', 'andrew'];
       const femaleHints = ['samantha', 'zira', 'hazel', 'victoria', 'karen', 'susan', 'libby', 'sonia', 'aria', 'jenny', 'emma', 'female', 'ava', 'michelle'];
       const hints = gender === 'male' ? maleHints : femaleHints;
       const matched =
-        voices.find((v) => v.lang.toLowerCase().startsWith('en-us') && hints.some((h) => v.name.toLowerCase().includes(h))) ||
-        voices.find((v) => hints.some((h) => v.name.toLowerCase().includes(h))) ||
-        voices.find((v) => v.lang.toLowerCase().startsWith('en-us')) ||
+        voices.find((v) => String(v?.lang || '').toLowerCase().startsWith('en-us') && hints.some((h) => String(v?.name || '').toLowerCase().includes(h))) ||
+        voices.find((v) => hints.some((h) => String(v?.name || '').toLowerCase().includes(h))) ||
+        voices.find((v) => String(v?.lang || '').toLowerCase().startsWith('en-us')) ||
         voices[0];
       if (matched) utter.voice = matched;
       utter.pitch = gender === 'male' ? 0.88 : 1.12;
@@ -4067,7 +4067,7 @@ export function initB2KSGameEngine() {
     const user = getCurrentUser();
     let cost = 0;
     if (salonDraft.hairStyle !== (user.hairStyle || 'short')) cost += 15;
-    if (salonDraft.hairColor.toLowerCase() !== (user.hairColor || '#2C3E50').toLowerCase()) cost += 10;
+    if ((salonDraft.hairColor || '#2C3E50').toLowerCase() !== (user.hairColor || '#2C3E50').toLowerCase()) cost += 10;
     return cost;
   }
 
@@ -4081,7 +4081,7 @@ export function initB2KSGameEngine() {
     }
     if (colGrid) {
       colGrid.innerHTML = HAIR_COLORS.map(
-        (c) => `<div class="color-swatch ${salonDraft.hairColor.toLowerCase() === c.toLowerCase() ? 'selected' : ''}" style="background:${c};" onclick="selectSalonColor('${c}')"></div>`
+        (c) => `<div class="color-swatch ${(salonDraft.hairColor || '#2C3E50').toLowerCase() === String(c || '').toLowerCase() ? 'selected' : ''}" style="background:${c};" onclick="selectSalonColor('${c}')"></div>`
       ).join('');
     }
     const costPill = document.getElementById('salon-cost-pill');
@@ -4132,7 +4132,7 @@ export function initB2KSGameEngine() {
         .map((f: any) => ({ id: f.id, label: `👗 ${f.name.split(' ').slice(0, 3).join(' ')}`, color: f.shirtColor, pattern: f.shirtPattern }));
       const allShirts = [...SHIRT_VISUAL_OPTIONS, ...ownedShirts];
       shirtGrid.innerHTML = allShirts.map(
-        (s) => `<div class="visual-option-card ${draftChar.shirtColor.toLowerCase() === s.color.toLowerCase() && draftChar.shirtPattern === s.pattern ? 'selected' : ''}" onclick="selectDraftShirt('${s.color}', '${s.pattern}')">${renderShirtIconSVG(s)}<span>${escapeHtml(s.label)}</span></div>`
+        (s) => `<div class="visual-option-card ${(draftChar.shirtColor || '#2980B9').toLowerCase() === String(s.color || '').toLowerCase() && draftChar.shirtPattern === s.pattern ? 'selected' : ''}" onclick="selectDraftShirt('${s.color}', '${s.pattern}')">${renderShirtIconSVG(s)}<span>${escapeHtml(s.label)}</span></div>`
       ).join('');
     }
     const pantsGrid = document.getElementById('visual-pants-grid');
@@ -4143,7 +4143,7 @@ export function initB2KSGameEngine() {
         .map((f: any) => ({ id: f.id, label: `👗 ${f.name.split(' ').slice(0, 3).join(' ')}`, color: f.pantsColor, style: f.pantsStyle }));
       const allPants = [...PANTS_VISUAL_OPTIONS, ...ownedPants];
       pantsGrid.innerHTML = allPants.map(
-        (p) => `<div class="visual-option-card ${draftChar.pantsColor.toLowerCase() === p.color.toLowerCase() && draftChar.pantsStyle === p.style ? 'selected' : ''}" onclick="selectDraftPants('${p.color}', '${p.style}')">${renderPantsIconSVG(p)}<span>${escapeHtml(p.label)}</span></div>`
+        (p) => `<div class="visual-option-card ${(draftChar.pantsColor || '#34495E').toLowerCase() === String(p.color || '').toLowerCase() && draftChar.pantsStyle === p.style ? 'selected' : ''}" onclick="selectDraftPants('${p.color}', '${p.style}')">${renderPantsIconSVG(p)}<span>${escapeHtml(p.label)}</span></div>`
       ).join('');
     }
     const outfitGrid = document.getElementById('visual-outfit-grid');
@@ -6888,7 +6888,7 @@ export function initB2KSGameEngine() {
     if (guessedWord === item.word) {
       closeModal('dining-puzzle-modal');
       const curU = getCurrentUser();
-      performRoutineActivity(curU, 'eat', `Yummy ${item.word.toLowerCase()}! (${item.vi}) 🍽️`);
+      performRoutineActivity(curU, 'eat', `Yummy ${String(item.word || '').toLowerCase()}! (${item.vi}) 🍽️`);
       evaluateAndUnlockMemberBadges(curU, item.word);
       saveGame();
     } else {
@@ -8552,6 +8552,7 @@ export function initB2KSGameEngine() {
     if (!isGameUnlocked) return;
     const tag = (document.activeElement as HTMLElement)?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if (typeof e.key !== 'string') return;
     const k = e.key.toLowerCase();
     const soccerModal = document.getElementById('soccer-modal');
     if (soccerModal && soccerModal.style.display === 'flex') {
@@ -8572,6 +8573,7 @@ export function initB2KSGameEngine() {
     }
   });
   window.addEventListener('keyup', (e) => {
+    if (typeof e.key !== 'string') return;
     const soccerModal = document.getElementById('soccer-modal');
     if (soccerModal && soccerModal.style.display === 'flex') {
       soccerGame.handleKey(e.key, false);

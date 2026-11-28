@@ -227,7 +227,7 @@ export function parseEnglishBankCsv(csvText: string): { questions: EnglishQuesti
   if (rows.length === 0) return { questions: [], errors: 0 };
 
   let startIdx = 0;
-  const firstRowLower = rows[0].map((c) => c.trim().toLowerCase());
+  const firstRowLower = rows[0].map((c) => String(c || '').trim().toLowerCase());
   const colIdx = {
     id: firstRowLower.indexOf('id'),
     grade: firstRowLower.indexOf('grade'),
@@ -277,7 +277,7 @@ export function parseEnglishBankCsv(csvText: string): { questions: EnglishQuesti
     const gradeNum = Number((cells[colIdx.grade] || '6').trim());
     const grade = (gradeNum === 7 || gradeNum === 8 || gradeNum === 9 ? gradeNum : 6) as 6 | 7 | 8 | 9;
     const unitNum = Math.max(1, Math.min(12, Math.round(Number((cells[colIdx.unit] || '1').trim()) || 1)));
-    const catRaw = (cells[colIdx.cat] || 'vocab').trim().toLowerCase();
+    const catRaw = String(cells[colIdx.cat] || 'vocab').trim().toLowerCase();
     const cat: 'grammar' | 'vocab' = catRaw === 'grammar' || catRaw === 'ngữ pháp' ? 'grammar' : 'vocab';
 
     const ansRaw = (cells[colIdx.ans] || 'A').trim().toUpperCase();

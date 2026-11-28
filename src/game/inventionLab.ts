@@ -202,7 +202,7 @@ export function parsePromptToLabSpec(
   resolveShapeFn?: (id: string) => string | null,
   sizeOverride?: 'auto' | 'small' | 'medium' | 'large' | 'giant'
 ): LabItemSpec {
-  const lower = promptText.toLowerCase();
+  const lower = String(promptText || '').toLowerCase();
   const seed = hashString(`${lower}|${itemAId || ''}|${itemBId || ''}`);
 
   const mat = MATERIAL_PALETTES.find((m) => m.keys.some((k) => new RegExp(`\\b${k}\\b`, 'i').test(lower)));

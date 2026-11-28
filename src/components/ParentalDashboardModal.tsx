@@ -2063,10 +2063,10 @@ export const ParentalDashboardModal: React.FC<Props> = ({ bridge, onClose }) => 
                     const term = bibleSearch.trim().toLowerCase();
                     if (!term) return true;
                     return (
-                      q.id.toLowerCase().includes(term) ||
-                      q.q.toLowerCase().includes(term) ||
-                      q.bookEn.toLowerCase().includes(term) ||
-                      q.bookVi.toLowerCase().includes(term)
+                      String(q.id || '').toLowerCase().includes(term) ||
+                      String(q.q || '').toLowerCase().includes(term) ||
+                      String(q.bookEn || '').toLowerCase().includes(term) ||
+                      String(q.bookVi || '').toLowerCase().includes(term)
                     );
                   })
                   .slice(0, 80)

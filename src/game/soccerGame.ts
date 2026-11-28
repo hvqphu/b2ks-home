@@ -1387,7 +1387,7 @@ export function createSoccerMiniGame(deps: SoccerEngineDeps) {
   }
 
   function handleKey(key: string, down: boolean): boolean {
-    if (!active) return false;
+    if (!active || typeof key !== 'string') return false;
     const k = key.toLowerCase();
     if (mode === 'online_2p' && roomState.status === 'playing') {
       if (!down) return false;
